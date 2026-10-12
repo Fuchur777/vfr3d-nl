@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VFR3D Nederland</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cesium@1.145.0/Build/Cesium/Widgets/widgets.css">
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; font: 13px system-ui, sans-serif; }
+  body { display: flex; }
+  /* panel: dark "cockpit" style, tabs Kaart / Luchtruim / Vlucht, disclaimer always visible at the bottom */
+  #layers { order: -1; width: 290px; flex: none; display: flex; flex-direction: column; box-sizing: border-box; background: #1b232b; color: #d8e0e6; border-right: 1px solid #0b0f13; color-scheme: dark; accent-color: #ffc24b; }
+  #map { flex: 1; position: relative; }
+  #tabs { display: grid; grid-template-columns: repeat(3, 1fr); border-bottom: 1px solid #2f3b46; flex: none; }
+  #tabs button { background: none; border: 0; color: #8a9aa8; font: 500 13px system-ui, sans-serif; padding: 10px 0; cursor: pointer; }
+  #tabs button[aria-selected="true"] { color: #d8e0e6; box-shadow: inset 0 -2px #ffc24b; }
+  #layers section { flex: 1; overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+  #layers h3 { margin: 4px 0 0; font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: #8a9aa8; font-weight: 500; border-bottom: 1px solid #2f3b46; padding-bottom: 4px; }
+  #layers label { display: block; white-space: nowrap; }
+  #layers details label { margin-left: 18px; padding: 1px 0; }
+  #layers summary { padding: 3px 0; cursor: pointer; }
+  #layers [hidden] { display: none; }
+  #layers output, .count, #time { color: #ffc24b; font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  #layers input[type=range] { width: 100%; }
+  #layers select, #layers input[type=search], #layers input[type=number], #layers button:not(#tabs button):not(#classes button) { background: #111820; color: #d8e0e6; border: 1px solid #34414d; border-radius: 5px; padding: 4px 8px; font: inherit; }
+  #classes { display: flex; gap: 4px; flex-wrap: wrap; }
+  #classes button { width: 24px; height: 22px; padding: 0; color: #fff; border: 0; border-radius: 4px; font-weight: bold; cursor: pointer; }
+  .badge { display: inline-block; width: 14px; margin-right: 4px; color: #fff; border-radius: 3px; text-align: center; font-size: 11px; font-weight: bold; }
+  #note { flex: none; padding: 10px 14px 12px; border-top: 1px solid #2f3b46; color: #7d8c99; font-size: 11px; line-height: 1.45; }
+  #note strong { display: block; color: #ff8787; margin-bottom: 4px; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<form id="layers">
+<div id="tabs" role="tablist"><button type="button" role="tab" data-tab="kaart">Kaart</button><button type="button" role="tab" data-tab="luchtruim">Luchtruim</button><button type="button" role="tab" data-tab="vlucht">Vlucht</button></div>
+<section id="kaart" role="tabpanel"><label>Onderlaag <select id="base"><option>Satelliet</option><option>Kaart</option><option selected>ICAO-kaart</option></select></label><div id="tileError" style="color: #ff8787"></div><h3>Hoogte</h3><label>Verticale schaal <output id="scaleOut">5</output>×<br><input id="scale" type="range" min="1" max="10" step="0.5" value="5"></label><label>Verberg luchtruim boven FL <output id="maxFlOut">95</output><br><input id="maxFl" type="range" min="10" max="150" step="5" value="95"></label></section>
+<section id="luchtruim" role="tabpanel"><label><input id="all" type="checkbox"> <b>Alle luchtruimen</b></label><div id="classes"></div><div style="display:flex;gap:6px"><button type="button" id="expand">Alles uitklappen</button><button type="button" id="collapse">Alles inklappen</button></div><input id="search" type="search" placeholder="Zoek luchtruim op naam" style="width:100%;box-sizing:border-box"><div id="tree"></div></section>
+<section id="vlucht" role="tabpanel"><label>IGC <input id="igc" type="file" accept=".igc"></label>
+<div id="player" hidden>
+  <div id="flight" style="white-space: pre-line"></div>
+  <label>QNH <input id="qnh" type="number" step="1" value="1013" style="width:60px"> hPa</label>
+  <button type="button" id="back">−1 min</button> <button type="button" id="play" style="width: 32px">▶</button> <button type="button" id="fwd">+1 min</button>
+  <select id="speed"><option>1</option><option>2</option><option>5</option><option selected>10</option><option>30</option><option>60</option></select>×
+  <div id="time"></div>
+  <div>Luchtruim:<div id="inside" style="white-space: pre-line; margin-left: 8px">–</div></div>
+  <label><input id="cockpit" type="checkbox"> Cockpitzicht</label>
+</div></section>
+<div id="note"><strong>Let op: alleen voor educatieve doeleinden. Niet geschikt voor vluchtvoorbereiding!</strong>Luchtruim © LVNL (CC BY 4.0). De AIP Netherlands van LVNL is leidend. FL-grenzen en IGC-drukhoogte omgerekend met de QNH uit het paneel.<br><span id="versions"></span></div></form>
+<script src="https://cdn.jsdelivr.net/npm/cesium@1.145.0/Build/Cesium/Cesium.js"></script>
+<script type="module">
+
+const LVNL = 'https://services-eu1.arcgis.com/OtUwzhpKSdeXgRIB/arcgis/rest/services/Airspaces_data/FeatureServer';
+// [layer id or local GeoJSON file, label, colour when unclassified, shown by default]
+const LAYERS = [
+  [15, 'CTR', '#185FA5', true],
+  [14, 'TMA', '#185FA5', true],
+  [13, 'CTA', '#185FA5', false],
+  [7, 'ATZ', '#ae3ec9', true],
+  [8, 'TMZ/RTMZ', '#7048e8', true],
+  [10, 'RMZ', '#9775fa', false],
+  [5, 'TRA', '#f76707', true],
+  [3, 'TSA', '#fab005', true],
+  [6, 'Parachutespringen', '#3bc9db', true],
+  [11, 'Zweefvliegen', '#0ca678', true],
+  ['lierlocaties.geojson', 'Lierlocaties (ENR 5.5)', '#a9e34b', true], // file next to index.html
+  [17, 'Danger (D)', '#f783ac', true],
+  [18, 'Restricted (R)', '#f3e5ab', true],
+  [19, 'Prohibited (P)', '#1a1a1a', true],
+];
+const CLASS_COLOURS = { A: '#A32D2D', B: '#993C1D', C: '#185FA5', D: '#378ADD', E: '#534AB7', F: '#888780', G: '#3B6D11' };
+
+const viewer = new Cesium.Viewer('map', {
+  baseLayer: new Cesium.ImageryLayer(new Cesium.OpenStreetMapImageryProvider({ url: 'https://tile.openstreetmap.org/' })),
+  baseLayerPicker: false, geocoder: false, animation: false, timeline: false,
+  sceneModePicker: false,
+});
+// navigation help in Dutch: Cesium has no locale, so replace its text nodes
+const NL = {
+  'Mouse': 'Muis', 'Touch': 'Aanraken', 'Pan view': 'Verschuiven', 'Zoom view': 'Zoomen', 'Rotate view': 'Draaien', 'Tilt view': 'Kantelen',
+  'Left click + drag': 'Linkerklik + slepen', 'Right click + drag, or': 'Rechterklik + slepen, of', 'Mouse wheel scroll': 'Scrollwiel',
+  'Middle click + drag, or': 'Middenklik + slepen, of', 'CTRL + Left/Right click + drag': 'CTRL + linker-/rechterklik + slepen',
+  'One finger drag': 'Eén vinger slepen', 'Two finger pinch': 'Twee vingers knijpen',
+  'Two finger drag, same direction': 'Twee vingers slepen, zelfde richting', 'Two finger drag, opposite direction': 'Twee vingers slepen, tegengestelde richting',
+};
+viewer.navigationHelpButton.viewModel.tooltip = 'Navigatie-uitleg';
+// panel tabs; Luchtruim is open at load
+const tabs = document.querySelectorAll('#tabs button');
+const showTab = id => tabs.forEach(t => { t.setAttribute('aria-selected', t.dataset.tab === id); document.getElementById(t.dataset.tab).hidden = t.dataset.tab !== id; });
+tabs.forEach(t => t.onclick = () => showTab(t.dataset.tab));
+showTab('luchtruim');
+// click and double-click pick the nearest visible entity, skipping airspace hidden by the selection or FL filter
+const pickVisible = pos => viewer.scene.drillPick(pos, 10).map(p => p.id).find(e => e instanceof Cesium.Entity && e.isShowing);
+viewer.screenSpaceEventHandler.setInputAction(c => viewer.selectedEntity = pickVisible(c.position), Cesium.ScreenSpaceEventType.LEFT_CLICK);
+viewer.screenSpaceEventHandler.setInputAction(c => {
+  const e = pickVisible(c.position);
+  if (e?.position?.getValue(viewer.clock.currentTime)) viewer.trackedEntity = e;
+  else if (e) viewer.zoomTo(e);
+}, Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK);
+for (const walk = document.createTreeWalker(viewer.navigationHelpButton.container, NodeFilter.SHOW_TEXT); walk.nextNode();)
+  walk.currentNode.data = NL[walk.currentNode.data.trim()] ?? walk.currentNode.data;
+const esri = viewer.imageryLayers.addImageryProvider(new Cesium.UrlTemplateImageryProvider({
+  url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  credit: 'Satelliet: Esri, Maxar, Earthstar Geographics', maximumLevel: 19 }));
+// LVNL ICAO chart 1:500.000, reprojected to lat/lon for the Netherlands only
+// added without await: a missing chart file must not stop the rest of the page
+const icao = Cesium.ImageryLayer.fromProviderAsync(Cesium.SingleTileImageryProvider.fromUrl('icao-nl.jpg', {
+  rectangle: Cesium.Rectangle.fromDegrees(3.2, 50.73, 7.25, 53.6), credit: 'ICAO-kaart 2026 © LVNL' }));
+viewer.imageryLayers.add(icao);
+icao.errorEvent.addEventListener(() => document.getElementById('tileError').textContent = 'ICAO-kaart niet gevonden: zet icao-nl.jpg naast index.html.');
+// show why map tiles fail instead of a silently empty globe
+for (const [name, layer] of [['Kaart', viewer.imageryLayers.get(0)], ['Satelliet', esri]]) layer.imageryProvider.errorEvent.addEventListener(e => {
+  document.getElementById('tileError').textContent = `${name}-tegels laden niet: ${e.error?.statusCode ?? ''} ${e.error?.message ?? e.message}`.slice(0, 200);
+});
+const base = document.getElementById('base');
+// hidden layers request no tiles, so satellite does not also load the map underneath
+const osm = viewer.imageryLayers.get(0);
+(base.onchange = () => { esri.show = base.selectedIndex === 0; osm.show = !esri.show; icao.show = base.selectedIndex === 2; })();
+
+const home = { destination: Cesium.Cartesian3.fromDegrees(5.3, 49.2, 280000), orientation: { pitch: Cesium.Math.toRadians(-40) } };
+viewer.camera.setView(home);
+// the home button returns to the view at page load instead of the whole globe
+viewer.homeButton.viewModel.command.beforeExecute.addEventListener(e => {
+  e.cancel = true;
+  viewer.trackedEntity = undefined;
+  viewer.camera.flyTo(home);
+});
+
+const qnh = document.getElementById('qnh');
+// FL is pressure altitude: about 27.3 ft per hPa above or below 1013.25
+const metres = (value, unit, ref) =>
+  ref === 'SFC' ? 0 : (unit === 'FL' ? value * 100 + (qnh.value - 1013.25) * 27.3 : unit === 'M' ? value / 0.3048 : value) * 0.3048;
+
+const sources = await Promise.all(LAYERS.map(([id, label]) =>
+  Cesium.GeoJsonDataSource.load(typeof id === 'string' ? id : `${LVNL}/${id}/query?where=1%3D1&outFields=*&outSR=4326&f=geojson`)
+    .catch(e => console.error(label, e))));
+
+// versions under the disclaimer; LVNL's last edit date is the newest over all layers
+const nlDate = t => new Date(t).toLocaleDateString('nl-NL');
+fetch(`${LVNL}/layers?f=json`).then(r => r.json()).then(j => Math.max(...j.layers.map(l => l.editingInfo?.lastEditDate ?? 0))).catch(() => 0)
+  .then(t => document.getElementById('versions').textContent =
+    `Luchtruim LVNL: ${t > 0 ? nlDate(t) : 'onbekend'} · Lierlocaties: ENR 5.5, AIRAC AMDT 10-2026 (1-10-2026) · Code: ${nlDate(document.lastModified)}`);
+
+// One source of truth: the on/off state per airspace. Type and class only set those states.
+const saved = (() => { try { return JSON.parse(localStorage.getItem('vfr3d-selection')) ?? {}; } catch { return {}; } })();
+const airspaces = [], groups = [];
+const box = (onchange) => Object.assign(document.createElement('input'), { type: 'checkbox', onchange });
+const badge = (cls, colour) => Object.assign(document.createElement('span'), { className: 'badge', textContent: cls || '–', style: `background:${colour}` });
+
+LAYERS.forEach(([, label, colour, show], i) => {
+  const source = sources[i];
+  if (!source) return;
+  viewer.dataSources.add(source);
+  const items = new Map();
+  for (const e of [...source.entities.values]) {
+    const p = e.properties.getValue();
+    // LVNL also publishes British danger areas over the North Sea (EGD...); not Dutch
+    // only areas: skip British airspace and any point or line features
+    if (/^EG/.test(p.Designator) || !e.polygon) { source.entities.remove(e); continue; }
+    const cls = /^[A-G]$/.test(p.Class) ? p.Class : '';
+    const key = `${label}|${p.Designator}|${p.Name}`;
+    const color = Cesium.Color.fromCssColorString(CLASS_COLOURS[cls] ?? colour);
+    e.name = `${cls ? `[${cls}] ` : ''}${[p.Designator, p.Name].filter(Boolean).join(' ')}`;
+    e.limits = p;
+    // infobox: only the fields a pilot needs, in this order
+    e.description = '<table class="cesium-infoBox-defaultTable">' + ['UpperLimit', 'LowerLimit', 'LowerLimitUnit', 'Type', 'Class', 'Designator', 'UpperLimitUnit', 'UpperLimitReference', 'LowerLimitReference']
+      .filter(k => p[k] != null && p[k] !== '').map(k => `<tr><th>${k}</th><td>${p[k]}</td></tr>`).join('') + '</table>';
+    e.polygon.material = color.withAlpha(0.25);
+    e.polygon.outlineColor = color;
+    // a MultiPolygon becomes several entities; list it once
+    if (!items.has(key)) items.set(key, { key, cls, name: e.name, colour: CLASS_COLOURS[cls] ?? colour, entities: [] });
+    items.get(key).entities.push(e);
+  }
+  const group = { items: [...items.values()].sort((a, b) => a.name.localeCompare(b.name)) };
+  const details = document.createElement('details'), summary = document.createElement('summary');
+  group.box = box(() => setOn(group.items, group.box.checked));
+  group.count = Object.assign(document.createElement('span'), { className: 'count' });
+  summary.append(group.box, ` ${label} `, group.count);
+  details.append(summary);
+  for (const a of group.items) {
+    a.box = box(() => setOn([a], a.box.checked));
+    a.on = saved[a.key] ?? show;
+    const row = document.createElement('label');
+    row.append(a.box, badge(a.cls, a.colour), a.name.replace(/^\[.\] /, ''));
+    details.append(row);
+    airspaces.push(a);
+  }
+  groups.push(group);
+  document.getElementById('tree').append(details);
+});
+
+function setOn(items, on) {
+  for (const a of items) a.on = on;
+  refresh();
+}
+const maxFl = document.getElementById('maxFl');
+maxFl.oninput = () => { document.getElementById('maxFlOut').value = maxFl.value; updateHeights(); };
+function refresh() {
+  for (const a of airspaces) {
+    a.box.checked = a.on;
+    for (const e of a.entities) e.show = a.on && metres(e.limits.LowerLimit, e.limits.LowerLimitUnit, e.limits.LowerLimitReference) <= metres(maxFl.value, 'FL');
+  }
+  const tri = (b, list) => {
+    const n = list.filter(a => a.on).length;
+    b.checked = n === list.length;
+    b.indeterminate = n > 0 && n < list.length;
+    return n;
+  };
+  for (const g of groups) g.count.textContent = `${tri(g.box, g.items)}/${g.items.length}`;
+  tri(allBox, airspaces);
+  // a class button is grey when none of its airspaces is on
+  for (const [b, cls, colour] of classButtons) b.style.background = airspaces.some(a => a.cls === cls && a.on) ? colour : '#bbb';
+  try { localStorage.setItem('vfr3d-selection', JSON.stringify(Object.fromEntries(airspaces.map(a => [a.key, a.on])))); } catch {}
+}
+
+const allBox = document.getElementById('all'), classButtons = [];
+allBox.onchange = () => setOn(airspaces, allBox.checked);
+for (const [cls, colour] of Object.entries(CLASS_COLOURS)) {
+  const button = Object.assign(document.createElement('button'), { type: 'button', textContent: cls, title: `Klasse ${cls} aan/uit`, style: `background:${colour}` });
+  button.onclick = () => {
+    const items = airspaces.filter(a => a.cls === cls);
+    setOn(items, !items.some(a => a.on));
+  };
+  document.getElementById('classes').append(button);
+  classButtons.push([button, cls, colour]);
+}
+refresh();
+const openAll = open => document.querySelectorAll('#tree details').forEach(d => d.open = open);
+document.getElementById('expand').onclick = () => openAll(true);
+document.getElementById('collapse').onclick = () => openAll(false);
+// search hides non-matching airspaces and opens the types that contain a match
+const search = document.getElementById('search');
+document.getElementById('layers').onsubmit = e => e.preventDefault();
+search.oninput = () => {
+  const q = search.value.trim().toLowerCase();
+  for (const d of document.querySelectorAll('#tree details')) {
+    let n = 0;
+    for (const row of d.querySelectorAll('label')) n += !(row.hidden = !row.textContent.toLowerCase().includes(q));
+    d.hidden = !n;
+    d.open = !!q;
+  }
+};
+
+const scale = document.getElementById('scale');
+function updateHeights() {
+  document.getElementById('scaleOut').value = scale.value;
+  for (const source of sources.filter(Boolean)) for (const e of source.entities.values) {
+    const p = e.limits;
+    e.polygon.height = metres(p.LowerLimit, p.LowerLimitUnit, p.LowerLimitReference) * scale.value;
+    // cut off at the FL filter, so areas reaching above it only show their lower part
+    e.polygon.extrudedHeight = Math.min(metres(p.UpperLimit, p.UpperLimitUnit, p.UpperLimitReference), metres(maxFl.value, 'FL')) * scale.value;
+  }
+  if (fixes.length) showTrack();
+  refresh(); // the FL filter depends on the QNH
+}
+scale.oninput = qnh.oninput = updateHeights;
+
+// IGC: B records hold UTC time, position, pressure altitude (1013.25 hPa) and GNSS altitude (WGS84 ellipsoid), in metres
+let fixes = [], track, trace, shadow;
+const clock = viewer.clock;
+function parseIgc(text) {
+  const [, dd, mm, yy] = text.match(/HFDTE(?:DATE:)?(\d\d)(\d\d)(\d\d)/);
+  const day = Date.UTC(2000 + +yy, mm - 1, dd) / 1000;
+  let offset = 0, prev = 0;
+  return [...text.matchAll(/^B(\d\d)(\d\d)(\d\d)(\d\d)(\d{5})([NS])(\d{3})(\d{5})([EW])[AV]([-\d]{5})([-\d]{5})/gm)].map(m => {
+    const secs = m[1] * 3600 + m[2] * 60 + +m[3];
+    if (secs < prev) offset += 86400; // past midnight UTC
+    prev = secs;
+    return {
+      time: Cesium.JulianDate.fromDate(new Date((day + secs + offset) * 1000)),
+      lat: (+m[4] + m[5] / 60000) * (m[6] === 'S' ? -1 : 1),
+      lon: (+m[7] + m[8] / 60000) * (m[9] === 'W' ? -1 : 1),
+      pressure: +m[10], gnss: +m[11],
+    };
+  });
+}
+// altitude as the altimeter shows it: pressure altitude corrected with QNH (8.32 m per hPa);
+// without a pressure sensor use GNSS minus the geoid height in NL (about 45 m)
+let usePressure = false;
+const altitude = f => usePressure ? f.pressure + (qnh.value - 1013.25) * 8.32 : f.gnss - 45;
+function showTrack() {
+  const position = new Cesium.SampledPositionProperty();
+  const points = fixes.map(f => Cesium.Cartesian3.fromDegrees(f.lon, f.lat, altitude(f) * scale.value));
+  fixes.forEach((f, i) => position.addSample(f.time, points[i]));
+  // the whole flight as a white line with its shadow on the ground; the magenta path shows what has been flown
+  trace ??= viewer.entities.add({ polyline: { width: 3, material: Cesium.Color.WHITE.withAlpha(0.8) } });
+  trace.polyline.positions = points;
+  shadow ??= viewer.entities.add({ polyline: { width: 3, clampToGround: true, material: Cesium.Color.BLACK.withAlpha(0.5) } });
+  shadow.polyline.positions = points;
+  if (!track) track = viewer.entities.add({
+    point: { pixelSize: 8, color: Cesium.Color.fromCssColorString('#e100e1'), outlineWidth: 1 },
+    viewFrom: new Cesium.Cartesian3(0, -3000, 1500), // start 3 km behind, 1.5 km above when following
+    path: { leadTime: 0, trailTime: 1e6, width: 3, material: Cesium.Color.fromCssColorString('#e100e1') },
+    // vertical line from the aircraft straight down to the ground
+    polyline: { width: 2, material: Cesium.Color.BLACK.withAlpha(0.6), positions: new Cesium.CallbackProperty(t => {
+      const p = track.position.getValue(t);
+      return p ? [p, Cesium.Cartographic.toCartesian(Object.assign(Cesium.Cartographic.fromCartesian(p), { height: 0 }))] : [];
+    }, false) },
+  });
+  track.position = position;
+}
+async function fetchQnh(f) {
+  const date = Cesium.JulianDate.toIso8601(f.time).slice(0, 10), hour = +Cesium.JulianDate.toIso8601(f.time).slice(11, 13);
+  // the archive lags a few days behind; the forecast API covers recent days
+  for (const url of ['https://archive-api.open-meteo.com/v1/archive', 'https://api.open-meteo.com/v1/forecast']) {
+    try {
+      const r = await fetch(`${url}?latitude=${f.lat.toFixed(2)}&longitude=${f.lon.toFixed(2)}&start_date=${date}&end_date=${date}&hourly=pressure_msl&timezone=GMT`);
+      const value = (await r.json()).hourly?.pressure_msl?.[hour];
+      if (value != null) return Math.round(value);
+    } catch {}
+  }
+}
+document.getElementById('igc').onchange = async ({ target }) => {
+  const text = await target.files[0].text();
+  fixes = parseIgc(text);
+  if (!fixes.length) return alert('Geen B-records gevonden in dit IGC-bestand.');
+  usePressure = fixes.some(f => f.pressure);
+  showTrack();
+  Object.assign(clock, { startTime: fixes[0].time, stopTime: fixes.at(-1).time, currentTime: fixes[0].time,
+    clockRange: Cesium.ClockRange.CLAMPED, shouldAnimate: false, multiplier: +speed.value });
+  document.getElementById('player').hidden = false;
+  viewer.flyTo(trace);
+  const mid = fixes[fixes.length >> 1], date = Cesium.JulianDate.toDate(mid.time).toLocaleDateString('nl-NL');
+  const flight = document.getElementById('flight');
+  const type = text.match(/^HFGTY[^:\r\n]*:(.*)$/im)?.[1].trim();
+  const head = [date, type].filter(Boolean).join(' · ');
+  flight.textContent = `${head} · QNH ophalen…`;
+  const value = await fetchQnh(mid);
+  if (value) qnh.value = value;
+  flight.textContent = `${head} · QNH ${value ? `${value} hPa (Open-Meteo, ${Cesium.JulianDate.toIso8601(mid.time).slice(11, 13)}:00 UTC)` : 'niet gevonden, vul zelf in'}`;
+  // QNH implied by the logger: GNSS (minus geoid) versus pressure altitude, median over all fixes
+  const diffs = fixes.filter(f => f.pressure && f.gnss).map(f => (f.gnss - 45 - f.pressure) / 8.32).sort((a, b) => a - b);
+  const implied = Math.round(1013.25 + diffs[diffs.length >> 1]);
+  if (usePressure && value && Math.abs(implied - value) > 2)
+    flight.textContent += `\nLet op: de IGC-hoogtes wijzen op QNH ${implied} hPa. Open-Meteo is aangehouden.`;
+  updateHeights();
+};
+
+const speed = document.getElementById('speed'), play = document.getElementById('play'), cockpit = document.getElementById('cockpit');
+speed.onchange = () => clock.multiplier = +speed.value;
+play.onclick = () => {
+  const vm = viewer.clockViewModel;
+  if (!vm.shouldAnimate && Cesium.JulianDate.greaterThanOrEquals(clock.currentTime, clock.stopTime)) clock.currentTime = clock.startTime;
+  vm.shouldAnimate = !vm.shouldAnimate;
+  // outside the cockpit the camera orbits around the aircraft
+  if (!cockpit.checked) viewer.trackedEntity = track;
+};
+const skip = s => {
+  const t = Cesium.JulianDate.addSeconds(clock.currentTime, s, new Cesium.JulianDate());
+  clock.currentTime = Cesium.JulianDate.lessThan(t, clock.startTime) ? clock.startTime : Cesium.JulianDate.greaterThan(t, clock.stopTime) ? clock.stopTime : t;
+};
+document.getElementById('back').onclick = () => skip(-60);
+document.getElementById('fwd').onclick = () => skip(60);
+cockpit.onchange = () => {
+  track.point.show = !cockpit.checked;
+  viewer.trackedEntity = cockpit.checked ? undefined : track;
+};
+const enu = new Cesium.Matrix4(), ahead = new Cesium.Cartesian3();
+// airspaces containing a point (lon/lat in radians, altitude in metres MSL); holes are ignored
+const ring = e => e.ring ??= e.polygon.hierarchy.getValue().positions.map(c => {
+  const g = Cesium.Cartographic.fromCartesian(c);
+  return [g.longitude, g.latitude];
+});
+const inRing = ([x, y], r) => {
+  let inside = false;
+  for (let i = 0, j = r.length - 1; i < r.length; j = i++)
+    if ((r[i][1] > y) !== (r[j][1] > y) && x < (r[j][0] - r[i][0]) * (y - r[i][1]) / (r[j][1] - r[i][1]) + r[i][0]) inside = !inside;
+  return inside;
+};
+const containing = (pt, alt) => airspaces.filter(a => a.entities.some(e => {
+  const p = e.limits;
+  return alt >= metres(p.LowerLimit, p.LowerLimitUnit, p.LowerLimitReference) &&
+    alt <= metres(p.UpperLimit, p.UpperLimitUnit, p.UpperLimitReference) && inRing(pt, ring(e));
+})).map(a => a.name);
+
+// only touch the DOM when the text changes; rewriting it every frame swallows clicks
+const setText = (el, text) => { if (el.textContent !== text) el.textContent = text; };
+clock.onTick.addEventListener(() => {
+  if (!track) return;
+  // at the end of the flight the clamped clock stops moving but keeps animating; stop it so ▶ replays
+  if (clock.shouldAnimate && Cesium.JulianDate.greaterThanOrEquals(clock.currentTime, clock.stopTime)) viewer.clockViewModel.shouldAnimate = false;
+  setText(play, clock.shouldAnimate ? '❚❚' : '▶');
+  const t = clock.currentTime, here = track.position.getValue(t);
+  setText(document.getElementById('time'), Cesium.JulianDate.toDate(t).toLocaleTimeString('nl-NL', { timeZone: 'UTC' }) + ' UTC');
+  if (!here) return;
+  const g = Cesium.Cartographic.fromCartesian(here);
+  setText(document.getElementById('inside'), containing([g.longitude, g.latitude], g.height / scale.value).join('\n') || 'geen luchtruim uit de lijst');
+  if (!cockpit.checked) return;
+  // look from the aircraft along its direction of travel
+  const next = track.position.getValue(Cesium.JulianDate.addSeconds(t, 2, new Cesium.JulianDate()));
+  if (!next) return;
+  Cesium.Matrix4.inverse(Cesium.Transforms.eastNorthUpToFixedFrame(here), enu);
+  Cesium.Matrix4.multiplyByPoint(enu, next, ahead);
+  viewer.camera.setView({ destination: here, orientation: { heading: Math.atan2(ahead.x, ahead.y), pitch: Cesium.Math.toRadians(-10), roll: 0 } });
+});
+updateHeights();
+</script>
+</body>
+</html>
