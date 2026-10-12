@@ -84,6 +84,11 @@ const viewer = new Cesium.Viewer('map', {
   baseLayerPicker: false, geocoder: false, animation: false, timeline: false,
   sceneModePicker: false,
 });
+// Safari on macOS 27 fails to link Cesium's atmosphere and fog shaders (black canvas, CesiumJS issue #13650)
+if (/^((?!chrome|android|crios|fxios).)*safari/i.test(navigator.userAgent)) {
+  viewer.scene.globe.showGroundAtmosphere = false;
+  viewer.scene.fog.enabled = false;
+}
 // navigation help in Dutch: Cesium has no locale, so replace its text nodes
 const NL = {
   'Mouse': 'Muis', 'Touch': 'Aanraken', 'Pan view': 'Verschuiven', 'Zoom view': 'Zoomen', 'Rotate view': 'Draaien', 'Tilt view': 'Kantelen',
