@@ -27,11 +27,20 @@
   #classes button { width: 24px; height: 22px; padding: 0; color: #fff; border: 0; border-radius: 4px; font-weight: bold; cursor: pointer; }
   .badge { display: inline-block; width: 14px; margin-right: 4px; color: #fff; border-radius: 3px; text-align: center; font-size: 11px; font-weight: bold; }
   #note { flex: none; padding: 10px 14px 12px; border-top: 1px solid #2f3b46; color: #7d8c99; font-size: 11px; line-height: 1.45; }
+  /* phones: the panel slides in over the map behind a hamburger button */
+  #menu { display: none; }
+  @media (max-width: 700px) {
+    #layers { position: fixed; z-index: 20; top: 0; bottom: 0; left: 0; width: min(290px, 85vw); transform: translateX(-100%); transition: transform .2s; }
+    body.menu-open #layers { transform: none; box-shadow: 0 0 24px #0008; }
+    #menu { display: block; position: fixed; z-index: 21; top: 8px; left: 8px; width: 40px; height: 40px; border: 0; border-radius: 6px; background: #1b232b; color: #ffc24b; font-size: 22px; cursor: pointer; }
+    body.menu-open #menu { left: calc(min(290px, 85vw) + 8px); }
+  }
   #note strong { display: block; color: #ff8787; margin-bottom: 4px; }
 </style>
 </head>
 <body>
 <div id="map"></div>
+<button type="button" id="menu" aria-label="Menu" aria-expanded="false">☰</button>
 <form id="layers">
 <div id="tabs" role="tablist"><button type="button" role="tab" data-tab="kaart">Kaart</button><button type="button" role="tab" data-tab="luchtruim">Luchtruim</button><button type="button" role="tab" data-tab="vlucht">Vlucht</button></div>
 <section id="kaart" role="tabpanel"><label>Onderlaag <select id="base"><option>Satelliet</option><option>Kaart</option><option selected>ICAO-kaart</option></select></label><div id="tileError" style="color: #ff8787"></div><h3>Hoogte</h3><label>Verticale schaal <output id="scaleOut">5</output>×<br><input id="scale" type="range" min="1" max="10" step="0.5" value="5"></label><label>Verberg luchtruim boven FL <output id="maxFlOut">95</output><br><input id="maxFl" type="range" min="10" max="150" step="5" value="95"></label></section>
@@ -84,6 +93,9 @@ const NL = {
   'Two finger drag, same direction': 'Twee vingers slepen, zelfde richting', 'Two finger drag, opposite direction': 'Twee vingers slepen, tegengestelde richting',
 };
 viewer.navigationHelpButton.viewModel.tooltip = 'Navigatie-uitleg';
+// hamburger on phones
+const menu = document.getElementById('menu');
+menu.onclick = () => menu.setAttribute('aria-expanded', document.body.classList.toggle('menu-open'));
 // panel tabs; Luchtruim is open at load
 const tabs = document.querySelectorAll('#tabs button');
 const showTab = id => tabs.forEach(t => { t.setAttribute('aria-selected', t.dataset.tab === id); document.getElementById(t.dataset.tab).hidden = t.dataset.tab !== id; });
