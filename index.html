@@ -86,8 +86,14 @@ const viewer = new Cesium.Viewer('map', {
 });
 // Safari on macOS 27 fails to link Cesium's atmosphere and fog shaders (black canvas, CesiumJS issue #13650)
 if (/^((?!chrome|android|crios|fxios).)*safari/i.test(navigator.userAgent)) {
-  viewer.scene.globe.showGroundAtmosphere = false;
+  // also the other atmosphere users and the sky; none matter for an airspace map
   viewer.scene.fog.enabled = false;
+  viewer.scene.globe.showGroundAtmosphere = false;
+  viewer.scene.skyAtmosphere.show = false;
+  viewer.scene.skyBox.show = false;
+  viewer.scene.sun.show = false;
+  viewer.scene.moon.show = false;
+  viewer.scene.globe.enableLighting = false;
 }
 // navigation help in Dutch: Cesium has no locale, so replace its text nodes
 const NL = {
