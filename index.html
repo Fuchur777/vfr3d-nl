@@ -76,19 +76,19 @@
 <script type="module">
 
 const LVNL = 'https://services-eu1.arcgis.com/OtUwzhpKSdeXgRIB/arcgis/rest/services/Airspaces_data/FeatureServer';
-// [layer id or local GeoJSON file, label, colour when unclassified, shown by default]
+// [layer id or local GeoJSON file, label, colour when unclassified, type shown by default; classes A-D are always on by default]
 const LAYERS = [
-  [15, 'CTR', '#185FA5', true],
-  [14, 'TMA', '#185FA5', true],
+  [15, 'CTR', '#185FA5', false],
+  [14, 'TMA', '#185FA5', false],
   [13, 'CTA', '#185FA5', false],
-  [7, 'ATZ', '#ae3ec9', true],
-  [8, 'TMZ/RTMZ', '#7048e8', true],
+  [7, 'ATZ', '#ae3ec9', false],
+  [8, 'TMZ/RTMZ', '#7048e8', false],
   [10, 'RMZ', '#9775fa', false],
-  [5, 'TRA', '#f76707', true],
-  [3, 'TSA', '#fab005', true],
-  [6, 'Parachutespringen', '#3bc9db', true],
-  [11, 'Zweefvliegen', '#0ca678', true],
-  ['lierlocaties.geojson', 'Lierlocaties (ENR 5.5)', '#a9e34b', true], // file next to index.html
+  [5, 'TRA', '#f76707', false],
+  [3, 'TSA', '#fab005', false],
+  [6, 'Parachutespringen', '#3bc9db', false],
+  [11, 'Zweefvliegen', '#0ca678', false],
+  ['lierlocaties.geojson', 'Lierlocaties (ENR 5.5)', '#a9e34b', false], // file next to index.html
   [17, 'Danger (D)', '#f783ac', true],
   [18, 'Restricted (R)', '#f3e5ab', true],
   [19, 'Prohibited (P)', '#1a1a1a', true],
@@ -188,7 +188,7 @@ contact.textContent = mail;
 contact.href = `mailto:${mail}?subject=vfr3d.nl`;
 
 // One source of truth: the on/off state per airspace. Type and class only set those states.
-const saved = (() => { try { return JSON.parse(localStorage.getItem('vfr3d-selection')) ?? {}; } catch { return {}; } })();
+const saved = (() => { try { return JSON.parse(localStorage.getItem('vfr3d-selection-2')) ?? {}; } catch { return {}; } })();
 const airspaces = [], groups = [];
 const box = (onchange) => Object.assign(document.createElement('input'), { type: 'checkbox', onchange });
 const badge = (cls, colour) => Object.assign(document.createElement('span'), { className: 'badge', textContent: cls || '–', style: `background:${colour}` });
@@ -225,7 +225,7 @@ LAYERS.forEach(([, label, colour, show], i) => {
   details.append(summary);
   for (const a of group.items) {
     a.box = box(() => setOn([a], a.box.checked));
-    a.on = saved[a.key] ?? show;
+    a.on = saved[a.key] ?? (show || /^[A-D]$/.test(a.cls));
     const row = document.createElement('label');
     row.append(a.box, badge(a.cls, a.colour), a.name.replace(/^\[.\] /, ''));
     details.append(row);
@@ -256,7 +256,7 @@ function refresh() {
   tri(allBox, airspaces);
   // a class button is grey when none of its airspaces is on
   for (const [b, cls, colour] of classButtons) b.style.background = airspaces.some(a => a.cls === cls && a.on) ? colour : '#bbb';
-  try { localStorage.setItem('vfr3d-selection', JSON.stringify(Object.fromEntries(airspaces.map(a => [a.key, a.on])))); } catch {}
+  try { localStorage.setItem('vfr3d-selection-2', JSON.stringify(Object.fromEntries(airspaces.map(a => [a.key, a.on])))); } catch {}
 }
 
 const allBox = document.getElementById('all'), classButtons = [];
