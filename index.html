@@ -35,7 +35,15 @@
     #menu { display: block; position: fixed; z-index: 21; top: 8px; left: 8px; width: 40px; height: 40px; border: 0; border-radius: 6px; background: #1b232b; color: #ffc24b; font-size: 22px; cursor: pointer; }
     body.menu-open #menu { left: calc(min(290px, 85vw) + 8px); }
   }
-  #note strong { display: block; color: #ff8787; margin-bottom: 4px; }
+  #note strong { display: block; color: #ff8787; }
+  #note p { margin: 4px 0 6px; }
+  #note dl { display: grid; grid-template-columns: auto 1fr; gap: 1px 8px; margin: 0; }
+  #note dt { color: #8a9aa8; }
+  #note dd { margin: 0; font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  #links { display: flex; gap: 6px; margin-top: 8px; }
+  #links > * { flex: 1; text-align: center; padding: 5px 0; border-radius: 5px; font: 500 12px system-ui, sans-serif; cursor: pointer; text-decoration: none; }
+  #contact { flex: none; padding-inline: 10px; background: #111820; color: #d8e0e6; border: 1px solid #34414d; }
+  #donate { background: #ffc24b; color: #1b232b; border: 1px solid #ffc24b; }
 </style>
 </head>
 <body>
@@ -55,7 +63,12 @@
   <div>Luchtruim:<div id="inside" style="white-space: pre-line; margin-left: 8px">–</div></div>
   <label><input id="cockpit" type="checkbox"> Cockpitzicht</label>
 </div></section>
-<div id="note"><strong>Let op: alleen voor educatieve doeleinden. Niet geschikt voor vluchtvoorbereiding!</strong>Luchtruim © LVNL (CC BY 4.0). De AIP Netherlands van LVNL is leidend. FL-grenzen en IGC-drukhoogte omgerekend met de QNH uit het paneel.<br><span id="versions"></span></div></form>
+<div id="note">
+<strong>Let op: alleen voor educatieve doeleinden. Niet geschikt voor vluchtvoorbereiding!</strong>
+<p>De AIP Netherlands van LVNL is leidend. FL-grenzen en IGC-drukhoogte zijn omgerekend met de QNH uit het paneel.</p>
+<dl><dt>Luchtruim</dt><dd><span id="vAirspace">…</span> · © LVNL, CC BY 4.0</dd><dt>Lierlocaties</dt><dd>ENR 5.5, AIRAC AMDT 10-2026</dd><dt>Code</dt><dd id="vCode"></dd></dl>
+<div id="links"><button type="button" id="contact" hidden>✉ Contact</button><a id="donate" target="_blank" rel="noopener" hidden>☕ Doneer een vliegminuut</a></div>
+</div></form>
 <script src="https://cdn.jsdelivr.net/npm/cesium@1.145.0/Build/Cesium/Cesium.js"></script>
 <script type="module">
 
@@ -164,8 +177,16 @@ const sources = await Promise.all(LAYERS.map(([id, label]) =>
 // versions under the disclaimer; LVNL's last edit date is the newest over all layers
 const nlDate = t => new Date(t).toLocaleDateString('nl-NL');
 fetch(`${LVNL}/layers?f=json`).then(r => r.json()).then(j => Math.max(...j.layers.map(l => l.editingInfo?.lastEditDate ?? 0))).catch(() => 0)
-  .then(t => document.getElementById('versions').textContent =
-    `Luchtruim LVNL: ${t > 0 ? nlDate(t) : 'onbekend'} · Lierlocaties: ENR 5.5, AIRAC AMDT 10-2026 (1-10-2026) · Code: ${nlDate(document.lastModified)}`);
+  .then(t => document.getElementById('vAirspace').textContent = t > 0 ? nlDate(t) : 'datum onbekend');
+document.getElementById('vCode').textContent = nlDate(document.lastModified);
+// contact and donation; the mail address is only put together on click, so it is not in the page for robots
+const CONTACT = ['', '']; // [name, domain], e.g. ['info', 'vfr3d.nl']
+const BMC = ''; // Buy Me a Coffee user name
+const contact = document.getElementById('contact'), donate = document.getElementById('donate');
+contact.hidden = !CONTACT[0];
+contact.onclick = () => location.href = `mailto:${CONTACT.join('@')}?subject=vfr3d.nl`;
+donate.hidden = !BMC;
+donate.href = `https://buymeacoffee.com/${BMC}`;
 
 // One source of truth: the on/off state per airspace. Type and class only set those states.
 const saved = (() => { try { return JSON.parse(localStorage.getItem('vfr3d-selection')) ?? {}; } catch { return {}; } })();
