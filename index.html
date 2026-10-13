@@ -188,7 +188,12 @@ const sources = await Promise.all(LAYERS.map(([id, label]) =>
 // loading screen: busy('text') shows it, busy() hides it
 const loading = document.getElementById('loading');
 const busy = text => { loading.classList.toggle('done', !text); if (text) loading.lastChild.textContent = text; };
-busy();
+// resolves once Cesium has built all volumes and loaded the visible map tiles (or after 30 s)
+const whenDrawn = () => new Promise(done => {
+  const off = viewer.scene.postRender.addEventListener(() => viewer.dataSourceDisplay.ready && viewer.scene.globe.tilesLoaded && (off(), done()));
+  setTimeout(() => (off(), done()), 30000);
+});
+busy('Luchtruim tekenen…');
 
 // versions under the disclaimer; LVNL's last edit date is the newest over all layers
 const nlDate = t => new Date(t).toLocaleDateString('nl-NL');
@@ -289,6 +294,7 @@ for (const [cls, colour] of Object.entries(CLASS_COLOURS)) {
   classButtons.push([button, cls, colour]);
 }
 refresh();
+whenDrawn().then(() => busy());
 const openAll = open => document.querySelectorAll('#tree details').forEach(d => d.open = open);
 document.getElementById('expand').onclick = () => openAll(true);
 document.getElementById('collapse').onclick = () => openAll(false);
@@ -392,7 +398,7 @@ document.getElementById('igc').onchange = async ({ target }) => {
   flight.textContent = `${head} · QNH ophalen…`;
   const value = await fetchQnh(mid);
   if (value) qnh.value = value;
-  busy();
+  busy('Vlucht tekenen…');
   flight.textContent = `${head} · QNH ${value ? `${value} hPa (Open-Meteo, ${Cesium.JulianDate.toIso8601(mid.time).slice(11, 13)}:00 UTC)` : 'niet gevonden, vul zelf in'}`;
   // QNH implied by the logger: GNSS (minus geoid) versus pressure altitude, median over all fixes
   const diffs = fixes.filter(f => f.pressure && f.gnss).map(f => (f.gnss - 45 - f.pressure) / 8.32).sort((a, b) => a - b);
@@ -400,6 +406,8 @@ document.getElementById('igc').onchange = async ({ target }) => {
   if (usePressure && value && Math.abs(implied - value) > 2)
     flight.textContent += `\nLet op: de IGC-hoogtes wijzen op QNH ${implied} hPa. Open-Meteo is aangehouden.`;
   updateHeights();
+  await whenDrawn();
+  busy();
 };
 
 const speed = document.getElementById('speed'), play = document.getElementById('play'), cockpit = document.getElementById('cockpit');
