@@ -335,13 +335,15 @@ search.oninput = () => {
 };
 
 const scale = document.getElementById('scale');
+// every height change rebuilds that volume, so only set heights that really change (a new QNH only moves FL limits)
+const setHeight = (polygon, key, value) => polygon[key]?.getValue() !== value && (polygon[key] = value);
 function updateHeights() {
   document.getElementById('scaleOut').value = scale.value;
   for (const source of sources.filter(Boolean)) for (const e of source.entities.values) {
     const p = e.limits;
-    e.polygon.height = metres(p.LowerLimit, p.LowerLimitUnit, p.LowerLimitReference) * scale.value;
+    setHeight(e.polygon, 'height', metres(p.LowerLimit, p.LowerLimitUnit, p.LowerLimitReference) * scale.value);
     // cut off at the FL filter, so areas reaching above it only show their lower part
-    e.polygon.extrudedHeight = Math.min(metres(p.UpperLimit, p.UpperLimitUnit, p.UpperLimitReference), metres(maxFl.value, 'FL')) * scale.value;
+    setHeight(e.polygon, 'extrudedHeight', Math.min(metres(p.UpperLimit, p.UpperLimitUnit, p.UpperLimitReference), metres(maxFl.value, 'FL')) * scale.value);
   }
   if (fixes.length) showTrack();
   refresh(); // the FL filter depends on the QNH
@@ -401,11 +403,13 @@ function showTrack() {
   const position = new Cesium.SampledPositionProperty();
   const points = fixes.map(f => Cesium.Cartesian3.fromDegrees(f.lon, f.lat, altitude(f) * scale.value));
   fixes.forEach((f, i) => position.addSample(f.time, points[i]));
+  // the lines need far fewer points than the 1 s fixes; at most about 2000 keeps drawing fast
+  const step = Math.ceil(points.length / 2000), line = points.filter((_, i) => i % step === 0 || i === points.length - 1);
   // the whole flight as a white line with its shadow on the ground; the magenta path shows what has been flown
   trace ??= viewer.entities.add({ polyline: { width: 3, material: Cesium.Color.WHITE.withAlpha(0.8) } });
-  trace.polyline.positions = points;
+  trace.polyline.positions = line;
   shadow ??= viewer.entities.add({ polyline: { width: 3, clampToGround: true, material: Cesium.Color.BLACK.withAlpha(0.5) } });
-  shadow.polyline.positions = points;
+  shadow.polyline.positions = line;
   if (!track) track = viewer.entities.add({
     point: { pixelSize: 8, color: Cesium.Color.fromCssColorString('#e100e1'), outlineWidth: 1 },
     viewFrom: new Cesium.Cartesian3(0, -3000, 1500), // start 3 km behind, 1.5 km above when following
