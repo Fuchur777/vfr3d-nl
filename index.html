@@ -189,8 +189,10 @@ const sources = await Promise.all(LAYERS.map(([id, label]) =>
 const loading = document.getElementById('loading');
 const busy = text => { loading.classList.toggle('done', !text); if (text) loading.lastChild.textContent = text; };
 // resolves once Cesium has built all volumes and loaded the visible map tiles (or after 30 s)
+// a few frames first, so changes made just before have reached the visualizers and tile requests
 const whenDrawn = () => new Promise(done => {
-  const off = viewer.scene.postRender.addEventListener(() => viewer.dataSourceDisplay.ready && viewer.scene.globe.tilesLoaded && (off(), done()));
+  let frames = 0;
+  const off = viewer.scene.postRender.addEventListener(() => ++frames > 3 && viewer.dataSourceDisplay.ready && viewer.scene.globe.tilesLoaded && (off(), done()));
   setTimeout(() => (off(), done()), 30000);
 });
 busy('Luchtruim tekenen…');
@@ -390,7 +392,7 @@ document.getElementById('igc').onchange = async ({ target }) => {
   Object.assign(clock, { startTime: fixes[0].time, stopTime: fixes.at(-1).time, currentTime: fixes[0].time,
     clockRange: Cesium.ClockRange.CLAMPED, shouldAnimate: false, multiplier: +speed.value });
   document.getElementById('player').hidden = false;
-  viewer.flyTo(trace);
+  const flown = viewer.flyTo(trace);
   const mid = fixes[fixes.length >> 1], date = Cesium.JulianDate.toDate(mid.time).toLocaleDateString('nl-NL');
   const flight = document.getElementById('flight');
   const type = text.match(/^HFGTY[^:\r\n]*:(.*)$/im)?.[1].trim();
@@ -406,6 +408,7 @@ document.getElementById('igc').onchange = async ({ target }) => {
   if (usePressure && value && Math.abs(implied - value) > 2)
     flight.textContent += `\nLet op: de IGC-hoogtes wijzen op QNH ${implied} hPa. Open-Meteo is aangehouden.`;
   updateHeights();
+  await flown;
   await whenDrawn();
   busy();
 };
