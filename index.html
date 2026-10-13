@@ -48,9 +48,14 @@
   #links dd { font-family: inherit; }
   #contact { color: #d8e0e6; }
   #donate { display: inline-block; padding: 3px 8px; border-radius: 5px; background: #ffc24b; color: #1b232b; font-weight: 600; text-decoration: none; }
+#loading { position: fixed; inset: 0; z-index: 30; background: #1b232b; color: #ffc24b; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; font: 15px sans-serif; transition: opacity .4s; }
+#loading.done { opacity: 0; pointer-events: none; }
+#loading img { width: 96px; animation: pulse 1.2s ease-in-out infinite alternate; }
+@keyframes pulse { to { opacity: .35; transform: scale(.92); } }
 </style>
 </head>
 <body>
+<div id="loading"><img src="icon.svg" alt=""><span>Luchtruim laden…</span></div>
 <div id="map"></div>
 <button type="button" id="menu" aria-label="Menu" aria-expanded="false">☰</button>
 <form id="layers">
@@ -180,6 +185,10 @@ const metres = (value, unit, ref) =>
 const sources = await Promise.all(LAYERS.map(([id, label]) =>
   Cesium.GeoJsonDataSource.load(typeof id === 'string' ? id : `${LVNL}/${id}/query?where=1%3D1&outFields=*&outSR=4326&f=geojson`)
     .catch(e => console.error(label, e))));
+// loading screen: busy('text') shows it, busy() hides it
+const loading = document.getElementById('loading');
+const busy = text => { loading.classList.toggle('done', !text); if (text) loading.lastChild.textContent = text; };
+busy();
 
 // versions under the disclaimer; LVNL's last edit date is the newest over all layers
 const nlDate = t => new Date(t).toLocaleDateString('nl-NL');
@@ -366,9 +375,10 @@ async function fetchQnh(f) {
   }
 }
 document.getElementById('igc').onchange = async ({ target }) => {
+  busy('Vlucht laden…');
   const text = await target.files[0].text();
   fixes = parseIgc(text);
-  if (!fixes.length) return alert('Geen B-records gevonden in dit IGC-bestand.');
+  if (!fixes.length) return busy(), alert('Geen B-records gevonden in dit IGC-bestand.');
   usePressure = fixes.some(f => f.pressure);
   showTrack();
   Object.assign(clock, { startTime: fixes[0].time, stopTime: fixes.at(-1).time, currentTime: fixes[0].time,
@@ -382,6 +392,7 @@ document.getElementById('igc').onchange = async ({ target }) => {
   flight.textContent = `${head} · QNH ophalen…`;
   const value = await fetchQnh(mid);
   if (value) qnh.value = value;
+  busy();
   flight.textContent = `${head} · QNH ${value ? `${value} hPa (Open-Meteo, ${Cesium.JulianDate.toIso8601(mid.time).slice(11, 13)}:00 UTC)` : 'niet gevonden, vul zelf in'}`;
   // QNH implied by the logger: GNSS (minus geoid) versus pressure altitude, median over all fixes
   const diffs = fixes.filter(f => f.pressure && f.gnss).map(f => (f.gnss - 45 - f.pressure) / 8.32).sort((a, b) => a - b);
