@@ -6,8 +6,8 @@
 const API = 'https://api-nms.aim.faa.gov';
 // one circle of 100 NM (the API maximum) around the middle of the country covers all of it
 const CENTRE = { latitude: 52.2, longitude: 5.3, radius: 100 };
-// the API allows one request per 3 minutes
-const CACHE_SECONDS = 600;
+// fetched at most once an hour; ?vernieuw asks for fresh data, at most once per 10 minutes
+const MAX_AGE = 3600e3, MIN_AGE = 600e3;
 // Q-code prefixes per heading, from briefing's config/notams.php; the rest (aerodrome, navaids, obstacles) is left out
 const CATEGORIES = [
   ['TRA/TSA', ['QR', 'QA']],
@@ -21,9 +21,12 @@ export default {
   async fetch(request, env, ctx) {
     const cache = caches.default, key = new Request(new URL('/notams.geojson', request.url));
     let response = await cache.match(key);
-    if (!response) {
+    const age = Date.now() - Date.parse(response?.headers.get('Date'));
+    if (!(age < (new URL(request.url).searchParams.has('vernieuw') ? MIN_AGE : MAX_AGE))) {
+      // s-maxage only applies to Cloudflare's cache, so browsers always ask the Worker
       response = new Response(JSON.stringify(await notams(env)), { headers: {
-        'Content-Type': 'application/geo+json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': `public, max-age=${CACHE_SECONDS}`,
+        'Content-Type': 'application/geo+json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, s-maxage=3600',
+        Date: new Date().toUTCString(),
       } });
       ctx.waitUntil(cache.put(key, response.clone()));
     }
