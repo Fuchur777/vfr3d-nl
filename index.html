@@ -62,7 +62,7 @@
 <div id="tabs" role="tablist"><button type="button" role="tab" data-tab="kaart">Kaart</button><button type="button" role="tab" data-tab="luchtruim">Luchtruim</button><button type="button" role="tab" data-tab="vlucht">Vlucht</button></div>
 <section id="kaart" role="tabpanel"><label>Onderlaag <select id="base"><option>Satelliet</option><option>Kaart</option><option selected>ICAO-kaart</option></select></label><div id="tileError" style="color: #ff8787"></div><h3>Hoogte</h3><label>Verticale schaal <output id="scaleOut">5</output>×<br><input id="scale" type="range" min="1" max="10" step="0.5" value="5"></label><label>Verberg luchtruim boven FL <output id="maxFlOut">95</output><br><input id="maxFl" type="range" min="10" max="150" step="5" value="95"></label></section>
 <section id="luchtruim" role="tabpanel"><label><input id="all" type="checkbox"> <b>Alle luchtruimen</b></label><div id="classes"></div><div style="display:flex;gap:6px"><button type="button" id="expand">Alles uitklappen</button><button type="button" id="collapse">Alles inklappen</button></div><input id="search" type="search" placeholder="Zoek luchtruim op naam" style="width:100%;box-sizing:border-box"><div id="tree"></div></section>
-<section id="vlucht" role="tabpanel"><label>IGC <input id="igc" type="file" accept=".igc"></label>
+<section id="vlucht" role="tabpanel"><label>Bestand <input id="igc" type="file" accept=".igc,.gpx,.kml,.kmz"></label>
 <div id="player" hidden>
   <div id="flight" style="white-space: pre-line"></div>
   <label>QNH <input id="qnh" type="number" step="1" value="1013" style="width:60px"> hPa</label>
@@ -349,6 +349,32 @@ function parseIgc(text) {
 // altitude as the altimeter shows it: pressure altitude corrected with QNH (8.32 m per hPa);
 // without a pressure sensor use GNSS minus the geoid height in NL (about 45 m)
 let usePressure = false;
+// GPX and KML (powered flying: SkyDemon, ForeFlight, Garmin, Flightradar24) hold GPS height above MSL, no pressure altitude;
+// stored as GNSS + 45 m so altitude() handles them like IGC GNSS heights
+const point = (time, lon, lat, ele) => ({ time: Cesium.JulianDate.fromDate(new Date(time)), lat: +lat, lon: +lon, gnss: (+ele || 0) + 45 });
+const parseGpx = xml => [...xml.querySelectorAll('trkpt, rtept')].filter(p => p.querySelector('time'))
+  .map(p => point(p.querySelector('time').textContent, p.getAttribute('lon'), p.getAttribute('lat'), p.querySelector('ele')?.textContent));
+function parseKml(xml) {
+  // gx:Track (ForeFlight, FlightAware): pairs of <when> and <gx:coord>
+  const whens = [...xml.querySelectorAll('Track > when')], coords = [...xml.getElementsByTagName('gx:coord')];
+  if (whens.length && whens.length === coords.length) return whens.map((w, i) => point(w.textContent, ...coords[i].textContent.trim().split(/\s+/)));
+  // otherwise one Placemark per point with a TimeStamp (Flightradar24)
+  return [...xml.querySelectorAll('Placemark')].filter(p => p.querySelector('TimeStamp > when') && p.querySelector('Point coordinates'))
+    .map(p => point(p.querySelector('TimeStamp > when').textContent, ...p.querySelector('Point coordinates').textContent.trim().split(',')));
+}
+// KMZ is a zip: find the first .kml through the central directory and inflate it
+async function unzipKml(buf) {
+  const v = new DataView(buf), u16 = o => v.getUint16(o, true), u32 = o => v.getUint32(o, true);
+  let end = buf.byteLength - 22;
+  while (end > 0 && u32(end) !== 0x06054b50) end--;
+  for (let o = u32(end + 16), n = u16(end + 10); n--; o += 46 + u16(o + 28) + u16(o + 30) + u16(o + 32)) {
+    if (!new TextDecoder().decode(new Uint8Array(buf, o + 46, u16(o + 28))).toLowerCase().endsWith('.kml')) continue;
+    const local = u32(o + 42), start = local + 30 + u16(local + 26) + u16(local + 28);
+    const data = new Blob([new Uint8Array(buf, start, u32(o + 20))]);
+    return new Response(u16(o + 10) ? data.stream().pipeThrough(new DecompressionStream('deflate-raw')) : data).text();
+  }
+  return '';
+}
 const altitude = f => usePressure ? f.pressure + (qnh.value - 1013.25) * 8.32 : f.gnss - 45;
 function showTrack() {
   const position = new Cesium.SampledPositionProperty();
@@ -384,9 +410,10 @@ async function fetchQnh(f) {
 }
 document.getElementById('igc').onchange = async ({ target }) => {
   busy('Vlucht laden…');
-  const text = await target.files[0].text();
-  fixes = parseIgc(text);
-  if (!fixes.length) return busy(), alert('Geen B-records gevonden in dit IGC-bestand.');
+  const file = target.files[0], ext = file.name.split('.').pop().toLowerCase();
+  const text = ext === 'kmz' ? await unzipKml(await file.arrayBuffer()) : await file.text();
+  fixes = ext === 'igc' ? parseIgc(text) : (ext === 'gpx' ? parseGpx : parseKml)(new DOMParser().parseFromString(text, 'text/xml'));
+  if (!fixes.length) return busy(), alert('Geen vluchtpunten met tijd gevonden in dit bestand.');
   usePressure = fixes.some(f => f.pressure);
   showTrack();
   Object.assign(clock, { startTime: fixes[0].time, stopTime: fixes.at(-1).time, currentTime: fixes[0].time,
@@ -407,6 +434,7 @@ document.getElementById('igc').onchange = async ({ target }) => {
   const implied = Math.round(1013.25 + diffs[diffs.length >> 1]);
   if (usePressure && value && Math.abs(implied - value) > 2)
     flight.textContent += `\nLet op: de IGC-hoogtes wijzen op QNH ${implied} hPa. Open-Meteo is aangehouden.`;
+  if (!usePressure && ext !== 'igc') flight.textContent += '\nHoogte: GPS (MSL) uit het bestand, zonder QNH-correctie.';
   updateHeights();
   await flown;
   await whenDrawn();
