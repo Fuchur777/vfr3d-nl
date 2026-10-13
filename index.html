@@ -79,13 +79,17 @@ const LAYERS = [
 ];
 const CLASS_COLOURS = { A: '#A32D2D', B: '#993C1D', C: '#185FA5', D: '#378ADD', E: '#534AB7', F: '#888780', G: '#3B6D11' };
 
+// Safari on macOS 27 shows no map imagery (no errors): load tiles as plain images instead of ImageBitmaps
+const isSafari = /^((?!chrome|android|crios|fxios).)*safari/i.test(navigator.userAgent);
+if (isSafari) Cesium.Resource.supportsImageBitmapOptions = () => Promise.resolve(false);
 const viewer = new Cesium.Viewer('map', {
+  contextOptions: { requestWebgl1: location.hash === '#webgl1' }, // test switch: open index.html#webgl1
   baseLayer: new Cesium.ImageryLayer(new Cesium.OpenStreetMapImageryProvider({ url: 'https://tile.openstreetmap.org/' })),
   baseLayerPicker: false, geocoder: false, animation: false, timeline: false,
   sceneModePicker: false,
 });
 // Safari on macOS 27 fails to link Cesium's atmosphere and fog shaders (black canvas, CesiumJS issue #13650)
-if (/^((?!chrome|android|crios|fxios).)*safari/i.test(navigator.userAgent)) {
+if (isSafari) {
   // also the other atmosphere users and the sky; none matter for an airspace map
   viewer.scene.fog.enabled = false;
   viewer.scene.globe.showGroundAtmosphere = false;
