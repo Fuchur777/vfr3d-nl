@@ -47,6 +47,18 @@
   #links { margin-top: 14px; align-items: center; }
   #links dd { font-family: inherit; }
   #contact { color: #d8e0e6; }
+  /* Vlucht tab: drop zone for the flight file, player in blocks */
+  #layers #drop { display: grid; justify-items: center; gap: 4px; padding: 14px 10px; border: 1.5px dashed #4a5966; border-radius: 8px; text-align: center; white-space: normal; cursor: pointer; transition: border-color .15s, background .15s; }
+  #drop:hover, #drop.over { border-color: #ffc24b; background: #ffc24b14; }
+  #drop input { display: none; }
+  #drop .pick { color: #ffc24b; font-weight: 600; font-size: 14px; }
+  #drop .sub, .hint { color: #7d8c99; font-size: 11px; }
+  .types { display: flex; gap: 4px; margin: 4px 0 2px; }
+  .types span { padding: 1px 6px; border: 1px solid #34414d; border-radius: 4px; background: #111820; font: 600 10.5px ui-monospace, monospace; letter-spacing: .05em; }
+  #player { display: flex; flex-direction: column; gap: 10px; }
+  #player[hidden] { display: none; }
+  .controls { display: flex; gap: 6px; align-items: center; }
+  #time { font-size: 20px; }
   #donate { display: inline-block; padding: 3px 8px; border-radius: 5px; background: #ffc24b; color: #1b232b; font-weight: 600; text-decoration: none; }
 #loading { position: fixed; inset: 0; z-index: 30; background: rgba(27, 35, 43, .6); color: #ffc24b; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; font: 15px sans-serif; transition: opacity .4s; }
 #loading.done { opacity: 0; pointer-events: none; }
@@ -62,16 +74,25 @@
 <div id="tabs" role="tablist"><button type="button" role="tab" data-tab="kaart">Kaart</button><button type="button" role="tab" data-tab="luchtruim">Luchtruim</button><button type="button" role="tab" data-tab="vlucht">Vlucht</button></div>
 <section id="kaart" role="tabpanel"><label>Onderlaag <select id="base"><option>Satelliet</option><option>Kaart</option><option selected>ICAO-kaart</option></select></label><div id="tileError" style="color: #ff8787"></div><h3>Hoogte</h3><label>Verticale schaal <output id="scaleOut">5</output>×<br><input id="scale" type="range" min="1" max="10" step="0.5" value="5"></label><label>Verberg luchtruim boven FL <output id="maxFlOut">95</output><br><input id="maxFl" type="range" min="10" max="150" step="5" value="95"></label></section>
 <section id="luchtruim" role="tabpanel"><label><input id="all" type="checkbox"> <b>Alle luchtruimen</b></label><div id="classes"></div><div style="display:flex;gap:6px"><button type="button" id="expand">Alles uitklappen</button><button type="button" id="collapse">Alles inklappen</button></div><input id="search" type="search" placeholder="Zoek luchtruim op naam" style="width:100%;box-sizing:border-box"><div id="tree"></div></section>
-<section id="vlucht" role="tabpanel"><label>Bestand <input id="igc" type="file" accept=".igc,.gpx,.kml,.kmz"></label>
+<section id="vlucht" role="tabpanel">
+<label id="drop"><input id="igc" type="file" accept=".igc,.gpx,.kml,.kmz">
+  <span class="pick">✈ Kies een vluchtbestand</span>
+  <span class="sub" id="fileName">of sleep het hierheen</span>
+  <span class="types"><span>IGC</span><span>GPX</span><span>KML</span><span>KMZ</span></span>
+  <span class="sub">IGC van zweefvlieg-loggers; GPX/KML van o.a. SkyDemon, ForeFlight, Garmin en Flightradar24</span>
+</label>
 <div id="player" hidden>
+  <h3>Vlucht</h3>
   <div id="flight" style="white-space: pre-line"></div>
   <label>QNH <input id="qnh" type="number" step="1" value="1013" style="width:60px"> hPa</label>
-  <div style="font-size: 12px; opacity: .7">Flightlevels en IGC-drukhoogte omgerekend met deze QNH.</div>
-  <button type="button" id="back">−1 min</button> <button type="button" id="play" style="width: 32px">▶</button> <button type="button" id="fwd">+1 min</button>
-  <select id="speed"><option>1</option><option>2</option><option>5</option><option selected>10</option><option>30</option><option>60</option></select>×
+  <div class="hint">Flightlevels en IGC-drukhoogte omgerekend met deze QNH.</div>
+  <h3>Afspelen</h3>
   <div id="time"></div>
-  <div>Luchtruim:<div id="inside" style="white-space: pre-line; margin-left: 8px">–</div></div>
+  <div class="controls"><button type="button" id="back">−1 min</button><button type="button" id="play" style="width: 36px">▶</button><button type="button" id="fwd">+1 min</button>
+  <select id="speed"><option>1</option><option>2</option><option>5</option><option selected>10</option><option>30</option><option>60</option></select>×</div>
   <label><input id="cockpit" type="checkbox"> Cockpitzicht</label>
+  <h3>Huidig luchtruim</h3>
+  <div id="inside" style="white-space: pre-line">–</div>
 </div></section>
 <div id="note">
 <strong>Let op: alleen voor educatieve doeleinden. Niet geschikt voor vluchtvoorbereiding!</strong>
@@ -408,9 +429,15 @@ async function fetchQnh(f) {
     } catch {}
   }
 }
-document.getElementById('igc').onchange = async ({ target }) => {
+// dropping a file on the drop zone hands it to the file input
+const drop = document.getElementById('drop'), igcInput = document.getElementById('igc');
+drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
+drop.ondragleave = () => drop.classList.remove('over');
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove('over'); igcInput.files = e.dataTransfer.files; igcInput.dispatchEvent(new Event('change')); };
+igcInput.onchange = async ({ target }) => {
   busy('Vlucht laden…');
   const file = target.files[0], ext = file.name.split('.').pop().toLowerCase();
+  document.getElementById('fileName').textContent = file.name;
   const text = ext === 'kmz' ? await unzipKml(await file.arrayBuffer()) : await file.text();
   fixes = ext === 'igc' ? parseIgc(text) : (ext === 'gpx' ? parseGpx : parseKml)(new DOMParser().parseFromString(text, 'text/xml'));
   if (!fixes.length) return busy(), alert('Geen vluchtpunten met tijd gevonden in dit bestand.');
