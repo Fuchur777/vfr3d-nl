@@ -1,0 +1,11 @@
+# VFR3D Nederland
+
+> Gratis 3D-webkaart van het Nederlandse luchtruim voor VFR-vliegers: ICAO-luchtruimklassen A–G, CTR, TMA, CTA, ATZ, TMZ, RMZ, danger/restricted/prohibited areas (EHD/EHR/EHP), TRA/TSA, parachutespring-, zweefvlieg- en lierlocaties. Vluchten afspelen uit IGC, GPX, KML en KMZ. Alleen voor educatieve doeleinden, niet geschikt voor vluchtvoorbereiding; de AIP Netherlands van LVNL is leidend.
+
+- [3D-kaart](https://vfr3d.nl/): het luchtruim als 3D-volumes, filteren op klasse, type en flight level, vlucht afspelen met huidig luchtruim
+- [Luchtruim in Nederland uitgelegd](https://vfr3d.nl/luchtruim.html): luchtruimstructuur, ICAO-klassen, CTR/TMA/ATZ/TMZ/RMZ, D/R/P-gebieden, schakelbaar luchtruim (FUA, TRA, TSA, CBA) en een checklist voor vluchtvoorbereiding
+
+## Bronnen
+
+- Luchtruimdata: LVNL (CC BY 4.0)
+- Lierlocaties: AIP Netherlands ENR 5.5

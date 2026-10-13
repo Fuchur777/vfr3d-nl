@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://vfr3d.nl/sitemap.xml

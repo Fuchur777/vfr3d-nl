@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Luchtruim Nederland uitgelegd: ICAO-klassen, CTR, TMA en vluchtvoorbereiding | VFR3D</title>
+<meta name="description" content="Uitleg van de Nederlandse luchtruimstructuur voor VFR-vliegers: ICAO-luchtruimklassen A tot en met G, CTR, TMA, CTA, ATZ, TMZ, RMZ, D/R/P-gebieden, schakelbaar militair luchtruim (TRA, TSA, CBA) en vluchtvoorbereiding.">
+<link rel="canonical" href="https://vfr3d.nl/luchtruim.html">
+<meta property="og:title" content="Luchtruim Nederland uitgelegd | VFR3D">
+<meta property="og:description" content="ICAO-klassen, CTR, TMA, ATZ, TMZ, RMZ, D/R/P en schakelbaar luchtruim in Nederland, met een 3D-kaart.">
+<meta property="og:url" content="https://vfr3d.nl/luchtruim.html">
+<meta property="og:type" content="article">
+<meta property="og:image" content="https://vfr3d.nl/apple-touch-icon.png">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<script data-goatcounter="https://fuchur777.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+<style>
+  body { margin: 0; font: 16px/1.6 system-ui, sans-serif; color: #1b232b; background: #f6f7f9; }
+  header { background: #1b232b; color: #d8e0e6; padding: 28px 16px; }
+  header a { color: #ffc24b; }
+  main, header > div, footer { max-width: 760px; margin: 0 auto; }
+  main { padding: 8px 16px 40px; }
+  h1 { margin: 0 0 8px; font-size: 28px; color: #fff; line-height: 1.25; }
+  h2 { margin-top: 36px; font-size: 22px; border-bottom: 2px solid #ffc24b; padding-bottom: 4px; }
+  h3 { margin-bottom: 4px; font-size: 17px; }
+  .warn { background: #fff1f1; border-left: 4px solid #d9480f; padding: 10px 14px; margin: 20px 0; }
+  .cta { display: inline-block; margin-top: 12px; padding: 8px 14px; border-radius: 6px; background: #ffc24b; color: #1b232b; font-weight: 600; text-decoration: none; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; display: block; overflow-x: auto; }
+  th, td { border: 1px solid #d5dbe1; padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { background: #e9edf1; }
+  .cls { display: inline-block; width: 22px; color: #fff; border-radius: 4px; text-align: center; font-weight: 700; }
+  dt { font-weight: 600; margin-top: 10px; }
+  dd { margin-left: 0; }
+  footer { padding: 16px; color: #66727d; font-size: 13px; }
+</style>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebApplication",
+      "name": "VFR3D Nederland",
+      "url": "https://vfr3d.nl/",
+      "applicationCategory": "EducationalApplication",
+      "operatingSystem": "Web",
+      "inLanguage": "nl",
+      "description": "3D-kaart van het Nederlandse luchtruim met ICAO-klassen, CTR, TMA, ATZ, D/R/P-gebieden en afspelen van IGC-, GPX- en KML-vluchten. Alleen voor educatieve doeleinden.",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" }
+    },
+    {
+      "@type": "FAQPage",
+      "inLanguage": "nl",
+      "mainEntity": [
+        { "@type": "Question", "name": "Welke luchtruimklassen zijn er?",
+          "acceptedAnswer": { "@type": "Answer", "text": "ICAO kent zeven klassen, A tot en met G. A tot en met E is gecontroleerd luchtruim, F en G zijn ongecontroleerd. In klasse A mag niet VFR gevlogen worden; in C en D heeft een VFR-vlieger een klaring en radiocontact nodig; in E en G niet, tenzij er een TMZ of RMZ geldt." } },
+        { "@type": "Question", "name": "Wat is het verschil tussen een CTR en een TMA?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Een CTR (control zone) ligt rond een luchthaven en begint op de grond. Een TMA (terminal control area) ligt daarboven en eromheen en begint pas op een bepaalde hoogte. Samen vormen ze vaak een omgekeerde bruidstaart: hoe verder van het vliegveld, hoe hoger de ondergrens." } },
+        { "@type": "Question", "name": "Wat betekenen TMZ en RMZ?",
+          "acceptedAnswer": { "@type": "Answer", "text": "In een TMZ (transponder mandatory zone) is een werkende transponder verplicht. In een RMZ (radio mandatory zone) is radiocontact verplicht: je meldt je op de gepubliceerde frequentie en luistert uit." } },
+        { "@type": "Question", "name": "Wat zijn D-, R- en P-gebieden?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Danger areas (D) zijn gebieden met gevaarlijke activiteiten, zoals schietoefeningen. Restricted areas (R) zijn alleen onder voorwaarden toegankelijk. Prohibited areas (P) zijn verboden gebied. In Nederland heten ze EHD, EHR en EHP gevolgd door een nummer." } },
+        { "@type": "Question", "name": "Is VFR3D geschikt voor vluchtvoorbereiding?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Nee. VFR3D is alleen bedoeld als educatief hulpmiddel. Gebruik voor vluchtvoorbereiding altijd de actuele AIP Netherlands van LVNL, de NOTAMs, het weer en de actuele activering van militair luchtruim." } }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<header><div>
+  <h1>Luchtruim in Nederland uitgelegd</h1>
+  <p>ICAO-luchtruimklassen, CTR, TMA, ATZ, TMZ, RMZ, D/R/P-gebieden en schakelbaar militair luchtruim, voor VFR-vliegers en iedereen die wil begrijpen hoe het luchtruim boven Nederland is ingedeeld.</p>
+  <a class="cta" href="/">Bekijk het luchtruim in 3D →</a>
+</div></header>
+<main>
+
+<p class="warn"><strong>Let op: alleen voor educatieve doeleinden. Niet geschikt voor vluchtvoorbereiding!</strong> De AIP Netherlands van LVNL is leidend. Deze pagina is een vereenvoudigde uitleg; regels en grenzen kunnen wijzigen.</p>
+
+<h2>Hoe is het Nederlandse luchtruim opgebouwd?</h2>
+<p>Het luchtruim boven Nederland valt binnen de <strong>FIR Amsterdam</strong> (EHAA). Het is in drie dimensies opgedeeld in blokken met elk een eigen <strong>ICAO-klasse</strong> en een onder- en bovengrens. Rond de grote luchthavens ligt gecontroleerd luchtruim, dat er van opzij uitziet als een <strong>omgekeerde bruidstaart</strong>: smal bij de grond (de CTR) en breder op grotere hoogte (de TMA's). Daartussen ligt ongecontroleerd luchtruim, met daarin militaire oefengebieden, zweefvlieg- en parachutespringgebieden en verplichte transponder- of radiozones.</p>
+<p>Hoogtes worden aangegeven in voet boven zeeniveau (ft AMSL), boven de grond (ft AGL of SFC voor de grond zelf) of als <strong>flight level</strong> (FL). Een flight level is een drukhoogte bij de standaarddruk van 1013,25 hPa: FL55 is 5500 ft bij standaarddruk. Omdat de werkelijke luchtdruk (QNH) afwijkt, ligt een FL-grens in werkelijkheid hoger of lager. De transitiehoogte in Nederland is 3000 ft AMSL.</p>
+
+<h2>ICAO-luchtruimklassen A tot en met G</h2>
+<p>ICAO kent zeven klassen. <strong>A tot en met E</strong> zijn gecontroleerd luchtruim, <strong>F en G</strong> zijn ongecontroleerd. In Nederland worden de klassen B en F niet gebruikt.</p>
+<table>
+<tr><th>Klasse</th><th>VFR toegestaan?</th><th>Klaring nodig (VFR)</th><th>Radio (VFR)</th><th>Scheiding door ATC</th></tr>
+<tr><td><span class="cls" style="background:#A32D2D">A</span></td><td>Nee, alleen IFR</td><td>n.v.t.</td><td>n.v.t.</td><td>Al het verkeer</td></tr>
+<tr><td><span class="cls" style="background:#993C1D">B</span></td><td>Ja</td><td>Ja</td><td>Ja</td><td>Al het verkeer</td></tr>
+<tr><td><span class="cls" style="background:#185FA5">C</span></td><td>Ja</td><td>Ja</td><td>Ja</td><td>IFR van IFR en VFR; VFR van IFR</td></tr>
+<tr><td><span class="cls" style="background:#378ADD">D</span></td><td>Ja</td><td>Ja</td><td>Ja</td><td>IFR van IFR; verkeersinformatie aan VFR</td></tr>
+<tr><td><span class="cls" style="background:#534AB7">E</span></td><td>Ja</td><td>Nee</td><td>Nee*</td><td>IFR van IFR</td></tr>
+<tr><td><span class="cls" style="background:#888780">F</span></td><td>Ja</td><td>Nee</td><td>Nee*</td><td>Geen (adviesdienst voor IFR)</td></tr>
+<tr><td><span class="cls" style="background:#3B6D11">G</span></td><td>Ja</td><td>Nee</td><td>Nee*</td><td>Geen (vluchtinformatiedienst)</td></tr>
+</table>
+<p>* Tenzij het gebied ook een TMZ of RMZ is. Onder FL100 geldt voor VFR in de klassen C tot en met G een snelheidslimiet van 250 kt IAS.</p>
+
+<h3>VMC-minima voor VFR (SERA)</h3>
+<p>In de klassen B tot en met E, en in F en G boven 3000 ft AMSL of 1000 ft boven het terrein (de hoogste van de twee): minimaal 5 km zicht onder FL100 (8 km vanaf FL100), en 1500 m horizontaal en 1000 ft verticaal vrij van wolken. In F en G op of onder die grens: 5 km zicht, vrij van wolken en met zicht op het aardoppervlak. Lagere zichtminima kunnen onder voorwaarden gelden; zie de AIP.</p>
+
+<h2>Soorten luchtruim en zones</h2>
+<dl>
+<dt>CTR – control zone</dt>
+<dd>Gecontroleerd luchtruim rond een luchthaven, vanaf de grond tot een vastgestelde bovengrens. Bijvoorbeeld de CTR's van Schiphol, Rotterdam, Eindhoven, Groningen, Maastricht en de militaire velden.</dd>
+<dt>TMA – terminal control area</dt>
+<dd>Gecontroleerd luchtruim boven en rond de CTR, voor naderend en vertrekkend verkeer. Een TMA bestaat vaak uit meerdere delen met steeds hogere ondergrenzen.</dd>
+<dt>CTA – control area</dt>
+<dd>Gecontroleerd luchtruim met een ondergrens boven de grond, buiten de directe omgeving van een luchthaven, bijvoorbeeld voor luchtwegen.</dd>
+<dt>ATZ – aerodrome traffic zone</dt>
+<dd>Zone rond een vliegveld zonder eigen CTR, ter bescherming van het platformverkeer. Voor de regels van een ATZ (zoals melden op de frequentie) zie de AIP van het betreffende vliegveld.</dd>
+<dt>TMZ – transponder mandatory zone</dt>
+<dd>Luchtruim waarin een werkende transponder verplicht is, ook in ongecontroleerd luchtruim, zodat de luchtverkeersleiding en andere vliegtuigen je kunnen zien.</dd>
+<dt>RMZ – radio mandatory zone</dt>
+<dd>Luchtruim waarin radiocontact verplicht is: je meldt je bij binnenkomst op de gepubliceerde frequentie en blijft uitluisteren.</dd>
+<dt>D, R en P – danger, restricted en prohibited areas</dt>
+<dd>Gebieden met beperkingen. In een <strong>danger area</strong> (EHD) vinden gevaarlijke activiteiten plaats, zoals schietoefeningen. Een <strong>restricted area</strong> (EHR) is alleen onder voorwaarden toegankelijk. Een <strong>prohibited area</strong> (EHP) is verboden gebied, zoals boven sommige gevangenissen en industriële installaties.</dd>
+<dt>Parachutespring-, zweefvlieg- en lierlocaties</dt>
+<dd>Gebieden en locaties waar parachutisten springen of zweefvliegtuigen en schermvliegers met een lier worden gestart, met staalkabels tot honderden meters hoogte. Ze staan in de AIP (ENR 5.5) en op de VFR-kaart.</dd>
+</dl>
+
+<h2>Schakelbaar luchtruim: FUA, TRA, TSA en CBA</h2>
+<p>Een deel van het luchtruim wordt flexibel gebruikt volgens het <strong>Flexible Use of Airspace</strong> (FUA)-concept: het is alleen actief als het nodig is, meestal voor militaire oefeningen.</p>
+<dl>
+<dt>TRA – temporary reserved area</dt>
+<dd>Tijdelijk gereserveerd luchtruim, waar ander verkeer onder voorwaarden doorheen mag.</dd>
+<dt>TSA – temporary segregated area</dt>
+<dd>Tijdelijk afgesloten luchtruim voor exclusief gebruik, bijvoorbeeld militaire oefeningen.</dd>
+<dt>CBA – cross-border area</dt>
+<dd>Een TRA of TSA die over een landsgrens heen ligt.</dd>
+</dl>
+<p>Of zo'n gebied actief is, staat in het dagelijkse <strong>Airspace Use Plan</strong> (AUP) en de updates daarvan (UUP), gepubliceerd via Eurocontrol, en in de NOTAMs. Controleer de activering altijd voor vertrek.</p>
+
+<h2>Vluchtvoorbereiding voor een VFR-vlucht in Nederland</h2>
+<p>Een goede vluchtvoorbereiding gebruikt altijd officiële, actuele bronnen. Een korte checklist:</p>
+<ol>
+<li><strong>AIP Netherlands</strong> (eAIP van LVNL): luchtruimgrenzen, vliegvelden, frequenties, regels en de geldende AIRAC-cyclus.</li>
+<li><strong>VFR-kaart</strong>: de actuele ICAO-kaart 1:500.000 van Nederland.</li>
+<li><strong>NOTAMs</strong>: tijdelijke wijzigingen, gesloten banen, extra beperkte gebieden.</li>
+<li><strong>Militair luchtruim</strong>: activering van TRA, TSA, CBA en danger areas via AUP/UUP en NOTAM.</li>
+<li><strong>Weer</strong>: METAR, TAF en luchtvaartweerberichten; let op zicht, wolkenbasis en wind.</li>
+<li><strong>Route en hoogte</strong>: blijf buiten luchtruim waarvoor je geen klaring hebt, houd rekening met TMZ/RMZ en zet je hoogtemeter op de juiste QNH.</li>
+<li><strong>Vliegplan</strong>: controleer in de AIP of voor jouw vlucht een vliegplan verplicht is, bijvoorbeeld bij het overschrijden van de landsgrens.</li>
+</ol>
+
+<h2>Wat laat VFR3D zien?</h2>
+<p><a href="/">VFR3D Nederland</a> toont het Nederlandse luchtruim als 3D-volumes op een kaart, zodat je ziet hoe CTR's, TMA's en andere gebieden boven en naast elkaar liggen. Je kunt luchtruim per klasse en type aan- en uitzetten, filteren op flight level, en je eigen vlucht afspelen vanuit een IGC-, GPX-, KML- of KMZ-bestand. Tijdens het afspelen zie je in welk luchtruim je op elk moment vloog.</p>
+<p>De luchtruimgegevens komen van LVNL (CC BY 4.0), de lierlocaties uit AIP ENR 5.5.</p>
+<a class="cta" href="/">Open de 3D-kaart →</a>
+
+</main>
+<footer>© VFR3D Nederland · Luchtruim © LVNL (CC BY 4.0) · De AIP Netherlands van LVNL is leidend · <a href="/">vfr3d.nl</a></footer>
+</body>
+</html>
