@@ -88,7 +88,8 @@ const LAYERS = [
   [3, 'TSA', '#fab005', false],
   [6, 'Parachutespringen', '#3bc9db', false],
   [11, 'Zweefvliegen', '#0ca678', false],
-  ['lierlocaties.geojson', 'Lierlocaties (ENR 5.5)', '#a9e34b', false], // file next to index.html
+  ['lier-zweefvliegen.geojson', 'Zweefvliegen', '#0ca678', false], // winch sites from ENR 5.5, files next to index.html
+  ['lier-paragliden.geojson', 'Paragliden', '#a9e34b', false],
   [17, 'Danger (D)', '#f783ac', true],
   [18, 'Restricted (R)', '#f3e5ab', true],
   [19, 'Prohibited (P)', '#1a1a1a', true],
@@ -193,11 +194,14 @@ const airspaces = [], groups = [];
 const box = (onchange) => Object.assign(document.createElement('input'), { type: 'checkbox', onchange });
 const badge = (cls, colour) => Object.assign(document.createElement('span'), { className: 'badge', textContent: cls || '–', style: `background:${colour}` });
 
+// entries with the same label share one type in the tree (e.g. glider areas and glider winch sites)
+const byLabel = new Map();
 LAYERS.forEach(([, label, colour, show], i) => {
   const source = sources[i];
   if (!source) return;
   viewer.dataSources.add(source);
-  const items = new Map();
+  if (!byLabel.has(label)) byLabel.set(label, new Map());
+  const items = byLabel.get(label);
   for (const e of [...source.entities.values]) {
     const p = e.properties.getValue();
     // LVNL also publishes British danger areas over the North Sea (EGD...); not Dutch
@@ -214,9 +218,11 @@ LAYERS.forEach(([, label, colour, show], i) => {
     e.polygon.material = color.withAlpha(0.25);
     e.polygon.outlineColor = color;
     // a MultiPolygon becomes several entities; list it once
-    if (!items.has(key)) items.set(key, { key, cls, name: e.name, colour: CLASS_COLOURS[cls] ?? colour, entities: [] });
+    if (!items.has(key)) items.set(key, { key, cls, show, name: e.name, colour: CLASS_COLOURS[cls] ?? colour, entities: [] });
     items.get(key).entities.push(e);
   }
+});
+byLabel.forEach((items, label) => {
   const group = { items: [...items.values()].sort((a, b) => a.name.localeCompare(b.name)) };
   const details = document.createElement('details'), summary = document.createElement('summary');
   group.box = box(() => setOn(group.items, group.box.checked));
@@ -225,7 +231,7 @@ LAYERS.forEach(([, label, colour, show], i) => {
   details.append(summary);
   for (const a of group.items) {
     a.box = box(() => setOn([a], a.box.checked));
-    a.on = saved[a.key] ?? (show || /^[A-D]$/.test(a.cls));
+    a.on = saved[a.key] ?? (a.show || /^[A-D]$/.test(a.cls));
     const row = document.createElement('label');
     row.append(a.box, badge(a.cls, a.colour), a.name.replace(/^\[.\] /, ''));
     details.append(row);
