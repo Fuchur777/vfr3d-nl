@@ -74,7 +74,7 @@
 <form id="layers">
 <div id="tabs" role="tablist"><button type="button" role="tab" data-tab="kaart">Kaart</button><button type="button" role="tab" data-tab="luchtruim">Luchtruim</button><button type="button" role="tab" data-tab="vlucht">Vlucht</button></div>
 <section id="kaart" role="tabpanel"><label>Onderlaag <select id="base"><option>Satelliet</option><option>Kaart</option><option selected>ICAO-kaart</option></select></label><div id="tileError" style="color: #ff8787"></div><h3>Hoogte</h3><label>Verticale schaal <output id="scaleOut">5</output>×<br><input id="scale" type="range" min="1" max="10" step="0.5" value="5"></label><label>Verberg luchtruim boven <select id="maxFl"><option value="10">FL 10</option><option value="15">FL 15</option><option value="20">FL 20</option><option value="25">FL 25</option><option value="30">FL 30</option><option value="35">FL 35</option><option value="40">FL 40</option><option value="45">FL 45</option><option value="50">FL 50</option><option value="55">FL 55</option><option value="60">FL 60</option><option value="65">FL 65</option><option value="70">FL 70</option><option value="75">FL 75</option><option value="80">FL 80</option><option value="85">FL 85</option><option value="90">FL 90</option><option value="95" selected>FL 95</option><option value="100">FL 100</option><option value="105">FL 105</option><option value="110">FL 110</option><option value="115">FL 115</option><option value="120">FL 120</option><option value="125">FL 125</option><option value="130">FL 130</option><option value="135">FL 135</option><option value="140">FL 140</option><option value="145">FL 145</option><option value="150">FL 150</option></select></label></section>
-<section id="luchtruim" role="tabpanel"><label><input id="all" type="checkbox"> <b>Alle luchtruimen</b></label><div id="classes"></div><div style="display:flex;gap:6px"><button type="button" id="expand">Alles uitklappen</button><button type="button" id="collapse">Alles inklappen</button></div><input id="search" type="search" placeholder="Zoek luchtruim op naam" style="width:100%;box-sizing:border-box"><div id="tree"></div></section>
+<section id="luchtruim" role="tabpanel"><label><input id="all" type="checkbox"> <b>Alle luchtruimen</b></label><div id="classes"></div><div style="display:flex;gap:6px;flex-wrap:wrap"><button type="button" id="expand">Alles uitklappen</button><button type="button" id="collapse">Alles inklappen</button><button type="button" id="notamRefresh" title="Haal de NOTAMs opnieuw op bij de FAA">NOTAMs verversen</button></div><input id="search" type="search" placeholder="Zoek luchtruim op naam" style="width:100%;box-sizing:border-box"><div id="tree"></div></section>
 <section id="vlucht" role="tabpanel">
 <label id="drop"><input id="igc" type="file" accept=".igc,.gpx,.kml,.kmz">
   <span class="pick">✈ Kies een vluchtbestand</span>
@@ -107,6 +107,7 @@
 
 const LVNL = 'https://services-eu1.arcgis.com/OtUwzhpKSdeXgRIB/arcgis/rest/services/Airspaces_data/FeatureServer';
 // [layer id or local GeoJSON file, label, colour when unclassified, type shown by default; classes A-D are always on by default]
+const NOTAMS = 'https://vfr3d-notams.frank-e97.workers.dev';
 const LAYERS = [
   [15, 'CTR', '#185FA5', false],
   [14, 'TMA', '#185FA5', false],
@@ -123,6 +124,7 @@ const LAYERS = [
   [17, 'Danger (D)', '#f783ac', true],
   [18, 'Restricted (R)', '#f3e5ab', true],
   [19, 'Prohibited (P)', '#1a1a1a', true],
+  [NOTAMS, 'NOTAMs', '#e8590c', true], // FAA NMS via Frank's Cloudflare Worker (worker/notams.js)
 ];
 const CLASS_COLOURS = { A: '#A32D2D', B: '#993C1D', C: '#185FA5', D: '#378ADD', E: '#534AB7', F: '#888780', G: '#3B6D11' };
 
@@ -239,6 +241,13 @@ const box = (onchange) => Object.assign(document.createElement('input'), { type:
 const badge = (cls, colour) => Object.assign(document.createElement('span'), { className: 'badge', textContent: cls || '–', style: `background:${colour}` });
 
 // entries with the same label share one type in the tree (e.g. glider areas and glider winch sites)
+const endOfToday = new Date(); endOfToday.setHours(23, 59, 59, 999);
+// the Worker caches an hour; ?vernieuw makes it fetch again (at most every 10 min), then reload to show the result
+document.getElementById('notamRefresh').onclick = async () => {
+  busy('NOTAMs verversen…');
+  await fetch(`${NOTAMS}?vernieuw`).catch(() => {});
+  location.reload();
+};
 const byLabel = new Map();
 LAYERS.forEach(([, label, colour, show], i) => {
   const source = sources[i];
@@ -251,14 +260,16 @@ LAYERS.forEach(([, label, colour, show], i) => {
     // LVNL also publishes British danger areas over the North Sea (EGD...); not Dutch
     // only areas: skip British airspace and any point or line features
     if (/^EG/.test(p.Designator) || !e.polygon) { source.entities.remove(e); continue; }
+    // NOTAMs: only those active at some moment today
+    if (p.Van && (new Date(p.Van) > endOfToday || (p.Tot !== 'PERM' && new Date(p.Tot) < new Date()))) { source.entities.remove(e); continue; }
     const cls = /^[A-G]$/.test(p.Class) ? p.Class : '';
     const key = `${label}|${p.Designator}|${p.Name}`;
     const color = Cesium.Color.fromCssColorString(CLASS_COLOURS[cls] ?? colour);
     e.name = `${cls ? `[${cls}] ` : ''}${[p.Designator, p.Name].filter(Boolean).join(' ')}`;
     e.limits = p;
     // infobox: only the fields a pilot needs, in this order
-    e.description = '<table class="cesium-infoBox-defaultTable">' + ['UpperLimit', 'LowerLimit', 'LowerLimitUnit', 'Type', 'Class', 'Designator', 'UpperLimitUnit', 'UpperLimitReference', 'LowerLimitReference']
-      .filter(k => p[k] != null && p[k] !== '').map(k => `<tr><th>${k}</th><td>${p[k]}</td></tr>`).join('') + '</table>';
+    e.description = '<table class="cesium-infoBox-defaultTable">' + ['UpperLimit', 'LowerLimit', 'LowerLimitUnit', 'Type', 'Class', 'Designator', 'UpperLimitUnit', 'UpperLimitReference', 'LowerLimitReference', 'Van', 'Tot', 'Schema', 'Tekst']
+      .filter(k => p[k] != null && p[k] !== '').map(k => `<tr><th>${k}</th><td${k === 'Tekst' ? ' style="white-space: pre-wrap; word-break: break-word"' : ''}>${String(p[k]).replace(/&/g, '&amp;').replace(/</g, '&lt;')}</td></tr>`).join('') + '</table>';
     e.polygon.material = color.withAlpha(0.25);
     e.polygon.outlineColor = color;
     // a MultiPolygon becomes several entities; list it once
