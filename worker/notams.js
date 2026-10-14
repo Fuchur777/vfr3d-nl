@@ -52,6 +52,8 @@ async function notams(env) {
     const start = Date.parse(n?.effectiveStart), end = Date.parse(n?.effectiveEnd);
     // only what is active now or starts within a day; no cancellations (type C), and no
     // country-wide notices drawn as a circle over half the map (radius in NM)
+    // only Dutch NOTAMs: location EHAA (Amsterdam FIR) or a Dutch aerodrome EH..
+    if (!/^EH/.test(n?.icaoLocation ?? n?.location ?? '')) continue;
     if (!category || n.type === 'C' || +n.radius > 50 || !(start < day) || end < now) continue;
     const geometries = f.geometry?.type === 'GeometryCollection' ? f.geometry.geometries : [f.geometry].filter(Boolean);
     const areas = geometries.filter(g => ['Polygon', 'MultiPolygon'].includes(g.type));
