@@ -8,7 +8,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          curl -sS 'https://services-eu1.arcgis.com/OtUwzhpKSdeXgRIB/arcgis/rest/services?f=json' | jq -r '.services[] | "\(.name) \(.type)"'
-          for s in $(curl -sS 'https://services-eu1.arcgis.com/OtUwzhpKSdeXgRIB/arcgis/rest/services?f=json' | jq -r '.services[] | select(.type=="FeatureServer") | .name'); do
-            echo "== $s"; curl -sS "https://services-eu1.arcgis.com/OtUwzhpKSdeXgRIB/arcgis/rest/services/$s/FeatureServer?f=json" | jq -r '.layers[]? | "\(.id) \(.name)"'
+          for l in 10 11; do
+            U="https://services-eu1.arcgis.com/OtUwzhpKSdeXgRIB/arcgis/rest/services/Aerodrome_data/FeatureServer/$l/query?where=1%3D1&outFields=*&outSR=4326&f=geojson"
+            echo "== layer $l"; curl -sS "$U" | jq -c '.features | length, .[0:3][]'
+            curl -sS "$U" | jq -r '.features[].properties | [.[]] | map(tostring) | join(" | ")' | head -80
           done
