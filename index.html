@@ -193,9 +193,11 @@ if (LAND) {
 const CLASS_COLOURS = { A: '#A32D2D', B: '#993C1D', C: '#185FA5', D: '#378ADD', E: '#534AB7', F: '#888780', G: '#3B6D11' };
 
 // Safari on macOS 27 draws no map imagery under WebGL 2 (no errors); WebGL 1 works (Frank, 2026-10-13)
-const isSafari = /^((?!chrome|android|crios|fxios).)*safari/i.test(navigator.userAgent);
+// after a render error (e.g. a phone GPU losing the WebGL context) the next load uses the same light settings as Safari
+const isSafari = /^((?!chrome|android|crios|fxios).)*safari/i.test(navigator.userAgent) || (() => { try { return !!localStorage.getItem('vfr3d-licht'); } catch {} })();
 const viewer = new Cesium.Viewer('map', {
   contextOptions: { requestWebgl1: isSafari },
+  showRenderLoopErrors: false, // our own message below instead of Cesium's English error box
   baseLayer: new Cesium.ImageryLayer(new Cesium.OpenStreetMapImageryProvider({ url: 'https://tile.openstreetmap.org/' })),
   baseLayerPicker: false, geocoder: false, animation: false, timeline: false,
   sceneModePicker: false,
@@ -203,6 +205,17 @@ const viewer = new Cesium.Viewer('map', {
   mapProjection: new Cesium.WebMercatorProjection(),
 });
 // Safari on macOS 27 fails to link Cesium's atmosphere and fog shaders (black canvas, CesiumJS issue #13650)
+// when drawing fails, say so in Dutch and offer a reload in light mode instead of a frozen map
+const renderFailed = () => {
+  try { localStorage.setItem('vfr3d-licht', '1'); } catch {}
+  if (document.getElementById('renderError')) return;
+  const box = Object.assign(document.createElement('div'), { id: 'renderError', style: 'position: absolute; inset: 0; z-index: 100001; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px; background: rgba(27, 35, 43, .9); color: #d8e0e6; font: 15px sans-serif; text-align: center' });
+  box.append('De kaart is gestopt: de grafische kaart van dit apparaat gaf een fout.', Object.assign(document.createElement('button'), { type: 'button', textContent: 'Opnieuw laden (lichte modus)', onclick: () => location.reload(),
+    style: 'padding: 8px 16px; border-radius: 6px; border: 0; background: #ffc24b; color: #1b232b; font-weight: 600' }));
+  document.body.append(box);
+};
+viewer.scene.renderError.addEventListener((scene, e) => (console.error(e), renderFailed()));
+viewer.canvas.addEventListener('webglcontextlost', renderFailed);
 if (isSafari) {
   // also the other atmosphere users and the sky; none matter for an airspace map
   viewer.scene.fog.enabled = false;
@@ -515,7 +528,8 @@ const byLabel = new Map();
 LAYERS.forEach(([, label, colour, show], i) => {
   const source = sources[i];
   if (!source) return;
-  viewer.dataSources.add(source);
+  // Belgium/Luxembourg and Germany are only drawn once switched on (all their volumes are too much for some phones)
+  if (!label.includes('|')) viewer.dataSources.add(source);
   if (!byLabel.has(label)) byLabel.set(label, new Map());
   const items = byLabel.get(label);
   for (const e of [...source.entities.values]) {
@@ -642,6 +656,10 @@ function refresh() {
     // on a class change, follow the class buttons: on when the other airspace of the new class is on
     if (i === 0 && cls !== a.cls) a.on = airspaces.some(b => !b.rule && b.cls === cls && b.on);
     if (i === 0) { Object.assign(a, { cls, colour: CLASS_COLOURS[cls] }); Object.assign(a.badge, { textContent: cls }); a.badge.style.background = a.colour; }
+  }
+  for (const a of today) if (a.land && a.on) {
+    const ds = a.entities[0].entityCollection.owner;
+    if (!viewer.dataSources.contains(ds)) viewer.dataSources.add(ds);
   }
   // the map follows the tab: Vandaag draws only NOTAMs and FUA, the other tabs only airspace; each keeps its own selection
   for (const a of [...airspaces, ...today]) {
