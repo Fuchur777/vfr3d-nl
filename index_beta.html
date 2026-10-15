@@ -222,13 +222,29 @@ const base = document.getElementById('base');
 const osm = viewer.imageryLayers.get(0);
 (base.onchange = () => { esri.show = base.selectedIndex === 0; osm.show = !esri.show; icao.show = base.selectedIndex === 2; })();
 
+// 2D/3D button in Cesium's toolbar: 2D is a top-down view over OpenStreetMap; back in 3D the previous base layer returns
+const flat = Object.assign(document.createElement('button'), { type: 'button', className: 'cesium-button cesium-toolbar-button', textContent: '2D', title: 'Bekijk in 2D boven OpenStreetMap' });
+let base3d;
+flat.onclick = () => {
+  const to2d = viewer.scene.mode === Cesium.SceneMode.SCENE3D;
+  if (to2d) base3d = base.selectedIndex;
+  base.selectedIndex = to2d ? 1 : base3d;
+  base.onchange();
+  to2d ? viewer.scene.morphTo2D(0.5) : viewer.scene.morphTo3D(0.5);
+  Object.assign(flat, { textContent: to2d ? '3D' : '2D', title: to2d ? 'Terug naar 3D' : 'Bekijk in 2D boven OpenStreetMap' });
+};
+viewer.container.querySelector('.cesium-viewer-toolbar').prepend(flat);
+// after the morph: the Netherlands from above in 2D, the start view in 3D
+const startView = () => viewer.scene.mode === Cesium.SceneMode.SCENE2D ? { destination: Cesium.Rectangle.fromDegrees(3.2, 50.7, 7.3, 53.6) } : home;
+viewer.scene.morphComplete.addEventListener(() => viewer.camera.setView(startView()));
+
 const home = { destination: Cesium.Cartesian3.fromDegrees(5.3, 49.2, 280000), orientation: { pitch: Cesium.Math.toRadians(-40) } };
 viewer.camera.setView(home);
 // the home button returns to the view at page load instead of the whole globe
 viewer.homeButton.viewModel.command.beforeExecute.addEventListener(e => {
   e.cancel = true;
   viewer.trackedEntity = undefined;
-  viewer.camera.flyTo(home);
+  viewer.camera.flyTo(startView());
 });
 
 const qnh = document.getElementById('qnh');
