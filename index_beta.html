@@ -118,7 +118,7 @@
 <div id="live" class="bar"><label><span class="head">Toon om <output id="liveOut">nu</output></span><input id="liveTime" type="range" min="0" max="0" step="15" value="0"></label></div>
 <div id="note">
 <strong>Let op: alleen voor educatieve doeleinden. Niet geschikt voor vluchtvoorbereiding!</strong>
-<p>Luchtruim © LVNL (CC BY 4.0). Activeringen (FUA) © EUROCONTROL. De AIP Netherlands van LVNL is leidend.</p>
+<p>Luchtruim © LVNL (CC BY 4.0). Activeringen (FUA) © EUROCONTROL. Vormen België/Luxemburg en Duitsland © openAIP (CC BY-NC 4.0). De AIP Netherlands van LVNL is leidend.</p>
 <b>Laatste update</b>
 <dl id="updates"><dt data-for="luchtruim">Luchtruim LVNL</dt><dd data-for="luchtruim" id="vAirspace">…</dd><dt data-for="luchtruim">Lierlocaties</dt><dd data-for="luchtruim">ENR 5.5, AIRAC AMDT 10-2026 (1-10-2026)</dd><dt data-for="vandaag">NOTAMs</dt><dd data-for="vandaag" id="vNotams">…</dd><dt data-for="vandaag">FUA</dt><dd data-for="vandaag" id="vFua">…</dd><dt>Code</dt><dd id="vCode"></dd></dl>
 <dl id="links"><dt>Uitleg</dt><dd><a href="luchtruim.html" style="color: #d8e0e6">Luchtruim in Nederland uitgelegd</a></dd><dt>Feedback?</dt><dd><a id="contact" href="#">e-mail</a></dd><dt>Nuttig?</dt><dd><a id="donate" href="https://buymeacoffee.com/fuchur777" target="_blank" rel="noopener">✈ Doneer een vliegminuut</a></dd></dl>
@@ -296,9 +296,9 @@ showFout('FUA', fua?.fout);
 // footer: when the Workers last fetched NOTAMs and the FUA plan (EAUP or EUUP)
 document.getElementById('vNotams').textContent = notamsFetched ? when(notamsFetched) : 'onbekend';
 document.getElementById('vFua').textContent = fua?.opgehaald ? `${fua.type} ${when(fua.opgehaald)}` : 'onbekend';
-if (fua?.gebieden) {
+function fuaSource(fua, shapeSources) {
   const shapes = new Map(), byName = new Map(), ds = new Cesium.CustomDataSource('FUA');
-  for (const source of sources.filter(Boolean)) for (const e of source.entities.values) {
+  for (const source of shapeSources.filter(Boolean)) for (const e of source.entities.values) {
     const k = fuaKey(e.properties.Designator?.getValue());
     if (e.polygon) shapes.set(k, [...(shapes.get(k) ?? []), e]);
   }
@@ -315,8 +315,27 @@ if (fua?.gebieden) {
       LowerLimit: w.ondergrensFL, LowerLimitUnit: 'FL', LowerLimitReference: w.ondergrensFL ? 'STD' : 'SFC',
       UpperLimit: w.bovengrensFL, UpperLimitUnit: 'FL', UpperLimitReference: 'STD' } });
   }
+  return ds;
+}
+if (fua?.gebieden) {
   LAYERS.push(['fua', 'Vandaag actief (FUA)', '#15aabf', true]);
-  sources.push(ds);
+  sources.push(fuaSource(fua, sources));
+}
+// Vandaag also lists Belgium/Luxembourg and Germany, off by default: their NOTAMs and FUA (shapes from openAIP via the FUA Worker).
+// Labels 'NOTAMs|<country>' and 'FUA|<country>' keep them apart from the Dutch ones
+const ABROAD = LAND ? [] : [['EB,EL', 'België/Luxemburg'], ['ED', 'Duitsland']];
+const abroad = await Promise.all(ABROAD.map(([icao, land]) => Promise.all([
+  fetch(`${NOTAMS}?land=${icao}`).then(r => r.json()).then(j => (showFout(`NOTAMs ${land}`, j.fout), Cesium.GeoJsonDataSource.load(j))).catch(e => console.error(land, e)),
+  fetch(`${FUA}?land=${icao}`).then(r => r.json()).then(j => (showFout(`FUA ${land}`, j.fout), j)).catch(e => console.error(land, e)),
+  Cesium.GeoJsonDataSource.load(`${FUA}/gebieden?land=${icao}`).catch(e => console.error(land, e)),
+]).then(d => [land, ...d])));
+for (const [land, notams, fuaLand, shapes] of abroad) {
+  LAYERS.push([NOTAMS, `NOTAMs|${land}`, '#e8590c', false]);
+  sources.push(notams);
+  if (fuaLand?.gebieden) {
+    LAYERS.push(['fua', `FUA|${land}`, '#15aabf', false]);
+    sources.push(fuaSource(fuaLand, [shapes]));
+  }
 }
 // loading screen: busy('text') shows it, busy() hides it
 const loading = document.getElementById('loading');
@@ -496,10 +515,11 @@ LAYERS.forEach(([, label, colour, show], i) => {
 const TODAY = ['NOTAMs', 'Vandaag actief (FUA)'], today = [], todayGroups = [];
 const NOTAMS_OFF = ['Drones/UAS', 'Windturbines', 'Kranen', 'Militair', 'Lasershow', 'Obstakelverlichting'];
 byLabel.forEach((items, label) => {
-  if (TODAY.includes(label)) {
+  if (TODAY.includes(label) || label.includes('|')) {
     for (const a of items.values()) {
       // NOTAM kind from the Worker ('Soort'); kinds of little use to standard VFR traffic start off
-      a.soort = label === 'NOTAMs' ? a.entities[0].limits.Soort ?? 'Overige activiteit' : 'FUA';
+      a.land = label.split('|')[1];
+      a.soort = label.startsWith('NOTAMs') ? a.entities[0].limits.Soort ?? 'Overige activiteit' : 'FUA';
       a.box = box(() => setOn([a], a.box.checked));
       a.on = saved[a.key] ?? (a.show && !NOTAMS_OFF.includes(a.soort));
       today.push(a);
@@ -555,13 +575,18 @@ const todayGroup = (title, items, parent) => {
   parent.append(details);
   return details;
 };
-const fuaItems = today.filter(a => a.soort === 'FUA'), notamItems = today.filter(a => a.soort !== 'FUA');
-todayGroup('FUA', fuaItems, document.getElementById('today')).append(...fuaItems.map(row));
-const notamDetails = todayGroup('NOTAMs', notamItems, document.getElementById('today'));
-for (const soort of [...new Set(notamItems.map(a => a.soort))].sort()) {
-  const items = notamItems.filter(a => a.soort === soort);
-  todayGroup(soort, items, notamDetails).append(...items.map(row));
-}
+// FUA and NOTAMs (NOTAMs per kind) of one country under parent: the Netherlands at the top, then a heading per other country
+const countryGroups = (list, parent) => {
+  const fuaItems = list.filter(a => a.soort === 'FUA'), notamItems = list.filter(a => a.soort !== 'FUA');
+  todayGroup('FUA', fuaItems, parent).append(...fuaItems.map(row));
+  const notamDetails = todayGroup('NOTAMs', notamItems, parent);
+  for (const soort of [...new Set(notamItems.map(a => a.soort))].sort()) {
+    const items = notamItems.filter(a => a.soort === soort);
+    todayGroup(soort, items, notamDetails).append(...items.map(row));
+  }
+};
+countryGroups(today.filter(a => !a.land), document.getElementById('today'));
+for (const [, land] of ABROAD) countryGroups(today.filter(a => a.land === land), todayGroup(land, today.filter(a => a.land === land), document.getElementById('today')));
 
 function setOn(items, on) {
   for (const a of items) a.on = on;
