@@ -573,7 +573,7 @@ function refresh() {
   // the map follows the tab: Vandaag draws only NOTAMs and FUA, the other tabs only airspace; each keeps its own selection
   for (const a of [...airspaces, ...today]) {
     a.box.checked = a.on;
-    for (const e of a.entities) e.show = a.on && today.includes(a) === (LAND || openTab === 'vandaag') && metres(e.limits.LowerLimit, e.limits.LowerLimitUnit, e.limits.LowerLimitReference) <= metres(maxFl.value, 'FL')
+    for (const e of a.entities) e.show = a.on && today.includes(a) === (!!LAND || openTab === 'vandaag') && metres(e.limits.LowerLimit, e.limits.LowerLimitUnit, e.limits.LowerLimitReference) <= metres(maxFl.value, 'FL')
       && (!e.windows || e.windows.some(([s, u]) => s <= live && live < u))
       && !(e.limits.Type === 'NOTAM' && notamFl.value && flOf(e.limits) < +notamFl.value);
   }
