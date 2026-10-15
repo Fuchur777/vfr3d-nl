@@ -3,6 +3,8 @@
 // Worker opens it in Cloudflare Browser Rendering and clicks the active EAUP/EUUP like a person
 // would (same steps as gitlab.com/portugal-vacc/eaup, src/scrapers/nop.py).
 // ?debug shows the text last read from the portal, to fix the parser when EUROCONTROL changes it.
+// With a KV namespace bound as FUA, every read is also kept per Dutch calendar day for a year;
+// ?datum=2026-10-15 gives that day's activations.
 import puppeteer from '@cloudflare/puppeteer';
 
 const PORTAL = 'https://www.public.nm.eurocontrol.int/PUBPORTAL/gateway/spec/';
@@ -30,7 +32,12 @@ export default {
     }
     // the cache holds every country; ?land=EB,EL picks ICAO prefixes, the Netherlands (EH) by default
     const countries = (url.searchParams.get('land') ?? 'EH').toUpperCase().split(',');
+    const day = url.searchParams.get('datum');
     const only = all => Response.json({ ...all, gebieden: all.gebieden.filter(g => countries.some(c => g.naam.startsWith(c))) }, { headers: HEADERS });
+    if (day) {
+      const kept = await env.FUA?.get(`dag:${day}`, 'json');
+      return kept ? only(kept) : Response.json({ fout: env.FUA ? `Niets bewaard voor ${day}.` : 'Geen KV-namespace gekoppeld als FUA.', gebieden: [] }, { status: 404, headers: HEADERS });
+    }
     const cached = await cache.match(key);
     if (Date.now() - Date.parse(cached?.headers.get('Date')) < MAX_AGE) {
       return only(await cached.json());
@@ -44,10 +51,15 @@ export default {
     }
     const date = new Date().toUTCString(), all = parse(read);
     ctx.waitUntil(Promise.all([
+      keep(env, all),
       cache.put(key, Response.json(all, { headers: { ...HEADERS, Date: date } })),
       cache.put(rawKey, new Response(`${read.header}\n\n${read.table}`, { headers: { ...HEADERS, 'Content-Type': 'text/plain; charset=utf-8', Date: date } })),
     ]));
     return only(all);
+  },
+  // three reads a day for the archive, also on days nobody opens the app (cron in wrangler.jsonc)
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(scrape(env).then(read => keep(env, parse(read))));
   },
 };
 
@@ -172,4 +184,15 @@ function designator(name, icao) {
   }
   const local = n.match(/^(TRA\/TSA|TRA|TSA|HTA|LFA) ?([A-Z]{0,2}\d*[A-Z]?)\b/);
   return local ? local[1].split('/').map(kind => icao + kind + local[2]).join('/') : n.replace(/[^A-Z0-9]/g, '');
+}
+
+// the day's archive keeps every activation read that day, also those a later EUUP dropped
+async function keep(env, all) {
+  if (!env.FUA) {
+    return;
+  }
+  const day = `dag:${new Date().toLocaleDateString('sv', { timeZone: 'Europe/Amsterdam' })}`;
+  const kept = await env.FUA.get(day, 'json');
+  const areas = new Map([...kept?.gebieden ?? [], ...all.gebieden].map(g => [`${g.naam} ${g.van} ${g.tot} ${g.ondergrensFL} ${g.bovengrensFL}`, g]));
+  await env.FUA.put(day, JSON.stringify({ ...all, gebieden: [...areas.values()] }), { expirationTtl: 366 * 24 * 3600 });
 }

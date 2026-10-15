@@ -5,6 +5,7 @@
 // A KV namespace bound as NOTAMS keeps the results; a Cron Trigger every 5 minutes fetches them three
 // times a day (06:00, 18:00 and 22:00 LT), one circle per run because the FAA allows 1 request per 3 min.
 // ?land=EB,EL picks countries by ICAO prefix; the Netherlands (EH) by default.
+// Every fetch is also kept per Dutch calendar day for a year; ?datum=2026-10-15 gives that day's NOTAMs.
 
 const API = 'https://api-nms.aim.faa.gov';
 const SLOTS = [6, 18, 22];
@@ -15,6 +16,7 @@ const CIRCLES = [
   [48.34, 9.03], [50.86, 10.77], [48.51, 11.62], [51.71, 7.78], [53.05, 12.28], [51.96, 13.8], [53.62, 9.23], [50.09, 8.2], // Germany
 ];
 const COUNTRIES = { EH: [0], EB: [1], EL: [1], ED: [2, 3, 4, 5, 6, 7, 8, 9] };
+const YEAR = 366 * 24 * 3600;
 const HEADERS = { 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=300' };
 // Q-code prefixes per heading, from briefing's config/notams.php, plus obstacles (cranes, wind
 // turbines); the rest (aerodrome, navaids) is left out
@@ -52,9 +54,10 @@ export default {
     }
     const prefixes = (url.searchParams.get('land') ?? 'EH').toUpperCase().split(',');
     const circles = [...new Set(prefixes.flatMap(p => COUNTRIES[p] ?? []))];
-    const stored = await Promise.all(circles.map(i => env.NOTAMS.get(`cirkel:${i}`, 'json')));
+    const date = url.searchParams.get('datum');
+    const stored = await Promise.all(circles.map(i => env.NOTAMS.get(date ? `dag:${date}:${i}` : `cirkel:${i}`, 'json')));
     // never fetched yet (a fresh deploy): fetch one circle now instead of waiting for the next slot
-    if (stored.some(c => !c)) ctx.waitUntil(step(env));
+    if (!date && stored.some(c => !c)) ctx.waitUntil(step(env));
     const state = await env.NOTAMS.get('staat', 'json') ?? {};
     const features = new Map();
     for (const f of stored.flatMap(c => c?.features ?? [])) {
@@ -88,7 +91,13 @@ async function step(env) {
   state.laatste = now;
   await env.NOTAMS.put('staat', JSON.stringify(state));
   try {
-    await env.NOTAMS.put(`cirkel:${due}`, JSON.stringify({ opgehaald: now, features: await notams(env, CIRCLES[due]) }));
+    const features = await notams(env, CIRCLES[due]);
+    await env.NOTAMS.put(`cirkel:${due}`, JSON.stringify({ opgehaald: now, features }));
+    // the day's archive keeps every NOTAM seen that day, also those cancelled by a later fetch
+    const day = `dag:${new Date(now).toLocaleDateString('sv', { timeZone: 'Europe/Amsterdam' })}:${due}`;
+    const kept = await env.NOTAMS.get(day, 'json');
+    const all = new Map([...kept?.features ?? [], ...features].map(f => [`${f.properties.Name} ${f.properties.Designator}`, f]));
+    await env.NOTAMS.put(day, JSON.stringify({ opgehaald: now, features: [...all.values()] }), { expirationTtl: YEAR });
     state.klaar[due] = now;
     delete state.fout[due];
   } catch (error) {
