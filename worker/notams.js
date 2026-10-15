@@ -15,13 +15,15 @@ const CATEGORIES = [
   ['Parachutespringen', ['QWP']],
   ['Evenementen', ['QWA', 'QWB', 'QWC', 'QWL', 'QWO', 'QWT', 'QWV', 'QWZ']],
   ['Drones/UAS', ['QWU']],
-  ['Obstakels', ['QOB', 'QOL']],
+  ['Obstakelverlichting', ['QOL']],
+  ['Obstakels', ['QOB']],
   ['Overige activiteit', ['QWD', 'QWE', 'QWF', 'QWG', 'QWH', 'QWJ', 'QWM', 'QWR', 'QWS', 'QWW', 'QWY']],
 ];
 // the text says more than the Q-code: an area activation stays airspace even when it is for drones;
 // otherwise the first matching kind wins, else the Q-code heading
 const KINDS = [
   ['TRA/TSA', /\b(RESTRICTED|SEGREGATED|RESERVED|DANGER) AREA\b|\bCTR\b.*\bCLOSED\b/],
+  ['Obstakelverlichting', /\bOBST(ACLE)? LI?GH?TS?\b/],
   ['Lasershow', /\bLASER/],
   ['Drones/UAS', /\b(UAS|RPAS|UAV|DRONES?)\b/],
   ['Windturbines', /\bWIND ?(TURBINES?|MILLS?|PARK|FARM)\b/],
