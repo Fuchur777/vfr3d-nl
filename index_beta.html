@@ -66,6 +66,8 @@
   #layers #at { white-space: normal; }
   #at input { display: block; width: 100%; }
   #at[hidden] { display: none; }
+  #today details details { margin-left: 14px; }
+  #today summary { padding: 3px 0; }
   .today { display: grid; grid-template-columns: auto 1fr; gap: 0 6px; padding: 5px 0; border-bottom: 1px solid #2a3540; }
   .today a { color: #d8e0e6; text-decoration: none; font-weight: 600; }
   .today small { grid-column: 2; color: #8a9aa8; white-space: pre-line; }
@@ -86,7 +88,7 @@
 <label id="at">Toon om <output id="atOut">nu</output><input id="atTime" type="range" min="0" max="0" step="15" value="0"></label>
 <section id="kaart" role="tabpanel"><label>Onderlaag <select id="base"><option>Satelliet</option><option>Kaart</option><option selected>ICAO-kaart</option></select></label><div id="tileError" style="color: #ff8787"></div><h3>Hoogte</h3><label>Verticale schaal <output id="scaleOut">5</output>×<br><input id="scale" type="range" min="1" max="10" step="0.5" value="5"></label><label>Verberg luchtruim boven <select id="maxFl"><option value="10">FL 10</option><option value="15">FL 15</option><option value="20">FL 20</option><option value="25">FL 25</option><option value="30">FL 30</option><option value="35">FL 35</option><option value="40">FL 40</option><option value="45">FL 45</option><option value="50">FL 50</option><option value="55">FL 55</option><option value="60">FL 60</option><option value="65">FL 65</option><option value="70">FL 70</option><option value="75">FL 75</option><option value="80">FL 80</option><option value="85">FL 85</option><option value="90">FL 90</option><option value="95" selected>FL 95</option><option value="100">FL 100</option><option value="105">FL 105</option><option value="110">FL 110</option><option value="115">FL 115</option><option value="120">FL 120</option><option value="125">FL 125</option><option value="130">FL 130</option><option value="135">FL 135</option><option value="140">FL 140</option><option value="145">FL 145</option><option value="150">FL 150</option></select></label></section>
 <section id="luchtruim" role="tabpanel"><label><input id="all" type="checkbox"> <b>Alle luchtruimen</b></label><div id="classes"></div><div style="display:flex;gap:6px;flex-wrap:wrap"><button type="button" id="expand">Alles uitklappen</button><button type="button" id="collapse">Alles inklappen</button></div><input id="search" type="search" placeholder="Zoek luchtruim op naam" style="width:100%;box-sizing:border-box"><div id="tree"></div></section>
-<section id="vandaag" role="tabpanel"><div class="hint">FUA-activaties en NOTAMs van vandaag tot 06:00 LT morgen. Klik op een naam om erheen te vliegen.</div><div id="today"></div><button type="button" id="notamRefresh" title="Haal de NOTAMs opnieuw op bij de FAA">NOTAMs verversen</button></section>
+<section id="vandaag" role="tabpanel"><div class="hint">FUA-activaties en NOTAMs van vandaag tot 06:00 LT morgen. Klik op een naam om erheen te vliegen.</div><label>Verberg NOTAMs onder <select id="notamFl"><option value="">uit</option><option value="10">FL 10</option><option value="15">FL 15</option><option value="20">FL 20</option><option value="25">FL 25</option><option value="30">FL 30</option><option value="35">FL 35</option><option value="40">FL 40</option><option value="45">FL 45</option><option value="50">FL 50</option><option value="55">FL 55</option><option value="60">FL 60</option><option value="65">FL 65</option><option value="70">FL 70</option><option value="75">FL 75</option><option value="80">FL 80</option><option value="85">FL 85</option><option value="90">FL 90</option><option value="95">FL 95</option><option value="100">FL 100</option><option value="105">FL 105</option><option value="110">FL 110</option><option value="115">FL 115</option><option value="120">FL 120</option><option value="125">FL 125</option><option value="130">FL 130</option><option value="135">FL 135</option><option value="140">FL 140</option><option value="145">FL 145</option><option value="150">FL 150</option></select></label><div id="today"></div><button type="button" id="notamRefresh" title="Haal de NOTAMs opnieuw op bij de FAA">NOTAMs verversen</button></section>
 <section id="vlucht" role="tabpanel">
 <label id="drop"><input id="igc" type="file" accept=".igc,.gpx,.kml,.kmz">
   <span class="pick">✈ Kies een vluchtbestand</span>
@@ -355,10 +357,17 @@ LAYERS.forEach(([, label, colour, show], i) => {
     items.get(key).entities.push(e);
   }
 });
-const TODAY = ['NOTAMs', 'Vandaag actief (FUA)'], today = [];
+const TODAY = ['NOTAMs', 'Vandaag actief (FUA)'], today = [], todayGroups = [];
+const NOTAMS_OFF = ['Drones/UAS', 'Windturbines', 'Kranen', 'Militair', 'Lasershow'];
 byLabel.forEach((items, label) => {
   if (TODAY.includes(label)) {
-    for (const a of items.values()) { a.box = box(() => setOn([a], a.box.checked)); a.on = saved[a.key] ?? a.show; today.push(a); }
+    for (const a of items.values()) {
+      // NOTAM kind from the Worker ('Soort'); kinds of little use to standard VFR traffic start off
+      a.soort = label === 'NOTAMs' ? a.entities[0].limits.Soort ?? 'Overige activiteit' : 'FUA';
+      a.box = box(() => setOn([a], a.box.checked));
+      a.on = saved[a.key] ?? (a.show && !NOTAMS_OFF.includes(a.soort));
+      today.push(a);
+    }
     return;
   }
   const group = { items: [...items.values()].sort((a, b) => a.name.localeCompare(b.name)) };
@@ -379,12 +388,12 @@ byLabel.forEach((items, label) => {
   document.getElementById('tree').append(details);
 });
 
-// Vandaag tab: one list sorted by start time; each row on/off, the name flies the map there
+// Vandaag tab: foldable FUA and NOTAMs sections (NOTAMs per kind), rows sorted by start time; each row on/off, the name flies the map there
 const limit = (v, unit, ref) => ref === 'SFC' ? 'SFC' : unit === 'FL' ? `FL${v}` : `${v} ft`;
 const status = a => { const t = Date.now(); return a.windows.some(([s, u]) => s <= t && t < u) ? ['now', 'nu actief'] : a.start > t ? ['later', `vanaf ${new Date(a.start).toLocaleTimeString('nl-NL', { timeZone: 'Europe/Amsterdam', hour: '2-digit', minute: '2-digit' })} LT`] : ['past', 'voorbij']; };
 for (const a of today) { a.windows = a.entities.flatMap(e => e.windows ?? []); a.start = Math.min(...a.windows.map(w => w[0])); }
 today.sort((x, y) => x.start - y.start);
-for (const a of today) {
+const row = a => {
   const name = Object.assign(document.createElement('a'), { href: '#', textContent: a.name, onclick: ev => {
     ev.preventDefault();
     if (!a.on) setOn([a], true);
@@ -397,9 +406,26 @@ for (const a of today) {
   head.append(badge(' ', a.colour), name, a.status);
   const row = Object.assign(document.createElement('div'), { className: 'today' });
   row.append(a.box, head, Object.assign(document.createElement('small'), { textContent: `${bands.join(', ')}\n${times.join('\n')}` }));
-  document.getElementById('today').append(row);
+  return row;
+};
+// a foldable group with a tri-state box and count, like the Luchtruim tree
+const todayGroup = (title, items, parent) => {
+  const group = { items }, details = document.createElement('details'), summary = document.createElement('summary');
+  group.box = box(() => setOn(group.items, group.box.checked));
+  group.count = Object.assign(document.createElement('span'), { className: 'count' });
+  summary.append(group.box, ` ${title} `, group.count);
+  details.append(summary);
+  todayGroups.push(group);
+  parent.append(details);
+  return details;
+};
+const fuaItems = today.filter(a => a.soort === 'FUA'), notamItems = today.filter(a => a.soort !== 'FUA');
+todayGroup('FUA', fuaItems, document.getElementById('today')).append(...fuaItems.map(row));
+const notamDetails = todayGroup('NOTAMs', notamItems, document.getElementById('today'));
+for (const soort of [...new Set(notamItems.map(a => a.soort))].sort()) {
+  const items = notamItems.filter(a => a.soort === soort);
+  todayGroup(soort, items, notamDetails).append(...items.map(row));
 }
-if (!today.length) document.getElementById('today').textContent = 'Geen FUA-activaties of NOTAMs gevonden.';
 
 function setOn(items, on) {
   for (const a of items) a.on = on;
@@ -407,6 +433,10 @@ function setOn(items, on) {
 }
 const maxFl = document.getElementById('maxFl');
 maxFl.onchange = () => { busy('Luchtruim tekenen…'); updateHeights(); whenDrawn().then(() => busy()); };
+// NOTAM filter: hide NOTAMs whose upper limit is below the chosen FL (ft roughly /100, SFC = 0)
+const notamFl = document.getElementById('notamFl');
+notamFl.onchange = () => refresh();
+const flOf = p => p.UpperLimitReference === 'SFC' ? 0 : p.UpperLimitUnit === 'FL' ? p.UpperLimit : p.UpperLimit * (p.UpperLimitUnit === 'M' ? 3.28 : 1) / 100;
 function refresh() {
   const t = showAt();
   // airspace that changes class during the day (AIP SUP 03/2022): class, colour, badge and infobox for moment t
@@ -423,7 +453,8 @@ function refresh() {
   for (const a of [...airspaces, ...today]) {
     a.box.checked = a.on;
     for (const e of a.entities) e.show = a.on && metres(e.limits.LowerLimit, e.limits.LowerLimitUnit, e.limits.LowerLimitReference) <= metres(maxFl.value, 'FL')
-      && (!e.windows || e.windows.some(([s, u]) => s <= t && t < u));
+      && (!e.windows || e.windows.some(([s, u]) => s <= t && t < u))
+      && !(e.limits.Type === 'NOTAM' && notamFl.value && flOf(e.limits) < +notamFl.value);
   }
   for (const a of today) [a.status.className, a.status.textContent] = ['status ' + status(a)[0], status(a)[1]];
   const tri = (b, list) => {
@@ -432,7 +463,7 @@ function refresh() {
     b.indeterminate = n > 0 && n < list.length;
     return n;
   };
-  for (const g of groups) g.count.textContent = `${tri(g.box, g.items)}/${g.items.length}`;
+  for (const g of [...groups, ...todayGroups]) g.count.textContent = `${tri(g.box, g.items)}/${g.items.length}`;
   tri(allBox, airspaces);
   // a class button is grey when none of its airspaces is on
   for (const [b, cls, colour] of classButtons) b.style.background = airspaces.some(a => a.cls === cls && a.on) ? colour : '#bbb';
