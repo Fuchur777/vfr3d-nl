@@ -39,13 +39,20 @@
     #menu { display: block; position: fixed; z-index: 21; top: 8px; left: 8px; width: 40px; height: 40px; border: 0; border-radius: 6px; background: #1b232b; color: #ffc24b; font-size: 22px; cursor: pointer; }
     body.menu-open #menu { left: calc(min(290px, 85vw) + 8px); }
   }
-  #note strong { display: block; color: #ff8787; }
-  #note p { margin: 4px 0 6px; }
-  #note dl { display: grid; grid-template-columns: auto 1fr; gap: 1px 8px; margin: 0; }
-  #note dt { color: #8a9aa8; }
-  #note dd { margin: 0; font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; }
-  #note b { display: block; margin-top: 6px; color: #8a9aa8; font-weight: 500; }
-  #links { margin-top: 14px; align-items: center; }
+  #disclaimer strong { display: block; color: #ff8787; font-size: 15px; }
+  #disclaimer p { margin: 8px 0; }
+  #note dl, #disclaimer dl { display: grid; grid-template-columns: auto 1fr; gap: 1px 8px; margin: 0; }
+  #note dt, #disclaimer dt { color: #8a9aa8; }
+  #note dd, #disclaimer dd { margin: 0; font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  #disclaimer b { display: block; margin: 10px 0 2px; color: #8a9aa8; font-weight: 500; }
+  #links { align-items: center; }
+  #disclaimer { max-width: 420px; border: 1px solid #2f3b46; border-radius: 10px; background: #1b232b; color: #d8e0e6; font: 13px/1.5 sans-serif; padding: 18px 20px; }
+  #disclaimer::backdrop { background: rgba(10, 14, 18, .7); }
+  #disclaimer .buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+  #disclaimer button { padding: 6px 14px; border-radius: 6px; border: 1px solid #4a5865; background: none; color: #d8e0e6; font: inherit; cursor: pointer; }
+  #disclaimer #accept { background: #ffc24b; border-color: #ffc24b; color: #1b232b; font-weight: 600; }
+  .credits { color: #7d8c99; font-size: 11px; line-height: 1.45; }
+  #kaart a { color: #d8e0e6; }
   #links dd { font-family: inherit; }
   #contact { color: #d8e0e6; }
   /* Vlucht tab: drop zone for the flight file, player in blocks */
@@ -89,7 +96,7 @@
 <button type="button" id="menu" aria-label="Menu" aria-expanded="false">☰</button>
 <form id="layers">
 <div id="tabs" role="tablist"><button type="button" role="tab" data-tab="kaart">Kaart</button><button type="button" role="tab" data-tab="luchtruim">Luchtruim</button><button type="button" role="tab" data-tab="vandaag">Vandaag</button><button type="button" role="tab" data-tab="vlucht">Vlucht</button></div>
-<section id="kaart" role="tabpanel"><label>Onderlaag <select id="base"><option>Satelliet</option><option>Kaart</option><option selected>ICAO-kaart</option></select></label><div id="tileError" style="color: #ff8787"></div><h3>Hoogte</h3><label>Verticale schaal <output id="scaleOut">5</output>×<br><input id="scale" type="range" min="1" max="10" step="0.5" value="5"></label><label>Verberg luchtruim boven <select id="maxFl"><option value="10">FL 10</option><option value="15">FL 15</option><option value="20">FL 20</option><option value="25">FL 25</option><option value="30">FL 30</option><option value="35">FL 35</option><option value="40">FL 40</option><option value="45">FL 45</option><option value="50">FL 50</option><option value="55">FL 55</option><option value="60">FL 60</option><option value="65">FL 65</option><option value="70">FL 70</option><option value="75">FL 75</option><option value="80">FL 80</option><option value="85">FL 85</option><option value="90">FL 90</option><option value="95" selected>FL 95</option><option value="100">FL 100</option><option value="105">FL 105</option><option value="110">FL 110</option><option value="115">FL 115</option><option value="120">FL 120</option><option value="125">FL 125</option><option value="130">FL 130</option><option value="135">FL 135</option><option value="140">FL 140</option><option value="145">FL 145</option><option value="150">FL 150</option></select></label></section>
+<section id="kaart" role="tabpanel"><label>Onderlaag <select id="base"><option>Satelliet</option><option>Kaart</option><option selected>ICAO-kaart</option></select></label><div id="tileError" style="color: #ff8787"></div><h3>Hoogte</h3><label>Verticale schaal <output id="scaleOut">5</output>×<br><input id="scale" type="range" min="1" max="10" step="0.5" value="5"></label><label>Verberg luchtruim boven <select id="maxFl"><option value="10">FL 10</option><option value="15">FL 15</option><option value="20">FL 20</option><option value="25">FL 25</option><option value="30">FL 30</option><option value="35">FL 35</option><option value="40">FL 40</option><option value="45">FL 45</option><option value="50">FL 50</option><option value="55">FL 55</option><option value="60">FL 60</option><option value="65">FL 65</option><option value="70">FL 70</option><option value="75">FL 75</option><option value="80">FL 80</option><option value="85">FL 85</option><option value="90">FL 90</option><option value="95" selected>FL 95</option><option value="100">FL 100</option><option value="105">FL 105</option><option value="110">FL 110</option><option value="115">FL 115</option><option value="120">FL 120</option><option value="125">FL 125</option><option value="130">FL 130</option><option value="135">FL 135</option><option value="140">FL 140</option><option value="145">FL 145</option><option value="150">FL 150</option></select></label><p class="credits">Luchtruim © LVNL (CC BY 4.0). Activeringen (FUA) © EUROCONTROL. Vormen België/Luxemburg en Duitsland © openAIP (CC BY-NC 4.0). De AIP Netherlands van LVNL is leidend.</p><p><a href="luchtruim.html">Luchtruim in Nederland uitgelegd</a> · <a href="#" id="showDisclaimer">Disclaimer en updates</a></p></section>
 <section id="luchtruim" role="tabpanel"><label><input id="all" type="checkbox"> <b>Alle luchtruimen</b></label><div id="classes"></div><div style="display:flex;gap:6px;flex-wrap:wrap"><button type="button" id="expand">Alles uitklappen</button><button type="button" id="collapse">Alles inklappen</button></div><input id="search" type="search" placeholder="Zoek luchtruim op naam" style="width:100%;box-sizing:border-box"><div id="tree"></div><button type="button" id="lxnavAirspace" title="SeeYou CUB-bestand met het aangevinkte luchtruim, voor LXNAV en SeeYou" style="width: 100%; margin-top: 8px">Download als .cub</button></section>
 <section id="vandaag" role="tabpanel"><div class="hint">FUA-activaties en NOTAMs van vandaag tot 06:00 LT morgen. NOTAMs worden om 06:00, 18:00 en 22:00 LT opgehaald. Klik op een naam om erheen te vliegen.</div><div id="fout" style="color: #ff8787"></div><label>Verberg NOTAMs onder <select id="notamFl"><option value="">uit</option><option value="10">FL 10</option><option value="15">FL 15</option><option value="20">FL 20</option><option value="25">FL 25</option><option value="30">FL 30</option><option value="35">FL 35</option><option value="40">FL 40</option><option value="45">FL 45</option><option value="50">FL 50</option><option value="55">FL 55</option><option value="60">FL 60</option><option value="65">FL 65</option><option value="70">FL 70</option><option value="75">FL 75</option><option value="80">FL 80</option><option value="85">FL 85</option><option value="90">FL 90</option><option value="95">FL 95</option><option value="100">FL 100</option><option value="105">FL 105</option><option value="110">FL 110</option><option value="115">FL 115</option><option value="120">FL 120</option><option value="125">FL 125</option><option value="130">FL 130</option><option value="135">FL 135</option><option value="140">FL 140</option><option value="145">FL 145</option><option value="150">FL 150</option></select></label><div id="today"></div><button type="button" id="lxnav" title="SeeYou CUB-bestand met de aangevinkte FUA en NOTAMs, voor LXNAV en SeeYou">Download als .cub</button></section>
 <section id="vlucht" role="tabpanel">
@@ -116,14 +123,33 @@
 <div id="at" class="bar"><label><span class="head">Toon om <output id="atOut"></output></span><input id="atTime" type="range" min="0" max="1425" step="15"></label><div class="row"><label>Dag <select id="atDay"><option value="Mon">ma</option><option value="Tue">di</option><option value="Wed">wo</option><option value="Thu">do</option><option value="Fri">vr</option><option value="Sat">za</option><option value="Sun">zo</option></select></label> <label><input type="checkbox" id="atHol"> Feestdag</label></div><div class="hint">Simulatie van de tijdsafhankelijke luchtruimklassen (AIP SUP 03/2022).</div></div>
 <div id="live" class="bar"><label><span class="head">Toon om <output id="liveOut">nu</output></span><input id="liveTime" type="range" min="0" max="0" step="15" value="0"></label></div>
 <div id="note">
+<dl id="links"><dt>Feedback?</dt><dd><a id="contact" href="#">e-mail</a></dd><dt>Nuttig?</dt><dd><a id="donate" href="https://buymeacoffee.com/fuchur777" target="_blank" rel="noopener">✈ Doneer een vliegminuut</a></dd></dl>
+</div></form>
+<!-- disclaimer at page load: Accepteren remembers it until the code date changes, Weigeren goes to LVNL -->
+<dialog id="disclaimer">
 <strong>Let op: alleen voor educatieve doeleinden. Niet geschikt voor vluchtvoorbereiding!</strong>
-<p>Luchtruim © LVNL (CC BY 4.0). Activeringen (FUA) © EUROCONTROL. Vormen België/Luxemburg en Duitsland © openAIP (CC BY-NC 4.0). De AIP Netherlands van LVNL is leidend.</p>
+<p class="credits">Luchtruim © LVNL (CC BY 4.0). Activeringen (FUA) © EUROCONTROL. Vormen België/Luxemburg en Duitsland © openAIP (CC BY-NC 4.0). De AIP Netherlands van LVNL is leidend.</p>
 <b>Laatste update</b>
 <dl id="updates"><dt data-for="luchtruim">Luchtruim LVNL</dt><dd data-for="luchtruim" id="vAirspace">…</dd><dt data-for="luchtruim">Lierlocaties</dt><dd data-for="luchtruim">ENR 5.5, AIRAC AMDT 10-2026 (1-10-2026)</dd><dt data-for="vandaag">NOTAMs</dt><dd data-for="vandaag" id="vNotams">…</dd><dt data-for="vandaag">FUA</dt><dd data-for="vandaag" id="vFua">…</dd><dt>Code</dt><dd id="vCode"></dd></dl>
-<dl id="links"><dt>Uitleg</dt><dd><a href="luchtruim.html" style="color: #d8e0e6">Luchtruim in Nederland uitgelegd</a></dd><dt>Feedback?</dt><dd><a id="contact" href="#">e-mail</a></dd><dt>Nuttig?</dt><dd><a id="donate" href="https://buymeacoffee.com/fuchur777" target="_blank" rel="noopener">✈ Doneer een vliegminuut</a></dd></dl>
-</div></form>
+<div class="buttons"><button type="button" id="decline">Weigeren</button><button type="button" id="accept">Accepteren</button></div>
+</dialog>
 <script src="https://cdn.jsdelivr.net/npm/cesium@1.145.0/Build/Cesium/Cesium.js"></script>
 <script type="module">
+// disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
+const disclaimer = document.getElementById('disclaimer'), codeDate = new Date(document.lastModified).toLocaleDateString('nl-NL');
+let accepted = (() => { try { return localStorage.getItem('vfr3d-disclaimer') === codeDate; } catch {} })();
+document.getElementById('accept').onclick = () => {
+  if (!accepted) window.goatcounter?.count({ path: 'disclaimer-geaccepteerd', title: 'Disclaimer geaccepteerd', event: true });
+  accepted = true;
+  try { localStorage.setItem('vfr3d-disclaimer', codeDate); } catch {}
+  disclaimer.close();
+};
+const decline = () => location.href = 'https://www.lvnl.nl/';
+document.getElementById('decline').onclick = decline;
+// Escape only closes the dialog once it was accepted
+disclaimer.oncancel = e => accepted || (e.preventDefault(), decline());
+document.getElementById('showDisclaimer').onclick = e => { e.preventDefault(); disclaimer.showModal(); };
+if (!accepted) disclaimer.showModal();
 
 const LVNL = 'https://services-eu1.arcgis.com/OtUwzhpKSdeXgRIB/arcgis/rest/services/Airspaces_data/FeatureServer';
 // [layer id or local GeoJSON file, label, colour when unclassified, type shown by default; classes A-D are always on by default]
@@ -160,7 +186,8 @@ if (LAND) {
   document.title = `VFR3D ${LAND.naam} (beta)`;
   document.querySelectorAll('#tabs button:not([data-tab=vandaag]):not([data-tab=kaart])').forEach(b => b.hidden = true);
   document.getElementById('tabs').style.gridTemplateColumns = '1fr 1fr';
-  document.querySelector('#note p').textContent = 'Activeringen (FUA) © EUROCONTROL. Luchtruimvormen © openAIP (CC BY-NC 4.0). NOTAMs: FAA. De AIP van het land is leidend.';
+  document.querySelectorAll('#updates [data-for=luchtruim]').forEach(x => x.hidden = true);
+  for (const p of document.querySelectorAll('.credits')) p.textContent = 'Activeringen (FUA) © EUROCONTROL. Luchtruimvormen © openAIP (CC BY-NC 4.0). NOTAMs: FAA. De AIP van het land is leidend.';
 }
 const CLASS_COLOURS = { A: '#A32D2D', B: '#993C1D', C: '#185FA5', D: '#378ADD', E: '#534AB7', F: '#888780', G: '#3B6D11' };
 
@@ -208,8 +235,6 @@ const showTab = id => {
   document.getElementById('at').hidden = id !== 'luchtruim';
   document.getElementById('live').hidden = id !== 'vandaag';
   tabs.forEach(t => { t.setAttribute('aria-selected', t.dataset.tab === id); document.getElementById(t.dataset.tab).hidden = t.dataset.tab !== id; });
-  // footer: only the update rows of the open tab (plus Code)
-  document.querySelectorAll('#updates [data-for]').forEach(x => x.hidden = x.dataset.for !== id);
 };
 tabs.forEach(t => t.onclick = () => { showTab(t.dataset.tab); refresh(); try { localStorage.setItem('vfr3d-tab', t.dataset.tab); } catch {} });
 // open the tab named in the link (#vandaag), else the tab the visitor last used (also after NOTAMs verversen)
