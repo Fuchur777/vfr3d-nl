@@ -25,7 +25,7 @@ const KINDS = [
   ['Lasershow', /\bLASER/],
   ['Drones/UAS', /\b(UAS|RPAS|UAV|DRONES?)\b/],
   ['Windturbines', /\bWIND ?(TURBINES?|MILLS?|PARK|FARM)\b/],
-  ['Kranen', /\bCRANES?\b/],
+  ['Kranen', /\bCRANES?\b|\bMOBILE (PLATFORM|RIG)S?\b/],
   ['Militair', /\bMIL(ITARY)? (ACFT|AIRCRAFT|EXER|EXERCISES?)\b|\bEXERCISE\b/],
   ['Parachutespringen', /\bPARACHUT|\bPJE\b/],
 ];
