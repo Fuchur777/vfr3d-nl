@@ -1,11 +1,14 @@
 # VFR3D Nederland
 
-> Gratis 3D-webkaart van het Nederlandse luchtruim voor VFR-vliegers: ICAO-luchtruimklassen A–G, CTR, TMA, CTA, ATZ, TMZ, RMZ, danger/restricted/prohibited areas (EHD/EHR/EHP), TRA/TSA, parachutespring-, zweefvlieg- en lierlocaties. Vluchten afspelen uit IGC, GPX, KML en KMZ. Alleen voor educatieve doeleinden, niet geschikt voor vluchtvoorbereiding; de AIP Netherlands van LVNL is leidend.
+> Gratis 3D-webkaart van het Nederlandse luchtruim voor VFR-vliegers: ICAO-luchtruimklassen A–G, CTR, TMA, CTA, ATZ, TMZ, RMZ, danger/restricted/prohibited areas (EHD/EHR/EHP), TRA/TSA, parachutespring-, zweefvlieg- en lierlocaties. Actieve FUA-gebieden en NOTAMs van vandaag. Vluchten afspelen uit IGC, GPX, KML en KMZ. Luchtruim downloaden als CUB-bestand voor LXNAV en SeeYou. Alleen voor educatieve doeleinden, niet geschikt voor vluchtvoorbereiding; de AIP Netherlands van LVNL is leidend.
 
-- [3D-kaart](https://vfr3d.nl/): het luchtruim als 3D-volumes, filteren op klasse, type en flight level, vlucht afspelen met huidig luchtruim
-- [Luchtruim in Nederland uitgelegd](https://vfr3d.nl/luchtruim.html): luchtruimstructuur, ICAO-klassen, CTR/TMA/ATZ/TMZ/RMZ, D/R/P-gebieden, schakelbaar luchtruim (FUA, TRA, TSA, CBA) en een checklist voor vluchtvoorbereiding
+- [3D-kaart](https://vfr3d.nl/): tabbladen Kaart, Luchtruim, Vandaag en Vlucht; het luchtruim als 3D-volumes, filteren op klasse, type en flight level, tijdsafhankelijke TMA-klassen (AIP SUP 03/2022), FUA en NOTAMs van vandaag, vlucht afspelen met huidig luchtruim en de NOTAMs/FUA van de vliegdag, download als .cub
+- [Luchtruim in Nederland uitgelegd](https://vfr3d.nl/luchtruim.html): luchtruimstructuur, ICAO-klassen, CTR/TMA/ATZ/TMZ/RMZ, D/R/P-gebieden, schakelbaar luchtruim (FUA, TRA, TSA, CBA) een checklist voor vluchtvoorbereiding en hoe VFR3D werkt
 
 ## Bronnen
 
 - Luchtruimdata: LVNL (CC BY 4.0)
 - Lierlocaties: AIP Netherlands ENR 5.5
+- NOTAMs: FAA NOTAM-systeem
+- FUA-activeringen: EUROCONTROL (AUP/UUP)
+- Luchtruimvormen België/Luxemburg en Duitsland: openAIP (CC BY-NC 4.0)
