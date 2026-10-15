@@ -45,7 +45,12 @@ export default {
     if (!env.NOTAMS) {
       return Response.json({ fout: 'Geen KV-namespace gekoppeld als NOTAMS.' }, { status: 500, headers: HEADERS });
     }
-    const prefixes = (new URL(request.url).searchParams.get('land') ?? 'EH').toUpperCase().split(',');
+    const url = new URL(request.url);
+    // ?staat shows when each circle was last fetched and why one failed
+    if (url.searchParams.has('staat')) {
+      return Response.json(await env.NOTAMS.get('staat', 'json'), { headers: HEADERS });
+    }
+    const prefixes = (url.searchParams.get('land') ?? 'EH').toUpperCase().split(',');
     const circles = [...new Set(prefixes.flatMap(p => COUNTRIES[p] ?? []))];
     const stored = await Promise.all(circles.map(i => env.NOTAMS.get(`cirkel:${i}`, 'json')));
     // never fetched yet (a fresh deploy): fetch one circle now instead of waiting for the next slot
@@ -87,20 +92,29 @@ async function step(env) {
     state.klaar[due] = now;
     delete state.fout[due];
   } catch (error) {
-    state.fout[due] = String(error);
+    state.fout[due] = `${new Date(now).toISOString()} ${error}`;
   }
   await env.NOTAMS.put('staat', JSON.stringify(state));
 }
 
-async function notams(env, [latitude, longitude]) {
+// one token for all circles while it is valid, so the FAA sees few token requests
+async function token(env) {
+  const kept = await env.NOTAMS.get('token');
+  if (kept) return kept;
   const auth = await fetch(`${API}/v1/auth/token`, {
     method: 'POST', headers: { Authorization: `Basic ${btoa(`${env.NMS_CLIENT_ID}:${env.NMS_CLIENT_SECRET}`)}` },
     body: new URLSearchParams({ grant_type: 'client_credentials' }),
   });
-  const token = auth.ok && (await auth.json()).access_token;
-  if (!token) throw new Error(`Geen NMS-token (${auth.status} ${(await auth.text().catch(() => '')).slice(0, 300)}): controleer NMS_CLIENT_ID en NMS_CLIENT_SECRET.`);
+  const body = auth.ok && await auth.json();
+  if (!body?.access_token) throw new Error(`Geen NMS-token (${auth.status} ${(await auth.text().catch(() => '')).slice(0, 300)}): controleer NMS_CLIENT_ID en NMS_CLIENT_SECRET.`);
+  // KV keeps a key at least 60 s
+  await env.NOTAMS.put('token', body.access_token, { expirationTtl: Math.max(60, (+body.expires_in || 1800) - 120) });
+  return body.access_token;
+}
+
+async function notams(env, [latitude, longitude]) {
   const response = await fetch(`${API}/nmsapi/v1/notams?${new URLSearchParams({ latitude, longitude, radius: 100 })}`, {
-    headers: { Authorization: `Bearer ${token}`, nmsResponseFormat: 'GEOJSON', Accept: 'application/json' },
+    headers: { Authorization: `Bearer ${await token(env)}`, nmsResponseFormat: 'GEOJSON', Accept: 'application/json' },
   });
   if (!response.ok) throw new Error(`NMS-API: ${response.status} ${await response.text()}`);
 
