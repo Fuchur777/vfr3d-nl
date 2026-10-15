@@ -64,7 +64,7 @@
   /* shared time for Luchtruim and Vandaag; Vandaag list */
   #at { flex: none; padding: 8px 14px; border-bottom: 1px solid #2f3b46; }
   #layers #at { white-space: normal; }
-  #at input { display: block; width: 100%; }
+  #at input[type=range], .live input { display: block; width: 100%; }
   #at[hidden] { display: none; }
   #today details details { margin-left: 14px; }
   #today summary { padding: 3px 0; }
@@ -85,10 +85,10 @@
 <button type="button" id="menu" aria-label="Menu" aria-expanded="false">☰</button>
 <form id="layers">
 <div id="tabs" role="tablist"><button type="button" role="tab" data-tab="kaart">Kaart</button><button type="button" role="tab" data-tab="luchtruim">Luchtruim</button><button type="button" role="tab" data-tab="vandaag">Vandaag</button><button type="button" role="tab" data-tab="vlucht">Vlucht</button></div>
-<label id="at">Toon om <output id="atOut">nu</output><input id="atTime" type="range" min="0" max="0" step="15" value="0"></label>
+<div id="at"><label>Toon om <output id="atOut"></output><input id="atTime" type="range" min="0" max="1425" step="15"></label><label>Dag <select id="atDay"><option value="Mon">ma</option><option value="Tue">di</option><option value="Wed">wo</option><option value="Thu">do</option><option value="Fri">vr</option><option value="Sat">za</option><option value="Sun">zo</option></select></label> <label><input type="checkbox" id="atHol"> Feestdag</label><div class="hint">Simulatie van de tijdsafhankelijke luchtruimklassen (AIP SUP 03/2022). NOTAMs en FUA volgen de live tijd op de tab Vandaag.</div></div>
 <section id="kaart" role="tabpanel"><label>Onderlaag <select id="base"><option>Satelliet</option><option>Kaart</option><option selected>ICAO-kaart</option></select></label><div id="tileError" style="color: #ff8787"></div><h3>Hoogte</h3><label>Verticale schaal <output id="scaleOut">5</output>×<br><input id="scale" type="range" min="1" max="10" step="0.5" value="5"></label><label>Verberg luchtruim boven <select id="maxFl"><option value="10">FL 10</option><option value="15">FL 15</option><option value="20">FL 20</option><option value="25">FL 25</option><option value="30">FL 30</option><option value="35">FL 35</option><option value="40">FL 40</option><option value="45">FL 45</option><option value="50">FL 50</option><option value="55">FL 55</option><option value="60">FL 60</option><option value="65">FL 65</option><option value="70">FL 70</option><option value="75">FL 75</option><option value="80">FL 80</option><option value="85">FL 85</option><option value="90">FL 90</option><option value="95" selected>FL 95</option><option value="100">FL 100</option><option value="105">FL 105</option><option value="110">FL 110</option><option value="115">FL 115</option><option value="120">FL 120</option><option value="125">FL 125</option><option value="130">FL 130</option><option value="135">FL 135</option><option value="140">FL 140</option><option value="145">FL 145</option><option value="150">FL 150</option></select></label></section>
 <section id="luchtruim" role="tabpanel"><label><input id="all" type="checkbox"> <b>Alle luchtruimen</b></label><div id="classes"></div><div style="display:flex;gap:6px;flex-wrap:wrap"><button type="button" id="expand">Alles uitklappen</button><button type="button" id="collapse">Alles inklappen</button></div><input id="search" type="search" placeholder="Zoek luchtruim op naam" style="width:100%;box-sizing:border-box"><div id="tree"></div></section>
-<section id="vandaag" role="tabpanel"><div class="hint">FUA-activaties en NOTAMs van vandaag tot 06:00 LT morgen. Klik op een naam om erheen te vliegen.</div><label>Verberg NOTAMs onder <select id="notamFl"><option value="">uit</option><option value="10">FL 10</option><option value="15">FL 15</option><option value="20">FL 20</option><option value="25">FL 25</option><option value="30">FL 30</option><option value="35">FL 35</option><option value="40">FL 40</option><option value="45">FL 45</option><option value="50">FL 50</option><option value="55">FL 55</option><option value="60">FL 60</option><option value="65">FL 65</option><option value="70">FL 70</option><option value="75">FL 75</option><option value="80">FL 80</option><option value="85">FL 85</option><option value="90">FL 90</option><option value="95">FL 95</option><option value="100">FL 100</option><option value="105">FL 105</option><option value="110">FL 110</option><option value="115">FL 115</option><option value="120">FL 120</option><option value="125">FL 125</option><option value="130">FL 130</option><option value="135">FL 135</option><option value="140">FL 140</option><option value="145">FL 145</option><option value="150">FL 150</option></select></label><div id="today"></div><button type="button" id="notamRefresh" title="Haal de NOTAMs opnieuw op bij de FAA">NOTAMs verversen</button></section>
+<section id="vandaag" role="tabpanel"><div class="hint">FUA-activaties en NOTAMs van vandaag tot 06:00 LT morgen. Klik op een naam om erheen te vliegen.</div><label>Verberg NOTAMs onder <select id="notamFl"><option value="">uit</option><option value="10">FL 10</option><option value="15">FL 15</option><option value="20">FL 20</option><option value="25">FL 25</option><option value="30">FL 30</option><option value="35">FL 35</option><option value="40">FL 40</option><option value="45">FL 45</option><option value="50">FL 50</option><option value="55">FL 55</option><option value="60">FL 60</option><option value="65">FL 65</option><option value="70">FL 70</option><option value="75">FL 75</option><option value="80">FL 80</option><option value="85">FL 85</option><option value="90">FL 90</option><option value="95">FL 95</option><option value="100">FL 100</option><option value="105">FL 105</option><option value="110">FL 110</option><option value="115">FL 115</option><option value="120">FL 120</option><option value="125">FL 125</option><option value="130">FL 130</option><option value="135">FL 135</option><option value="140">FL 140</option><option value="145">FL 145</option><option value="150">FL 150</option></select></label><label class="live">Toon om <output id="liveOut">nu</output><input id="liveTime" type="range" min="0" max="0" step="15" value="0"></label><div id="today"></div><button type="button" id="notamRefresh" title="Haal de NOTAMs opnieuw op bij de FAA">NOTAMs verversen</button></section>
 <section id="vlucht" role="tabpanel">
 <label id="drop"><input id="igc" type="file" accept=".igc,.gpx,.kml,.kmz">
   <span class="pick">✈ Kies een vluchtbestand</span>
@@ -175,7 +175,7 @@ const menu = document.getElementById('menu');
 menu.onclick = () => menu.setAttribute('aria-expanded', document.body.classList.toggle('menu-open'));
 // panel tabs; Luchtruim is open at load, unless another tab was open before a reload
 const tabs = document.querySelectorAll('#tabs button');
-const showTab = id => (document.getElementById('at').hidden = !['luchtruim', 'vandaag'].includes(id), tabs).forEach(t => { t.setAttribute('aria-selected', t.dataset.tab === id); document.getElementById(t.dataset.tab).hidden = t.dataset.tab !== id; });
+const showTab = id => (document.getElementById('at').hidden = id !== 'luchtruim', tabs).forEach(t => { t.setAttribute('aria-selected', t.dataset.tab === id); document.getElementById(t.dataset.tab).hidden = t.dataset.tab !== id; });
 tabs.forEach(t => t.onclick = () => { showTab(t.dataset.tab); try { sessionStorage.setItem('vfr3d-tab', t.dataset.tab); } catch {} });
 // keep the open tab over a reload (e.g. NOTAMs verversen)
 showTab((() => { try { return sessionStorage.getItem('vfr3d-tab'); } catch {} })() || 'luchtruim');
@@ -296,12 +296,20 @@ const box = (onchange) => Object.assign(document.createElement('input'), { type:
 const badge = (cls, colour) => Object.assign(document.createElement('span'), { className: 'badge', textContent: cls || '–', style: `background:${colour}` });
 
 // entries with the same label share one type in the tree (e.g. glider areas and glider winch sites)
-// "Toon om": one shared moment for Luchtruim and Vandaag, from now until 06:00 LT tomorrow, in 15-minute steps
+// two times: Luchtruim simulates a day type for the SUP 03/2022 classes (00:00–24:00 LT, weekday, holiday);
+// Vandaag stays live for NOTAMs and FUA, from now until 06:00 LT tomorrow. Both in 15-minute steps
 const amsOffset = d => new Date(d.toLocaleString('en-US', { timeZone: 'Europe/Amsterdam' })) - new Date(d.toLocaleString('en-US', { timeZone: 'UTC' }));
-const now = Date.now(), until = (() => { const lt = new Date(now + amsOffset(new Date(now))); lt.setUTCHours(30, 0, 0, 0); return lt - amsOffset(lt); })();
-const atTime = document.getElementById('atTime'), showAt = () => now + atTime.value * 60000;
-atTime.max = Math.floor((until - now) / 60000);
-atTime.oninput = () => { document.getElementById('atOut').value = +atTime.value ? when(showAt()) : 'nu'; refresh(); };
+const now = Date.now(), ltAt = h => { const lt = new Date(now + amsOffset(new Date(now))); lt.setUTCHours(h, 0, 0, 0); return lt - amsOffset(lt); }, dayStart = ltAt(0), until = ltAt(30);
+const atTime = document.getElementById('atTime'), atDay = document.getElementById('atDay'), atHol = document.getElementById('atHol'), showAt = () => dayStart + atTime.value * 60000;
+atTime.value = Math.floor((now - dayStart) / 900000) * 15;
+atDay.value = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Amsterdam', weekday: 'short' }).format(now);
+const atOut = () => document.getElementById('atOut').value = when(showAt(), false);
+atTime.oninput = () => { atOut(); refresh(); };
+atOut();
+atDay.onchange = atHol.onchange = () => refresh();
+const liveTime = document.getElementById('liveTime'), liveAt = () => now + liveTime.value * 60000;
+liveTime.max = Math.floor((until - now) / 60000);
+liveTime.oninput = () => { document.getElementById('liveOut').value = +liveTime.value ? when(liveAt()) : 'nu'; refresh(); };
 // the Worker caches an hour; ?vernieuw makes it fetch again (at most every 10 min), then reload to show the result
 document.getElementById('notamRefresh').onclick = async () => {
   busy('NOTAMs verversen…');
@@ -310,12 +318,13 @@ document.getElementById('notamRefresh').onclick = async () => {
 };
 // AIP SUP 03/2022: some TMAs change class during the day. W = 18:00–22:00 LT (1700–2100 UTC, summer 1600–2000 UTC).
 // Note 3 (FL065–FL095 of Nieuw Milligen TMA C2 and E): class E from Friday 17:00 to Monday 00:00 LT, except within W.
-// Holidays (HOL) are not included. Each rule gives [class, infobox text] for a moment t and the volume's limits.
+// Holidays (HOL) count as weekend for note 3. Each rule gives [class, infobox text] for a simulated day s ({ weekday, hour, hol }) and the volume's limits.
 const amsAt = t => Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Amsterdam', weekday: 'short', hour: 'numeric', hourCycle: 'h23' }).formatToParts(t).map(x => [x.type, x.value]));
-const inW = t => +amsAt(t).hour >= 18 && +amsAt(t).hour < 22;
-const weekend = t => { const { weekday, hour } = amsAt(t); return weekday === 'Sat' || weekday === 'Sun' || (weekday === 'Fri' && +hour >= 17); };
+const simDay = t => ({ weekday: atDay.value, hour: +amsAt(t).hour, hol: atHol.checked });
+const inW = s => s.hour >= 18 && s.hour < 22;
+const weekend = ({ weekday, hour, hol }) => hol || weekday === 'Sat' || weekday === 'Sun' || (weekday === 'Fri' && hour >= 17);
 const lowerBand = t => inW(t) ? ['D', 'D tot 22:00 LT, daarna E'] : ['E', 'E, klasse D van 18:00 tot 22:00 LT'];
-const upperBand = t => weekend(t) && !inW(t) ? ['E', 'E (vrijdag 17:00 tot maandag 00:00 LT), klasse D van 18:00 tot 22:00 LT'] : ['D', 'D'];
+const upperBand = t => weekend(t) && !inW(t) ? ['E', 'E (vrijdag 17:00 tot maandag 00:00 LT en feestdagen), klasse D van 18:00 tot 22:00 LT'] : ['D', 'D'];
 const SUP = [
   [/LELYSTAD TMA ?[345]\b|NIEUW MILLIGEN TMA ?B\b/, t => lowerBand(t)],
   // two bands: FL065–FL095 follows note 3, FL055–FL065 follows W; a volume spanning both gets the class of its upper band
@@ -323,7 +332,7 @@ const SUP = [
     : p.LowerLimitUnit === 'FL' && p.LowerLimit >= 65 ? upperBand(t)
     : [upperBand(t)[0], `FL065–FL095: ${upperBand(t)[1]}\nFL055–FL065: ${lowerBand(t)[1]}`]],
 ];
-const supRows = (t, text) => `<tr><th>Klasse (AIP SUP 03/2022)</th><td style="white-space: pre-wrap">${text}\nFeestdagen (HOL) niet meegenomen.</td></tr>`
+const supRows = (t, text) => `<tr><th>Klasse (AIP SUP 03/2022)</th><td style="white-space: pre-wrap">${text}</td></tr>`
   + `<tr><th>Radio</th><td>${inW(t) ? 'Lelystad Arrival 134.530' : 'Dutch MIL Info 132.350 (FIS)'}</td></tr>`;
 const byLabel = new Map();
 LAYERS.forEach(([, label, colour, show], i) => {
@@ -439,11 +448,11 @@ const notamFl = document.getElementById('notamFl');
 notamFl.onchange = () => refresh();
 const flOf = p => p.UpperLimitReference === 'SFC' ? 0 : p.UpperLimitUnit === 'FL' ? p.UpperLimit : p.UpperLimit * (p.UpperLimitUnit === 'M' ? 3.28 : 1) / 100;
 function refresh() {
-  const t = showAt();
+  const t = showAt(), live = liveAt();
   // airspace that changes class during the day (AIP SUP 03/2022): class, colour, badge and infobox for moment t
   for (const a of airspaces) if (a.rule) for (const [i, e] of a.entities.entries()) {
-    const [cls, text] = a.rule(t, e.limits);
-    e.description = e.baseDescription.replace('</table>', supRows(t, text) + '</table>');
+    const [cls, text] = a.rule(simDay(t), e.limits);
+    e.description = e.baseDescription.replace('</table>', supRows(simDay(t), text) + '</table>');
     if (e.cls === cls) continue;
     const c = Cesium.Color.fromCssColorString(CLASS_COLOURS[cls]);
     Object.assign(e, { cls, name: e.name.replace(/^\[.\]/, `[${cls}]`) });
@@ -456,7 +465,7 @@ function refresh() {
   for (const a of [...airspaces, ...today]) {
     a.box.checked = a.on;
     for (const e of a.entities) e.show = a.on && metres(e.limits.LowerLimit, e.limits.LowerLimitUnit, e.limits.LowerLimitReference) <= metres(maxFl.value, 'FL')
-      && (!e.windows || e.windows.some(([s, u]) => s <= t && t < u))
+      && (!e.windows || e.windows.some(([s, u]) => s <= live && live < u))
       && !(e.limits.Type === 'NOTAM' && notamFl.value && flOf(e.limits) < +notamFl.value);
   }
   for (const a of today) [a.status.className, a.status.textContent] = ['status ' + status(a)[0], status(a)[1]];
