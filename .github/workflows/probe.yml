@@ -1,0 +1,12 @@
+name: probe
+on: { push: { branches: [claude/project-thread-0au64z] } }
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          for l in EB,EL ED; do
+            echo "== FUA $l"; curl -s "https://vfr3d-fua.frank-e97.workers.dev/?land=$l" | jq -r '.fout, (.gebieden[].naam)' | sort -u | tr '\n' ' '; echo
+            echo "== gebieden $l"; curl -s "https://vfr3d-fua.frank-e97.workers.dev/gebieden?land=$l" | jq -r '.fout, (.features | length), (.features[] | "\(.properties.Type)|\(.properties.Designator)|\(.properties.Name)|\(.geometry.type)")' | sort -u | tr '\n' ';'; echo
+            echo "== notams $l"; curl -s "https://vfr3d-notams.frank-e97.workers.dev/?land=$l" | jq -c '{fout, opgehaald, n: (.features|length)}'
+          done
