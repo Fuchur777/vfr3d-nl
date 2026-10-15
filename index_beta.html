@@ -816,7 +816,10 @@ igcInput.onchange = async ({ target }) => {
     const color = Cesium.Color.fromCssColorString(ds.name === 'FUA' ? '#15aabf' : '#e8590c');
     for (const e of [...ds.entities.values]) {
       const p = e.limits = e.properties.getValue();
-      if (!e.polygon || NOTAMS_OFF.includes(p.Soort)) { ds.entities.remove(e); continue; }
+      if (!e.polygon) { ds.entities.remove(e); continue; }
+      // on/off follows the Vandaag choices: the same NOTAM or area, else its kind
+      e.soort = ds.name === 'FUA' ? 'FUA' : p.Soort ?? 'Overige activiteit';
+      e.key = `${ds.name === 'FUA' ? 'Vandaag actief (FUA)' : 'NOTAMs'}|${p.Designator}|${p.Name}`;
       e.windows = p.Vensters ?? [[Date.parse(p.Van), p.Tot === 'PERM' ? Infinity : Date.parse(p.Tot)]];
       e.name = [p.Designator, p.Name].filter(Boolean).join(' ');
       e.description = describe(p);
@@ -871,10 +874,17 @@ const containing = (pt, alt) => [...airspaces, ...today].filter(a => a.entities.
 
 // only touch the DOM when the text changes; rewriting it every frame swallows clicks
 const setText = (el, text) => { if (el.textContent !== text) el.textContent = text; };
-// flight-day NOTAMs and FUA: only on the Vlucht tab, when active at the flight clock's moment, below the FL filter, NOTAMs above the NOTAM FL filter
+// the loaded flight and the flight day's NOTAMs and FUA show only on the Vlucht tab (with the airspace selected on Luchtruim).
+// NOTAMs and FUA: active at the flight clock's moment, on as chosen on Vandaag, below the FL filter, above the NOTAM FL filter
 function showFlightDay() {
+  const v = openTab === 'vlucht';
+  if (viewer.entities.show !== v) viewer.entities.show = v;
+  if (!v && viewer.trackedEntity) { viewer.trackedEntity = undefined; viewer.clockViewModel.shouldAnimate = false; }
+  if (!flightDay.length) return;
   const t = Cesium.JulianDate.toDate(viewer.clock.currentTime).getTime(), top = metres(maxFl.value, 'FL');
-  for (const ds of flightDay) for (const e of ds.entities.values) e.show = openTab === 'vlucht' && e.windows.some(([s, u]) => s <= t && t < u)
+  const nl = today.filter(a => !a.land), byKey = new Map(nl.map(a => [a.key, a.on]));
+  const kindOn = k => nl.some(a => a.soort === k) ? nl.some(a => a.soort === k && a.on) : !NOTAMS_OFF.includes(k);
+  for (const ds of flightDay) for (const e of ds.entities.values) e.show = v && (byKey.get(e.key) ?? kindOn(e.soort)) && e.windows.some(([s, u]) => s <= t && t < u)
     && metres(e.limits.LowerLimit, e.limits.LowerLimitUnit, e.limits.LowerLimitReference) <= top
     && !(e.limits.Type === 'NOTAM' && notamFl.value && flOf(e.limits) < +notamFl.value);
 }
