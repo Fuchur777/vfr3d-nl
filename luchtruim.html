@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Luchtruim Nederland uitgelegd: ICAO-klassen, CTR, TMA en vluchtvoorbereiding | VFR3D</title>
+<title>Luchtruim Nederland uitgelegd: ICAO-klassen, CTR, TMA, vluchtvoorbereiding en hoe VFR3D werkt | VFR3D</title>
 <meta name="description" content="Uitleg van de Nederlandse luchtruimstructuur voor VFR-vliegers: ICAO-luchtruimklassen A tot en met G, CTR, TMA, CTA, ATZ, TMZ, RMZ, D/R/P-gebieden, schakelbaar militair luchtruim (TRA, TSA, CBA) en vluchtvoorbereiding.">
 <link rel="canonical" href="https://vfr3d.nl/luchtruim.html">
 <meta property="og:title" content="Luchtruim Nederland uitgelegd | VFR3D">
@@ -59,6 +59,12 @@
           "acceptedAnswer": { "@type": "Answer", "text": "In een TMZ (transponder mandatory zone) is een werkende transponder verplicht. In een RMZ (radio mandatory zone) is radiocontact verplicht: je meldt je op de gepubliceerde frequentie en luistert uit." } },
         { "@type": "Question", "name": "Wat zijn D-, R- en P-gebieden?",
           "acceptedAnswer": { "@type": "Answer", "text": "Danger areas (D) zijn gebieden met gevaarlijke activiteiten, zoals schietoefeningen. Restricted areas (R) zijn alleen onder voorwaarden toegankelijk. Prohibited areas (P) zijn verboden gebied. In Nederland heten ze EHD, EHR en EHP gevolgd door een nummer." } },
+        { "@type": "Question", "name": "Hoe speel ik mijn vlucht af in VFR3D?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Open het tabblad Vlucht en laad een IGC-, GPX-, KML- of KMZ-bestand. Je ziet het hele spoor in 3D en kunt de vlucht afspelen, volgen of vanuit de cockpit bekijken. VFR3D toont op elk moment in welk luchtruim je vloog en rekent de drukhoogte om met de QNH van die dag." } },
+        { "@type": "Question", "name": "Wat zit er in de CUB-download van VFR3D?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Op het tabblad Luchtruim download je al het aangevinkte luchtruim, afgesneden op het FL-filter, met type en ICAO-klasse. Op het tabblad Vandaag download je de aangevinkte FUA-gebieden en NOTAMs van de hele dag, met de actieve tijden in Nederlandse tijd in de naam. Het CUB-formaat is van Naviter SeeYou en wordt ook door LXNAV-instrumenten gelezen." } },
+        { "@type": "Question", "name": "Waar komen de NOTAMs en FUA-activeringen in VFR3D vandaan?",
+          "acceptedAnswer": { "@type": "Answer", "text": "De NOTAMs komen uit het NOTAM-systeem van de FAA en worden drie keer per dag opgehaald. De activeringen van TRA, TSA en andere schakelbare gebieden komen uit het Airspace Use Plan (AUP/UUP) van Eurocontrol en worden elke twee uur opgehaald. Controleer ze altijd in de officiële bronnen." } },
         { "@type": "Question", "name": "Is VFR3D geschikt voor vluchtvoorbereiding?",
           "acceptedAnswer": { "@type": "Answer", "text": "Nee. VFR3D is alleen bedoeld als educatief hulpmiddel. Gebruik voor vluchtvoorbereiding altijd de actuele AIP Netherlands van LVNL, de NOTAMs, het weer en de actuele activering van militair luchtruim." } }
       ]
@@ -142,9 +148,36 @@
 <li><strong>Vliegplan</strong>: controleer in de AIP of voor jouw vlucht een vliegplan verplicht is, bijvoorbeeld bij het overschrijden van de landsgrens.</li>
 </ol>
 
-<h2>Wat laat VFR3D zien?</h2>
-<p><a href="/">VFR3D Nederland</a> toont het Nederlandse luchtruim als 3D-volumes op een kaart, zodat je ziet hoe CTR's, TMA's en andere gebieden boven en naast elkaar liggen. Je kunt luchtruim per klasse en type aan- en uitzetten, filteren op flight level, en je eigen vlucht afspelen vanuit een IGC-, GPX-, KML- of KMZ-bestand. Tijdens het afspelen zie je in welk luchtruim je op elk moment vloog.</p>
-<p>De luchtruimgegevens komen van LVNL (CC BY 4.0), de lierlocaties uit AIP ENR 5.5.</p>
+<h2>Hoe werkt VFR3D?</h2>
+<p><a href="/">VFR3D Nederland</a> toont het Nederlandse luchtruim als 3D-volumes op een kaart, zodat je ziet hoe CTR's, TMA's en andere gebieden boven en naast elkaar liggen. De app draait helemaal in je browser; er is niets te installeren en er is geen account nodig. Je keuzes (welk luchtruim aan staat en op welk tabblad je was) worden in je browser onthouden. Onderdelen met <em>(nu in beta)</em> zitten in de testversie en komen later in de gewone app.</p>
+<p>Het linkerpaneel heeft deze tabbladen:</p>
+<dl>
+<dt>Kaart</dt>
+<dd>Kies de ondergrond: de ICAO-kaart 1:500.000 van LVNL (standaard), satellietbeelden of OpenStreetMap. Met de schuif <strong>verticale schaal</strong> maak je de hoogtes overdreven groter, zodat dunne lagen beter zichtbaar zijn. Met de knop <strong>2D</strong> kijk je recht van boven; de gekozen ondergrond blijft staan <em>(nu in beta)</em>.</dd>
+<dt>Luchtruim</dt>
+<dd>Alle luchtruim uit de LVNL-gegevens, in een boom per type: CTR, TMA, CTA, ATZ, TMZ/RTMZ, RMZ, TRA, TSA, Parachutespringen, Zweefvliegen (gebieden en lierlocaties), Paragliden (lierlocaties) en D-, R- en P-gebieden. Je zet elk gebied, een heel type of een hele klasse (knoppen A tot en met G) aan en uit, en zoekt op naam. Standaard staan de klassen A tot en met D en de D-, R- en P-gebieden aan. Het <strong>FL-filter</strong> verbergt luchtruim dat boven het gekozen flight level begint en snijdt hogere gebieden daar af. Klik op een volume voor de grenzen en details; met <strong>Uitzetten</strong> in dat venster zet je het meteen uit <em>(nu in beta)</em>.<br>
+Met de <strong>tijdschuif</strong> kies je een tijdstip, een dag van de week en eventueel een feestdag. Zo zie je hoe TMA's die volgens AIP SUP 03/2022 van klasse wisselen (bijvoorbeeld rond Lelystad) op dat moment zijn ingedeeld <em>(nu in beta)</em>.</dd>
+<dt>Vandaag <em>(nu in beta)</em></dt>
+<dd>Wat er vandaag tot 06:00 uur morgenochtend speelt: actieve <strong>FUA-gebieden</strong> (TRA, TSA, D en R volgens het Eurocontrol-AUP/UUP) en <strong>NOTAMs</strong>, gegroepeerd per soort, zoals TRA/TSA, parachutespringen, evenementen, obstakels en lasershows. Soorten die voor de meeste VFR-vliegers minder belangrijk zijn (drones, windturbines, kranen, militair, lasershows en obstakelverlichting) staan standaard uit. Met de schuif kies je het tijdstip; de kaart toont alleen wat dan actief is. België/Luxemburg en Duitsland staan er los bij en zijn standaard uit. Alle tijden staan in Nederlandse tijd (LT) met UTC (Z) erachter.</dd>
+<dt>Vlucht</dt>
+<dd>Laad een <strong>IGC-, GPX-, KML- of KMZ-bestand</strong> van je vlucht. Je ziet het hele spoor, met een schaduw op de grond en een loodlijn vanaf het vliegtuig. Speel de vlucht af (1 tot 60 keer zo snel, ±1 minuut), volg het vliegtuig of kijk vanuit de cockpit. Onder <strong>Huidig luchtruim</strong> staat in welk luchtruim je op dat moment vloog.<br>
+De app haalt de <strong>QNH</strong> van de vliegdag op bij Open-Meteo en rekent daarmee de IGC-drukhoogte en de FL-grenzen om; je kunt de QNH zelf aanpassen. Wijzen de hoogtes in het IGC-bestand op een andere QNH, dan krijg je een waarschuwing. Bij GPX en KML wordt de GPS-hoogte gebruikt, zonder QNH-correctie.<br>
+Op dit tabblad zie je het luchtruim zoals je het bij Luchtruim hebt gekozen, samen met de NOTAMs en FUA-activeringen van de vliegdag, voor zover die bewaard zijn (vanaf 15 oktober 2026). Ze verschijnen op het moment van de vluchtklok, met dezelfde aan/uit-keuzes als bij Vandaag <em>(nu in beta)</em>.</dd>
+</dl>
+
+<h3>Download als .cub (LXNAV en SeeYou) <em>(nu in beta)</em></h3>
+<p>Je kunt de selectie downloaden als <strong>CUB-bestand</strong>, het luchtruimformaat van Naviter SeeYou dat ook LXNAV-instrumenten inlezen. Er zijn twee knoppen:</p>
+<ul>
+<li><strong>Luchtruim</strong>: al het luchtruim dat je hebt aangevinkt, afgesneden op het FL-filter zoals op de kaart. Elk gebied krijgt zijn type (CTR, TMA, ATZ, TMZ, RMZ, TRA, TSA, D/R/P, zweefvliegen, parachutespringen) en zijn ICAO-klasse mee. Bestandsnaam <code>vfr3d-luchtruim-JJJJ-MM-DD.cub</code>.</li>
+<li><strong>Vandaag</strong>: de aangevinkte FUA-gebieden en NOTAMs van de hele dag, ook als ze op dit moment nog niet of niet meer actief zijn. De actieve tijden in Nederlandse tijd staan in de naam (bijvoorbeeld <code>EHTRA10A 09:00-13:00 LT</code>); de NOTAM-tekst en alle tijden staan in de opmerkingen. Bestandsnaam <code>vfr3d-vandaag-JJJJ-MM-DD.cub</code>.</li>
+</ul>
+<p>Het CUB-bestand is nog niet op elk instrument getest. Controleer na het laden of de gebieden goed staan, en gebruik het nooit in plaats van de officiële bronnen.</p>
+
+<h3>Links naar een tabblad</h3>
+<p>Met <code>#kaart</code>, <code>#luchtruim</code>, <code>#vandaag</code> of <code>#vlucht</code> achter het adres open je direct dat tabblad, bijvoorbeeld <a href="/#vlucht">vfr3d.nl/#vlucht</a> <em>(nu in beta)</em>.</p>
+
+<h3>Bronnen</h3>
+<p>Luchtruim: LVNL (CC BY 4.0). Lierlocaties: AIP ENR 5.5. Klassewisselingen van TMA's: AIP SUP 03/2022. NOTAMs: FAA NOTAM-systeem, drie keer per dag opgehaald (06:00, 18:00 en 22:00 LT). FUA-activeringen: © EUROCONTROL (AUP/UUP), elke twee uur opgehaald. Vormen van gebieden in België, Luxemburg en Duitsland: © openAIP (CC BY-NC 4.0). QNH: Open-Meteo. De AIP Netherlands van LVNL is altijd leidend.</p>
 <a class="cta" href="/">Open de 3D-kaart →</a>
 
 </main>
