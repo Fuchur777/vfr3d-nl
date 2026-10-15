@@ -17,24 +17,26 @@ export default {
     if (url.searchParams.has('debug')) {
       return (await cache.match(rawKey)) ?? new Response('Nog niets gelezen', { status: 404, headers: HEADERS });
     }
+    // the cache holds every country; ?land=EB,EL picks ICAO prefixes, the Netherlands (EH) by default
+    const countries = (url.searchParams.get('land') ?? 'EH').toUpperCase().split(',');
+    const only = all => Response.json({ ...all, gebieden: all.gebieden.filter(g => countries.some(c => g.naam.startsWith(c))) }, { headers: HEADERS });
     const cached = await cache.match(key);
     if (Date.now() - Date.parse(cached?.headers.get('Date')) < MAX_AGE) {
-      return cached;
+      return only(await cached.json());
     }
     let read;
     try {
       read = await scrape(env);
     } catch (error) {
       // a broken portal visit keeps the last good answer
-      return cached ?? Response.json({ fout: String(error) }, { status: 502, headers: HEADERS });
+      return cached ? only({ ...await cached.json(), fout: String(error) }) : Response.json({ fout: String(error) }, { status: 502, headers: HEADERS });
     }
-    const date = new Date().toUTCString();
-    const response = Response.json(parse(read), { headers: { ...HEADERS, Date: date } });
+    const date = new Date().toUTCString(), all = parse(read);
     ctx.waitUntil(Promise.all([
-      cache.put(key, response.clone()),
+      cache.put(key, Response.json(all, { headers: { ...HEADERS, Date: date } })),
       cache.put(rawKey, new Response(`${read.header}\n\n${read.table}`, { headers: { ...HEADERS, 'Content-Type': 'text/plain; charset=utf-8', Date: date } })),
     ]));
-    return response;
+    return only(all);
   },
 };
 
@@ -74,8 +76,8 @@ function parse({ header, table }) {
   for (const line of table.split('\n')) {
     const m = line.match(/(\d{3})\s+(\d{3})\s+(\d\d:\d\d)\s+(\d\d:\d\d)/);
     const name = line.trim().split(/\s+/)[0];
-    // only Dutch areas (EH..), not foreign ones that reach into the Amsterdam FIR
-    if (!m || !/^EH/.test(name)) {
+    // every country's areas; the name starts with its ICAO prefix (EH, EB, ED, ..)
+    if (!m || !/^[A-Z]{2}[A-Z0-9]/.test(name)) {
       continue;
     }
     const from = at(m[3]);
