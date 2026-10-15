@@ -5,9 +5,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          for l in EB,EL ED; do
-            echo "== FUA $l"; curl -s "https://vfr3d-fua.frank-e97.workers.dev/?land=$l" | jq -c '{fout, type, opgehaald, n: (.gebieden|length)}'
-            echo "== gebieden $l"; curl -si "https://vfr3d-fua.frank-e97.workers.dev/gebieden?land=$l" | head -12
-            curl -s "https://vfr3d-fua.frank-e97.workers.dev/gebieden?land=$l" | jq -r '.features[].properties.Designator' | head -30 | tr '\n' ' '; echo
-          done
-          curl -s https://vfr3d.nl/index_beta.html | grep -n -E "gebieden|fuaKey|const LAND" | head
+          for l in EH EB,EL ED; do echo "== notams $l"; curl -s "https://vfr3d-notams.frank-e97.workers.dev/?land=$l" | jq -c '{fout, opgehaald, n: (.features|length), soorten: ([.features[].properties.Soort] | group_by(.) | map("\(.[0]):\(length)"))}'; done
