@@ -7,3 +7,4 @@ jobs:
       - run: |
           for l in EH EB,EL ED; do echo "== notams $l"; curl -s "https://vfr3d-notams.frank-e97.workers.dev/?land=$l" | jq -c '{fout, opgehaald, n: (.features|length), soorten: ([.features[].properties.Soort] | group_by(.) | map("\(.[0]):\(length)"))}'; done
 # 14:11
+# 14:40
