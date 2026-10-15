@@ -173,11 +173,12 @@ viewer.navigationHelpButton.viewModel.tooltip = 'Navigatie-uitleg';
 // hamburger on phones
 const menu = document.getElementById('menu');
 menu.onclick = () => menu.setAttribute('aria-expanded', document.body.classList.toggle('menu-open'));
-// panel tabs; Luchtruim is open at load
+// panel tabs; Luchtruim is open at load, unless another tab was open before a reload
 const tabs = document.querySelectorAll('#tabs button');
 const showTab = id => (document.getElementById('at').hidden = !['luchtruim', 'vandaag'].includes(id), tabs).forEach(t => { t.setAttribute('aria-selected', t.dataset.tab === id); document.getElementById(t.dataset.tab).hidden = t.dataset.tab !== id; });
-tabs.forEach(t => t.onclick = () => showTab(t.dataset.tab));
-showTab('luchtruim');
+tabs.forEach(t => t.onclick = () => { showTab(t.dataset.tab); try { sessionStorage.setItem('vfr3d-tab', t.dataset.tab); } catch {} });
+// keep the open tab over a reload (e.g. NOTAMs verversen)
+showTab((() => { try { return sessionStorage.getItem('vfr3d-tab'); } catch {} })() || 'luchtruim');
 // click and double-click pick the nearest visible entity, skipping airspace hidden by the selection or FL filter
 const pickVisible = pos => viewer.scene.drillPick(pos, 10).map(p => p.id).find(e => e instanceof Cesium.Entity && e.isShowing);
 viewer.screenSpaceEventHandler.setInputAction(c => viewer.selectedEntity = pickVisible(c.position), Cesium.ScreenSpaceEventType.LEFT_CLICK);
