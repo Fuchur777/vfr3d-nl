@@ -182,14 +182,16 @@ const menu = document.getElementById('menu');
 menu.onclick = () => menu.setAttribute('aria-expanded', document.body.classList.toggle('menu-open'));
 // panel tabs; Luchtruim is open at load, unless another tab was open before a reload
 const tabs = document.querySelectorAll('#tabs button');
+let openTab;
 const showTab = id => {
+  openTab = id;
   document.getElementById('at').hidden = id !== 'luchtruim';
   document.getElementById('live').hidden = id !== 'vandaag';
   tabs.forEach(t => { t.setAttribute('aria-selected', t.dataset.tab === id); document.getElementById(t.dataset.tab).hidden = t.dataset.tab !== id; });
   // footer: only the update rows of the open tab (plus Code)
   document.querySelectorAll('#updates [data-for]').forEach(x => x.hidden = x.dataset.for !== id);
 };
-tabs.forEach(t => t.onclick = () => { showTab(t.dataset.tab); try { localStorage.setItem('vfr3d-tab', t.dataset.tab); } catch {} });
+tabs.forEach(t => t.onclick = () => { showTab(t.dataset.tab); refresh(); try { localStorage.setItem('vfr3d-tab', t.dataset.tab); } catch {} });
 // reopen the tab the visitor last used (also after NOTAMs verversen)
 showTab((() => { try { return localStorage.getItem('vfr3d-tab'); } catch {} })() || 'luchtruim');
 // click and double-click pick the nearest visible entity, skipping airspace hidden by the selection or FL filter
@@ -535,9 +537,10 @@ function refresh() {
     if (i === 0 && cls !== a.cls) a.on = airspaces.some(b => !b.rule && b.cls === cls && b.on);
     if (i === 0) { Object.assign(a, { cls, colour: CLASS_COLOURS[cls] }); Object.assign(a.badge, { textContent: cls }); a.badge.style.background = a.colour; }
   }
+  // the map follows the tab: Vandaag draws only NOTAMs and FUA, the other tabs only airspace; each keeps its own selection
   for (const a of [...airspaces, ...today]) {
     a.box.checked = a.on;
-    for (const e of a.entities) e.show = a.on && metres(e.limits.LowerLimit, e.limits.LowerLimitUnit, e.limits.LowerLimitReference) <= metres(maxFl.value, 'FL')
+    for (const e of a.entities) e.show = a.on && today.includes(a) === (openTab === 'vandaag') && metres(e.limits.LowerLimit, e.limits.LowerLimitUnit, e.limits.LowerLimitReference) <= metres(maxFl.value, 'FL')
       && (!e.windows || e.windows.some(([s, u]) => s <= live && live < u))
       && !(e.limits.Type === 'NOTAM' && notamFl.value && flOf(e.limits) < +notamFl.value);
   }
