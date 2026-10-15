@@ -1,0 +1,22 @@
+name: AIRAC-check
+# Every 28 days (AIRAC cycle, counted from 2026-10-01) open an issue with what changed
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+  issues: write
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Is today an AIRAC date?
+        id: airac
+        run: echo "today=$(( ($(date -u +%s) / 86400 - $(date -u -d 2026-10-01 +%s) / 86400) % 28 == 0 ))" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v5
+        if: steps.airac.outputs.today == '1' || github.event_name == 'workflow_dispatch'
+      - if: steps.airac.outputs.today == '1' || github.event_name == 'workflow_dispatch'
+        run: node .github/airac-check.mjs > body.md && gh issue create --title "AIRAC $(date -u +%d-%m-%Y): AIP nakijken" --body-file body.md
+        env:
+          GH_TOKEN: ${{ github.token }}
