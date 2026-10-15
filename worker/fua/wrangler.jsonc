@@ -1,6 +1,6 @@
 {
   "name": "vfr3d-fua",
-  "main": "worker/fua/index.js",
+  "main": "index.js",
   "compatibility_date": "2026-10-01",
   "compatibility_flags": ["nodejs_compat"],
   "browser": { "binding": "BROWSER" }
