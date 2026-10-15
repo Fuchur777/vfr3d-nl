@@ -42,8 +42,9 @@ export default {
     try {
       collection = await notams(env);
     } catch (error) {
-      // when the FAA fails, keep showing the last good NOTAMs (kept for a day)
-      return cached ?? Response.json({ fout: String(error) }, { status: 502, headers: { 'Access-Control-Allow-Origin': '*' } });
+      // when the FAA fails, keep showing the last good NOTAMs (kept for a day), with the error added
+      const last = cached ? await cached.json() : {};
+      return Response.json({ ...last, fout: String(error) }, { status: cached ? 200 : 502, headers: { 'Access-Control-Allow-Origin': '*' } });
     }
     // s-maxage only applies to Cloudflare's cache, so browsers always ask the Worker
     const response = new Response(JSON.stringify(collection), { headers: {
