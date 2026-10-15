@@ -20,33 +20,42 @@ const CATEGORIES = [
 export default {
   async fetch(request, env, ctx) {
     const cache = caches.default, key = new Request(new URL('/notams.geojson', request.url));
-    let response = await cache.match(key);
-    const age = Date.now() - Date.parse(response?.headers.get('Date'));
-    if (!(age < (new URL(request.url).searchParams.has('vernieuw') ? MIN_AGE : MAX_AGE))) {
-      // s-maxage only applies to Cloudflare's cache, so browsers always ask the Worker
-      response = new Response(JSON.stringify(await notams(env)), { headers: {
-        'Content-Type': 'application/geo+json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, s-maxage=3600',
-        Date: new Date().toUTCString(),
-      } });
-      ctx.waitUntil(cache.put(key, response.clone()));
+    const cached = await cache.match(key);
+    const age = Date.now() - Date.parse(cached?.headers.get('Date'));
+    if (age < (new URL(request.url).searchParams.has('vernieuw') ? MIN_AGE : MAX_AGE)) {
+      return cached;
     }
+    let collection;
+    try {
+      collection = await notams(env);
+    } catch (error) {
+      // when the FAA fails, keep showing the last good NOTAMs (kept for a day)
+      return cached ?? Response.json({ fout: String(error) }, { status: 502, headers: { 'Access-Control-Allow-Origin': '*' } });
+    }
+    // s-maxage only applies to Cloudflare's cache, so browsers always ask the Worker
+    const response = new Response(JSON.stringify(collection), { headers: {
+      'Content-Type': 'application/geo+json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, s-maxage=86400',
+      Date: new Date().toUTCString(),
+    } });
+    ctx.waitUntil(cache.put(key, response.clone()));
     return response;
   },
 };
 
 async function notams(env) {
-  const token = (await (await fetch(`${API}/v1/auth/token`, {
+  const auth = await fetch(`${API}/v1/auth/token`, {
     method: 'POST', headers: { Authorization: `Basic ${btoa(`${env.NMS_CLIENT_ID}:${env.NMS_CLIENT_SECRET}`)}` },
     body: new URLSearchParams({ grant_type: 'client_credentials' }),
-  })).json()).access_token;
-  if (!token) throw new Error('Geen NMS-token: controleer NMS_CLIENT_ID en NMS_CLIENT_SECRET.');
+  });
+  const token = auth.ok && (await auth.json()).access_token;
+  if (!token) throw new Error(`Geen NMS-token (${auth.status} ${(await auth.text().catch(() => '')).slice(0, 300)}): controleer NMS_CLIENT_ID en NMS_CLIENT_SECRET.`);
   const response = await fetch(`${API}/nmsapi/v1/notams?${new URLSearchParams(CENTRE)}`, {
     headers: { Authorization: `Bearer ${token}`, nmsResponseFormat: 'GEOJSON', Accept: 'application/json' },
   });
   if (!response.ok) throw new Error(`NMS-API: ${response.status} ${await response.text()}`);
 
   const now = Date.now(), day = now + 24 * 3600e3, features = [];
-  for (const f of (await response.json()).data.geojson) {
+  for (const f of (await response.json()).data?.geojson ?? []) {
     const n = f.properties?.coreNOTAMData?.notam;
     const category = CATEGORIES.find(([, codes]) => codes.some(c => n?.selectionCode?.startsWith(c)))?.[0];
     const start = Date.parse(n?.effectiveStart), end = Date.parse(n?.effectiveEnd);
