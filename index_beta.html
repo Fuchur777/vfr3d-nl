@@ -172,6 +172,8 @@ const viewer = new Cesium.Viewer('map', {
   baseLayer: new Cesium.ImageryLayer(new Cesium.OpenStreetMapImageryProvider({ url: 'https://tile.openstreetmap.org/' })),
   baseLayerPicker: false, geocoder: false, animation: false, timeline: false,
   sceneModePicker: false,
+  // 2D in Web Mercator, like web maps: the default plate carrée stretches east-west about 1.6× at 52°N
+  mapProjection: new Cesium.WebMercatorProjection(),
 });
 // Safari on macOS 27 fails to link Cesium's atmosphere and fog shaders (black canvas, CesiumJS issue #13650)
 if (isSafari) {
@@ -238,19 +240,23 @@ for (const [name, layer] of [['Kaart', viewer.imageryLayers.get(0)], ['Satelliet
 const base = document.getElementById('base');
 // hidden layers request no tiles, so satellite does not also load the map underneath
 const osm = viewer.imageryLayers.get(0);
-if (LAND) base.selectedIndex = 1; // the ICAO chart covers only the Netherlands
+// country pages: satellite only (the ICAO chart covers only the Netherlands)
+if (LAND) [...base.options].slice(1).forEach(o => o.remove());
 (base.onchange = () => { esri.show = base.selectedIndex === 0; osm.show = !esri.show; icao.show = base.selectedIndex === 2; })();
 
-// 2D/3D button in Cesium's toolbar: 2D is a top-down view over OpenStreetMap; back in 3D the previous base layer returns
-const flat = Object.assign(document.createElement('button'), { type: 'button', className: 'cesium-button cesium-toolbar-button', textContent: '2D', title: 'Bekijk in 2D boven OpenStreetMap' });
+// 2D/3D button in Cesium's toolbar: 2D is a top-down view over OpenStreetMap (country pages keep satellite);
+// back in 3D the previous base layer returns
+const flat = Object.assign(document.createElement('button'), { type: 'button', className: 'cesium-button cesium-toolbar-button', textContent: '2D', title: 'Bekijk in 2D' });
 let base3d;
 flat.onclick = () => {
   const to2d = viewer.scene.mode === Cesium.SceneMode.SCENE3D;
-  if (to2d) base3d = base.selectedIndex;
-  base.selectedIndex = to2d ? 1 : base3d;
-  base.onchange();
+  if (!LAND) {
+    if (to2d) base3d = base.selectedIndex;
+    base.selectedIndex = to2d ? 1 : base3d;
+    base.onchange();
+  }
   to2d ? viewer.scene.morphTo2D(0.5) : viewer.scene.morphTo3D(0.5);
-  Object.assign(flat, { textContent: to2d ? '3D' : '2D', title: to2d ? 'Terug naar 3D' : 'Bekijk in 2D boven OpenStreetMap' });
+  Object.assign(flat, { textContent: to2d ? '3D' : '2D', title: to2d ? 'Terug naar 3D' : 'Bekijk in 2D' });
 };
 viewer.container.querySelector('.cesium-viewer-toolbar').prepend(flat);
 // after the morph: the Netherlands from above in 2D, the start view in 3D
