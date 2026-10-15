@@ -201,6 +201,8 @@ menu.onclick = () => menu.setAttribute('aria-expanded', document.body.classList.
 // panel tabs; Luchtruim is open at load, unless another tab was open before a reload
 const tabs = document.querySelectorAll('#tabs button');
 let openTab;
+// Vlucht tab: NOTAMs and FUA of the flight day from the Workers' day archive, timed by the flight clock
+let flightDay = [];
 const showTab = id => {
   openTab = id;
   history.replaceState(null, '', `#${id}`);
@@ -479,6 +481,9 @@ const SUP = [
 ];
 const supRows = (t, text) => `<tr><th>Klasse (AIP SUP 03/2022)</th><td style="white-space: pre-wrap">${text}</td></tr>`
   + `<tr><th>Radio</th><td>${inW(t) ? 'Lelystad Arrival 134.530' : 'Dutch MIL Info 132.350 (FIS)'}</td></tr>`;
+// infobox: only the fields a pilot needs, in this order
+const describe = p => '<table class="cesium-infoBox-defaultTable">' + ['UpperLimit', 'LowerLimit', 'LowerLimitUnit', 'Type', 'Class', 'Designator', 'UpperLimitUnit', 'UpperLimitReference', 'LowerLimitReference', 'Actief', 'Van', 'Tot', 'Schema', 'Tekst']
+  .filter(k => p[k] != null && p[k] !== '').map(k => `<tr><th>${k}</th><td${k === 'Tekst' || k === 'Actief' ? ' style="white-space: pre-wrap; word-break: break-word"' : ''}>${String(k === 'Van' || k === 'Tot' ? when(p[k]) : p[k]).replace(/&/g, '&amp;').replace(/</g, '&lt;')}</td></tr>`).join('') + '</table>';
 const byLabel = new Map();
 LAYERS.forEach(([, label, colour, show], i) => {
   const source = sources[i];
@@ -500,9 +505,7 @@ LAYERS.forEach(([, label, colour, show], i) => {
     const color = Cesium.Color.fromCssColorString(CLASS_COLOURS[cls] ?? colour);
     e.name = `${cls ? `[${cls}] ` : ''}${[p.Designator, p.Name].filter(Boolean).join(' ')}`;
     e.limits = p;
-    // infobox: only the fields a pilot needs, in this order
-    e.description = '<table class="cesium-infoBox-defaultTable">' + ['UpperLimit', 'LowerLimit', 'LowerLimitUnit', 'Type', 'Class', 'Designator', 'UpperLimitUnit', 'UpperLimitReference', 'LowerLimitReference', 'Actief', 'Van', 'Tot', 'Schema', 'Tekst']
-      .filter(k => p[k] != null && p[k] !== '').map(k => `<tr><th>${k}</th><td${k === 'Tekst' || k === 'Actief' ? ' style="white-space: pre-wrap; word-break: break-word"' : ''}>${String(k === 'Van' || k === 'Tot' ? when(p[k]) : p[k]).replace(/&/g, '&amp;').replace(/</g, '&lt;')}</td></tr>`).join('') + '</table>';
+    e.description = describe(p);
     e.polygon.material = color.withAlpha(0.25);
     e.polygon.outlineColor = color;
     // a MultiPolygon becomes several entities; list it once
@@ -620,6 +623,7 @@ function refresh() {
       && (!e.windows || e.windows.some(([s, u]) => s <= live && live < u))
       && !(e.limits.Type === 'NOTAM' && notamFl.value && flOf(e.limits) < +notamFl.value);
   }
+  showFlightDay();
   for (const a of today) [a.status.className, a.status.textContent] = ['status ' + status(a)[0], status(a)[1]];
   const tri = (b, list) => {
     const n = list.filter(a => a.on).length;
@@ -675,7 +679,7 @@ const scale = document.getElementById('scale');
 const setHeight = (polygon, key, value) => polygon[key]?.getValue() !== value && (polygon[key] = value);
 function updateHeights() {
   document.getElementById('scaleOut').value = scale.value;
-  for (const source of sources.filter(Boolean)) for (const e of source.entities.values) {
+  for (const source of [...sources, ...flightDay].filter(Boolean)) for (const e of source.entities.values) {
     const p = e.limits;
     setHeight(e.polygon, 'height', metres(p.LowerLimit, p.LowerLimitUnit, p.LowerLimitReference) * scale.value);
     // cut off at the FL filter, so areas reaching above it only show their lower part
@@ -803,6 +807,26 @@ igcInput.onchange = async ({ target }) => {
   if (usePressure && value && Math.abs(implied - value) > 2)
     flight.textContent += `\nLet op: de IGC-hoogtes wijzen op QNH ${implied} hPa. Open-Meteo is aangehouden.`;
   if (!usePressure && ext !== 'igc') flight.textContent += '\nHoogte: GPS (MSL) uit het bestand, zonder QNH-correctie.';
+  // NOTAMs and FUA of that day (Amsterdam calendar day), if the Workers archived it
+  for (const ds of flightDay) viewer.dataSources.remove(ds);
+  const day = Cesium.JulianDate.toDate(mid.time).toLocaleDateString('sv', { timeZone: 'Europe/Amsterdam' });
+  const [notams, fuaDay] = await Promise.all([NOTAMS, FUA].map(u => fetch(`${u}?datum=${day}&land=EH`).then(r => r.json()).catch(() => ({}))));
+  flightDay = [notams?.opgehaald && await Cesium.GeoJsonDataSource.load(notams), fuaDay?.gebieden?.length && fuaSource(fuaDay, sources.filter(ds => ds?.name !== 'FUA'))].filter(Boolean);
+  flightDay.forEach((ds, i) => {
+    viewer.dataSources.add(ds);
+    const color = Cesium.Color.fromCssColorString(ds.name === 'FUA' ? '#15aabf' : '#e8590c');
+    for (const e of [...ds.entities.values]) {
+      const p = e.limits = e.properties.getValue();
+      if (!e.polygon || NOTAMS_OFF.includes(p.Soort)) { ds.entities.remove(e); continue; }
+      e.windows = p.Vensters ?? [[Date.parse(p.Van), p.Tot === 'PERM' ? Infinity : Date.parse(p.Tot)]];
+      e.name = [p.Designator, p.Name].filter(Boolean).join(' ');
+      e.description = describe(p);
+      e.polygon.material = color.withAlpha(0.25);
+      e.polygon.outlineColor = color;
+    }
+  });
+  const count = ds => new Set(ds?.entities.values.map(e => e.name)).size;
+  flight.textContent += `\nNOTAMs/FUA van ${date}: ` + (flightDay.length ? `${count(flightDay.find(d => d.name !== 'FUA'))} NOTAMs, ${count(flightDay.find(d => d.name === 'FUA'))} FUA` : 'niet bewaard voor deze dag');
   updateHeights();
   await flown;
   await whenDrawn();
@@ -848,8 +872,16 @@ const containing = (pt, alt) => [...airspaces, ...today].filter(a => a.entities.
 
 // only touch the DOM when the text changes; rewriting it every frame swallows clicks
 const setText = (el, text) => { if (el.textContent !== text) el.textContent = text; };
+// flight-day NOTAMs and FUA: only on the Vlucht tab, when active at the flight clock's moment, below the FL filter, NOTAMs above the NOTAM FL filter
+function showFlightDay() {
+  const t = Cesium.JulianDate.toDate(viewer.clock.currentTime).getTime(), top = metres(maxFl.value, 'FL');
+  for (const ds of flightDay) for (const e of ds.entities.values) e.show = openTab === 'vlucht' && e.windows.some(([s, u]) => s <= t && t < u)
+    && metres(e.limits.LowerLimit, e.limits.LowerLimitUnit, e.limits.LowerLimitReference) <= top
+    && !(e.limits.Type === 'NOTAM' && notamFl.value && flOf(e.limits) < +notamFl.value);
+}
 clock.onTick.addEventListener(() => {
   if (!track) return;
+  showFlightDay();
   // at the end of the flight the clamped clock stops moving but keeps animating; stop it so ▶ replays
   if (clock.shouldAnimate && Cesium.JulianDate.greaterThanOrEquals(clock.currentTime, clock.stopTime)) viewer.clockViewModel.shouldAnimate = false;
   setText(play, clock.shouldAnimate ? '❚❚' : '▶');
