@@ -449,6 +449,8 @@ function refresh() {
     Object.assign(e, { cls, name: e.name.replace(/^\[.\]/, `[${cls}]`) });
     e.polygon.material = c.withAlpha(0.25);
     e.polygon.outlineColor = c;
+    // on a class change, follow the class buttons: on when the other airspace of the new class is on
+    if (i === 0 && cls !== a.cls) a.on = airspaces.some(b => !b.rule && b.cls === cls && b.on);
     if (i === 0) { Object.assign(a, { cls, colour: CLASS_COLOURS[cls] }); Object.assign(a.badge, { textContent: cls }); a.badge.style.background = a.colour; }
   }
   for (const a of [...airspaces, ...today]) {
