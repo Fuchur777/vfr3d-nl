@@ -185,6 +185,7 @@ const tabs = document.querySelectorAll('#tabs button');
 let openTab;
 const showTab = id => {
   openTab = id;
+  history.replaceState(null, '', `#${id}`);
   document.getElementById('at').hidden = id !== 'luchtruim';
   document.getElementById('live').hidden = id !== 'vandaag';
   tabs.forEach(t => { t.setAttribute('aria-selected', t.dataset.tab === id); document.getElementById(t.dataset.tab).hidden = t.dataset.tab !== id; });
@@ -192,8 +193,9 @@ const showTab = id => {
   document.querySelectorAll('#updates [data-for]').forEach(x => x.hidden = x.dataset.for !== id);
 };
 tabs.forEach(t => t.onclick = () => { showTab(t.dataset.tab); refresh(); try { localStorage.setItem('vfr3d-tab', t.dataset.tab); } catch {} });
-// reopen the tab the visitor last used (also after NOTAMs verversen)
-showTab((() => { try { return localStorage.getItem('vfr3d-tab'); } catch {} })() || 'luchtruim');
+// open the tab named in the link (#vandaag), else the tab the visitor last used (also after NOTAMs verversen)
+const tabIds = [...tabs].map(t => t.dataset.tab);
+showTab([location.hash.slice(1), (() => { try { return localStorage.getItem('vfr3d-tab'); } catch {} })()].find(id => tabIds.includes(id)) ?? 'luchtruim');
 // click and double-click pick the nearest visible entity, skipping airspace hidden by the selection or FL filter
 const pickVisible = pos => viewer.scene.drillPick(pos, 10).map(p => p.id).find(e => e instanceof Cesium.Entity && e.isShowing);
 viewer.screenSpaceEventHandler.setInputAction(c => viewer.selectedEntity = pickVisible(c.position), Cesium.ScreenSpaceEventType.LEFT_CLICK);
