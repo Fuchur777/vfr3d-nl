@@ -145,7 +145,9 @@ async function notams(env, [latitude, longitude]) {
     const geometries = f.geometry?.type === 'GeometryCollection' ? f.geometry.geometries : [f.geometry].filter(Boolean);
     const areas = geometries.filter(g => ['Polygon', 'MultiPolygon'].includes(g.type));
     const point = geometries.find(g => g.type === 'Point');
-    const geometry = areas.length
+    // the E line says it most precisely ("WI 45M RADIUS CENTRED ON 514842N 0043132E"); the Q line's radius is whole NM
+    const own = textCircle(text);
+    const geometry = own ? { type: 'Polygon', coordinates: circle(...own) } : areas.length
       ? { type: 'MultiPolygon', coordinates: areas.flatMap(g => g.type === 'Polygon' ? [g.coordinates] : g.coordinates) }
       : point && { type: 'Polygon', coordinates: circle(point.coordinates, +n.radius || 1) };
     if (!geometry) continue;
@@ -172,6 +174,15 @@ function limit(text, fl, top) {
   if (t === 'UNL' || (top && (fl ?? '999') === '999')) return [999, 'FL', 'STD'];
   if (fl && fl !== '000') return [+fl, 'FL', 'STD'];
   return [0, 'FT', 'SFC'];
+}
+
+// [[lon, lat], radius in NM] from "WI 45M RADIUS CENTRED ON 514842N 0043132E", or null
+function textCircle(text) {
+  const m = text.match(/\bWI\s+(\d+(?:\.\d+)?)\s*(M|KM|NM)\s+RADIUS\s+(?:CENTRED|CENTERED)\s+(?:ON|AT)\s+(\d{2})(\d{2})(\d{2}(?:\.\d+)?)([NS])\s*(\d{3})(\d{2})(\d{2}(?:\.\d+)?)([EW])/);
+  if (!m) return null;
+  const nm = +m[1] / { M: 1852, KM: 1.852, NM: 1 }[m[2]];
+  const lat = (+m[3] + m[4] / 60 + m[5] / 3600) * (m[6] === 'S' ? -1 : 1), lon = (+m[7] + m[8] / 60 + m[9] / 3600) * (m[10] === 'W' ? -1 : 1);
+  return [[lon, lat], nm];
 }
 
 // a circle as a polygon, for NOTAMs that only give a centre and a radius in NM
