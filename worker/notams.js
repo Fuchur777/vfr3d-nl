@@ -1,13 +1,21 @@
-// Cloudflare Worker: the NOTAMs over the Netherlands from the FAA NMS-API as GeoJSON in the
-// same shape as the LVNL layers, so index.html draws them like any other airspace.
-// Same requests as briefing.illustrious.nl (app/Services/Notams/NmsClient.php).
+// Cloudflare Worker: NOTAMs from the FAA NMS-API as GeoJSON in the same shape as the LVNL layers,
+// so the app draws them like any other airspace. Same requests as briefing.illustrious.nl
+// (app/Services/Notams/NmsClient.php).
 // Secrets NMS_CLIENT_ID and NMS_CLIENT_SECRET are set in the Cloudflare dashboard, never in this file.
+// A KV namespace bound as NOTAMS keeps the results; a Cron Trigger every 5 minutes fetches them three
+// times a day (06:00, 18:00 and 22:00 LT), one circle per run because the FAA allows 1 request per 3 min.
+// ?land=EB,EL picks countries by ICAO prefix; the Netherlands (EH) by default.
 
 const API = 'https://api-nms.aim.faa.gov';
-// one circle of 100 NM (the API maximum) around the middle of the country covers all of it
-const CENTRE = { latitude: 52.2, longitude: 5.3, radius: 100 };
-// fetched at most once an hour; ?vernieuw asks for fresh data, at most once per 10 minutes
-const MAX_AGE = 3600e3, MIN_AGE = 600e3;
+const SLOTS = [6, 18, 22];
+// circles of at most 100 NM (the API maximum) that cover each country
+const CIRCLES = [
+  [52.2, 5.3], // Netherlands
+  [50.4, 4.6], // Belgium and Luxembourg
+  [48.34, 9.03], [50.86, 10.77], [48.51, 11.62], [51.71, 7.78], [53.05, 12.28], [51.96, 13.8], [53.62, 9.23], [50.09, 8.2], // Germany
+];
+const COUNTRIES = { EH: [0], EB: [1], EL: [1], ED: [2, 3, 4, 5, 6, 7, 8, 9] };
+const HEADERS = { 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=300' };
 // Q-code prefixes per heading, from briefing's config/notams.php, plus obstacles (cranes, wind
 // turbines); the rest (aerodrome, navaids) is left out
 const CATEGORIES = [
@@ -34,38 +42,64 @@ const KINDS = [
 
 export default {
   async fetch(request, env, ctx) {
-    const cache = caches.default, key = new Request(new URL('/notams.geojson', request.url));
-    const cached = await cache.match(key);
-    const age = Date.now() - Date.parse(cached?.headers.get('Date'));
-    if (age < (new URL(request.url).searchParams.has('vernieuw') ? MIN_AGE : MAX_AGE)) {
-      return cached;
+    if (!env.NOTAMS) {
+      return Response.json({ fout: 'Geen KV-namespace gekoppeld als NOTAMS.' }, { status: 500, headers: HEADERS });
     }
-    let collection;
-    try {
-      collection = await notams(env);
-    } catch (error) {
-      // when the FAA fails, keep showing the last good NOTAMs (kept for a day), with the error added
-      const last = cached ? await cached.json() : {};
-      return Response.json({ ...last, fout: String(error) }, { status: cached ? 200 : 502, headers: { 'Access-Control-Allow-Origin': '*' } });
+    const prefixes = (new URL(request.url).searchParams.get('land') ?? 'EH').toUpperCase().split(',');
+    const circles = [...new Set(prefixes.flatMap(p => COUNTRIES[p] ?? []))];
+    const stored = await Promise.all(circles.map(i => env.NOTAMS.get(`cirkel:${i}`, 'json')));
+    // never fetched yet (a fresh deploy): fetch one circle now instead of waiting for the next slot
+    if (stored.some(c => !c)) ctx.waitUntil(step(env));
+    const state = await env.NOTAMS.get('staat', 'json') ?? {};
+    const features = new Map();
+    for (const f of stored.flatMap(c => c?.features ?? [])) {
+      if (prefixes.some(p => f.properties.Name.startsWith(p))) features.set(`${f.properties.Name} ${f.properties.Designator}`, f);
     }
-    // s-maxage only applies to Cloudflare's cache, so browsers always ask the Worker
-    const response = new Response(JSON.stringify(collection), { headers: {
-      'Content-Type': 'application/geo+json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, s-maxage=86400',
-      Date: new Date().toUTCString(),
-    } });
-    ctx.waitUntil(cache.put(key, response.clone()));
-    return response;
+    const fout = circles.map(i => state.fout?.[i]).filter(Boolean);
+    return Response.json({
+      type: 'FeatureCollection',
+      opgehaald: stored.every(Boolean) ? new Date(Math.min(...stored.map(c => c.opgehaald))).toISOString() : undefined,
+      fout: fout.length ? fout.join('; ') : undefined,
+      features: [...features.values()],
+    }, { headers: HEADERS });
+  },
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(step(env));
   },
 };
 
-async function notams(env) {
+// the latest 06:00, 18:00 or 22:00 Amsterdam time before now
+function lastSlot(now) {
+  const t = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Amsterdam', hour: 'numeric', minute: 'numeric', hourCycle: 'h23' }).formatToParts(now).map(x => [x.type, +x.value]));
+  const slot = SLOTS.findLast(h => h <= t.hour) ?? SLOTS.at(-1) - 24;
+  return now - ((t.hour - slot) * 60 + t.minute) * 60e3 - now % 60e3;
+}
+
+// fetch the first circle not yet fetched since the latest slot, if the FAA's limit allows
+async function step(env) {
+  const now = Date.now(), state = await env.NOTAMS.get('staat', 'json') ?? { klaar: {}, fout: {} };
+  const due = CIRCLES.findIndex((_, i) => !(state.klaar[i] >= lastSlot(now)));
+  if (due < 0 || now - (state.laatste ?? 0) < 200e3) return;
+  state.laatste = now;
+  await env.NOTAMS.put('staat', JSON.stringify(state));
+  try {
+    await env.NOTAMS.put(`cirkel:${due}`, JSON.stringify({ opgehaald: now, features: await notams(env, CIRCLES[due]) }));
+    state.klaar[due] = now;
+    delete state.fout[due];
+  } catch (error) {
+    state.fout[due] = String(error);
+  }
+  await env.NOTAMS.put('staat', JSON.stringify(state));
+}
+
+async function notams(env, [latitude, longitude]) {
   const auth = await fetch(`${API}/v1/auth/token`, {
     method: 'POST', headers: { Authorization: `Basic ${btoa(`${env.NMS_CLIENT_ID}:${env.NMS_CLIENT_SECRET}`)}` },
     body: new URLSearchParams({ grant_type: 'client_credentials' }),
   });
   const token = auth.ok && (await auth.json()).access_token;
   if (!token) throw new Error(`Geen NMS-token (${auth.status} ${(await auth.text().catch(() => '')).slice(0, 300)}): controleer NMS_CLIENT_ID en NMS_CLIENT_SECRET.`);
-  const response = await fetch(`${API}/nmsapi/v1/notams?${new URLSearchParams(CENTRE)}`, {
+  const response = await fetch(`${API}/nmsapi/v1/notams?${new URLSearchParams({ latitude, longitude, radius: 100 })}`, {
     headers: { Authorization: `Bearer ${token}`, nmsResponseFormat: 'GEOJSON', Accept: 'application/json' },
   });
   if (!response.ok) throw new Error(`NMS-API: ${response.status} ${await response.text()}`);
@@ -79,8 +113,6 @@ async function notams(env) {
     const start = Date.parse(n?.effectiveStart), end = Date.parse(n?.effectiveEnd);
     // only what is active now or starts within a day; no cancellations (type C), and no
     // country-wide notices drawn as a circle over half the map (radius in NM)
-    // only Dutch NOTAMs: location EHAA (Amsterdam FIR) or a Dutch aerodrome EH..
-    if (!/^EH/.test(n?.icaoLocation ?? n?.location ?? '')) continue;
     if (!category || n.type === 'C' || +n.radius > 50 || !(start < day) || end < now) continue;
     const geometries = f.geometry?.type === 'GeometryCollection' ? f.geometry.geometries : [f.geometry].filter(Boolean);
     const areas = geometries.filter(g => ['Polygon', 'MultiPolygon'].includes(g.type));
@@ -98,7 +130,7 @@ async function notams(env) {
       Tekst: (f.properties.coreNOTAMData.notamTranslation?.find(t => t.type === 'ICAO')?.formattedText ?? n.text ?? '').trim(),
     } });
   }
-  return { type: 'FeatureCollection', opgehaald: new Date().toISOString(), features };
+  return features;
 }
 
 // 'GND', '2500FT AMSL', 'FL095', or else the three-digit minimumFl/maximumFl
