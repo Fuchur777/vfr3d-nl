@@ -192,11 +192,10 @@ if (LAND) {
 }
 const CLASS_COLOURS = { A: '#A32D2D', B: '#993C1D', C: '#185FA5', D: '#378ADD', E: '#534AB7', F: '#888780', G: '#3B6D11' };
 
-// Safari on macOS 27 draws no map imagery under WebGL 2 (no errors); WebGL 1 works (Frank, 2026-10-13)
-// after a render error (e.g. a phone GPU losing the WebGL context) the next load uses the same light settings as Safari
-const isSafari = /^((?!chrome|android|crios|fxios).)*safari/i.test(navigator.userAgent) || (() => { try { return !!localStorage.getItem('vfr3d-licht'); } catch {} })();
+// light mode everywhere (Frank, 2026-10-15): WebGL 1 and no atmosphere, sky or lighting. Safari on macOS 27 draws no imagery
+// under WebGL 2 and an Android phone lost its WebGL context; none of it matters for an airspace map
 const viewer = new Cesium.Viewer('map', {
-  contextOptions: { requestWebgl1: isSafari },
+  contextOptions: { requestWebgl1: true },
   showRenderLoopErrors: false, // our own message below instead of Cesium's English error box
   baseLayer: new Cesium.ImageryLayer(new Cesium.OpenStreetMapImageryProvider({ url: 'https://tile.openstreetmap.org/' })),
   baseLayerPicker: false, geocoder: false, animation: false, timeline: false,
@@ -204,28 +203,24 @@ const viewer = new Cesium.Viewer('map', {
   // 2D in Web Mercator, like web maps: the default plate carrée stretches east-west about 1.6× at 52°N
   mapProjection: new Cesium.WebMercatorProjection(),
 });
-// Safari on macOS 27 fails to link Cesium's atmosphere and fog shaders (black canvas, CesiumJS issue #13650)
-// when drawing fails, say so in Dutch and offer a reload in light mode instead of a frozen map
+// when drawing fails, say so in Dutch and offer a reload instead of a frozen map
 const renderFailed = () => {
-  try { localStorage.setItem('vfr3d-licht', '1'); } catch {}
   if (document.getElementById('renderError')) return;
   const box = Object.assign(document.createElement('div'), { id: 'renderError', style: 'position: absolute; inset: 0; z-index: 100001; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px; background: rgba(27, 35, 43, .9); color: #d8e0e6; font: 15px sans-serif; text-align: center' });
-  box.append('De kaart is gestopt: de grafische kaart van dit apparaat gaf een fout.', Object.assign(document.createElement('button'), { type: 'button', textContent: 'Opnieuw laden (lichte modus)', onclick: () => location.reload(),
+  box.append('De kaart is gestopt: de grafische kaart van dit apparaat gaf een fout.', Object.assign(document.createElement('button'), { type: 'button', textContent: 'Opnieuw laden', onclick: () => location.reload(),
     style: 'padding: 8px 16px; border-radius: 6px; border: 0; background: #ffc24b; color: #1b232b; font-weight: 600' }));
   document.body.append(box);
 };
 viewer.scene.renderError.addEventListener((scene, e) => (console.error(e), renderFailed()));
 viewer.canvas.addEventListener('webglcontextlost', renderFailed);
-if (isSafari) {
-  // also the other atmosphere users and the sky; none matter for an airspace map
-  viewer.scene.fog.enabled = false;
-  viewer.scene.globe.showGroundAtmosphere = false;
-  viewer.scene.skyAtmosphere.show = false;
-  viewer.scene.skyBox.show = false;
-  viewer.scene.sun.show = false;
-  viewer.scene.moon.show = false;
-  viewer.scene.globe.enableLighting = false;
-}
+// light mode: Safari on macOS 27 fails to link Cesium's atmosphere and fog shaders (CesiumJS issue #13650)
+viewer.scene.fog.enabled = false;
+viewer.scene.globe.showGroundAtmosphere = false;
+viewer.scene.skyAtmosphere.show = false;
+viewer.scene.skyBox.show = false;
+viewer.scene.sun.show = false;
+viewer.scene.moon.show = false;
+viewer.scene.globe.enableLighting = false;
 // navigation help in Dutch: Cesium has no locale, so replace its text nodes
 const NL = {
   'Mouse': 'Muis', 'Touch': 'Aanraken', 'Pan view': 'Verschuiven', 'Zoom view': 'Zoomen', 'Rotate view': 'Draaien', 'Tilt view': 'Kantelen',
