@@ -108,12 +108,12 @@ async function areas(url, env, ctx) {
   const countries = (url.searchParams.get('land') ?? 'EH').toUpperCase().split(',').filter(c => ISO[c]);
   try {
     const all = await Promise.all(countries.map(async country => {
-      const key = new Request(new URL(`/gebieden-${country}.json`, url));
+      const key = new Request(new URL(`/gebieden-2-${country}.json`, url));
       const cached = await caches.default.match(key);
       if (Date.now() - Date.parse(cached?.headers.get('Date')) < WEEK) {
         return cached.json();
       }
-      const features = await openaip(env, ISO[country]);
+      const features = await openaip(env, ISO[country], country);
       ctx.waitUntil(caches.default.put(key, Response.json(features, { headers: { ...HEADERS, Date: new Date().toUTCString() } })));
       return features;
     }));
@@ -124,7 +124,7 @@ async function areas(url, env, ctx) {
 }
 
 // the country's airspaces in openAIP, in the same shape as the LVNL layers
-async function openaip(env, country) {
+async function openaip(env, country, icao) {
   if (!env.OPENAIP_KEY) {
     throw new Error('Geen OPENAIP_KEY ingesteld.');
   }
@@ -142,11 +142,12 @@ async function openaip(env, country) {
       }
       const [LowerLimit, LowerLimitUnit, LowerLimitReference] = limit(a.lowerLimit);
       const [UpperLimit, UpperLimitUnit, UpperLimitReference] = limit(a.upperLimit);
-      features.push({ type: 'Feature', geometry: a.geometry, properties: {
-        // "ED-R 205 C" becomes EDR205C, the way AUP/UUP names it
-        Designator: a.name.toUpperCase().replace(/[^A-Z0-9]/g, ''), Name: a.name, Type: TYPES[a.type],
-        LowerLimit, LowerLimitUnit, LowerLimitReference, UpperLimit, UpperLimitUnit, UpperLimitReference,
-      } });
+      for (const Designator of designator(a.name, icao).split('/')) {
+        features.push({ type: 'Feature', geometry: a.geometry, properties: {
+          Designator, Name: a.name, Type: TYPES[a.type],
+          LowerLimit, LowerLimitUnit, LowerLimitReference, UpperLimit, UpperLimitUnit, UpperLimitReference,
+        } });
+      }
     }
   }
   return features;
@@ -159,4 +160,16 @@ function limit(l) {
   }
   const feet = Math.round((l?.value ?? 0) * (l?.unit === 0 ? 3.28084 : 1));
   return [feet, 'FT', l?.referenceDatum === 1 ? 'MSL' : l?.referenceDatum === 2 ? 'STD' : 'SFC'];
+}
+
+// the AUP/UUP name hidden in openAIP's name: "ED-R201A TRA-FRIESLAND MON-FRI" is EDR201A, "EB-R04 ELSENBORN 01" EBR04;
+// Belgian names without the country prefix get it: "TRA NA - TRA NORTH ALPHA" is EBTRANA, "TSA29C LUXEMBOURG" EBTSA29C,
+// and "TRA/TSA S1 NAMUR AREA" EBTRAS1 as well as EBTSAS1 (split into two by the caller); variants like "ED-R10C_2" stay unmatched
+function designator(name, icao) {
+  const n = name.toUpperCase(), m = n.match(/^(E[A-Z])-?([A-Z]{1,3}) ?(\d+[A-Z]?)\b(?!_)/);
+  if (m) {
+    return m[1] + m[2] + m[3];
+  }
+  const local = n.match(/^(TRA\/TSA|TRA|TSA|HTA|LFA) ?([A-Z]{0,2}\d*[A-Z]?)\b/);
+  return local ? local[1].split('/').map(kind => icao + kind + local[2]).join('/') : n.replace(/[^A-Z0-9]/g, '');
 }
