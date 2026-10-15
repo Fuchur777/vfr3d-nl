@@ -8,9 +8,9 @@
 import puppeteer from '@cloudflare/puppeteer';
 
 const PORTAL = 'https://www.public.nm.eurocontrol.int/PUBPORTAL/gateway/spec/';
-// the free plan has 10 browser minutes a day; one visit takes well under a minute
-const MAX_AGE = 2 * 3600e3;
-const HEADERS = { 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, s-maxage=7200' };
+// the free plan has 10 browser minutes a day and few browsers at once; one visit takes well under a minute
+const MAX_AGE = 3 * 3600e3;
+const HEADERS = { 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=300' };
 
 // /gebieden?land=EB,EL gives the shapes of those countries' switchable areas from openAIP (CC BY-NC),
 // for the pages outside the Netherlands; the secret OPENAIP_KEY is set in the Cloudflare dashboard
@@ -22,46 +22,73 @@ const WEEK = 7 * 24 * 3600e3;
 
 export default {
   async fetch(request, env, ctx) {
-    const cache = caches.default, url = new URL(request.url);
+    const url = new URL(request.url);
     if (url.pathname === '/gebieden') {
       return areas(url, env, ctx);
     }
-    const key = new Request(new URL('/fua.json', url)), rawKey = new Request(new URL('/fua.txt', url));
+    if (!env.FUA) {
+      return Response.json({ fout: 'Geen KV-namespace gekoppeld als FUA.', gebieden: [] }, { status: 500, headers: HEADERS });
+    }
     if (url.searchParams.has('debug')) {
-      return (await cache.match(rawKey)) ?? new Response('Nog niets gelezen', { status: 404, headers: HEADERS });
+      return new Response(await env.FUA.get('ruw') ?? 'Nog niets gelezen', { headers: { ...HEADERS, 'Content-Type': 'text/plain; charset=utf-8' } });
     }
-    // the cache holds every country; ?land=EB,EL picks ICAO prefixes, the Netherlands (EH) by default
+    // KV holds every country; ?land=EB,EL picks ICAO prefixes, the Netherlands (EH) by default
     const countries = (url.searchParams.get('land') ?? 'EH').toUpperCase().split(',');
-    const day = url.searchParams.get('datum');
     const only = all => Response.json({ ...all, gebieden: all.gebieden.filter(g => countries.some(c => g.naam.startsWith(c))) }, { headers: HEADERS });
+    const day = url.searchParams.get('datum');
     if (day) {
-      const kept = await env.FUA?.get(`dag:${day}`, 'json');
-      return kept ? only(kept) : Response.json({ fout: env.FUA ? `Niets bewaard voor ${day}.` : 'Geen KV-namespace gekoppeld als FUA.', gebieden: [] }, { status: 404, headers: HEADERS });
+      const kept = await env.FUA.get(`dag:${day}`, 'json');
+      return kept ? only(kept) : Response.json({ fout: `Niets bewaard voor ${day}.`, gebieden: [] }, { status: 404, headers: HEADERS });
     }
-    const cached = await cache.match(key);
-    if (Date.now() - Date.parse(cached?.headers.get('Date')) < MAX_AGE) {
-      return only(await cached.json());
+    // before the first visit after this version, today's archive stands in
+    let last = await env.FUA.get('laatste', 'json') ?? await env.FUA.get(`dag:${new Date().toLocaleDateString('sv', { timeZone: 'Europe/Amsterdam' })}`, 'json');
+    // one portal visit for all countries and all visitors: the answer never waits for it, except the very first time
+    if (!last) {
+      await refresh(env);
+      last = await env.FUA.get('laatste', 'json');
+    } else if (Date.now() - Date.parse(last.opgehaald) > MAX_AGE) {
+      ctx.waitUntil(refresh(env));
     }
-    let read;
-    try {
-      read = await scrape(env);
-    } catch (error) {
-      // a broken portal visit keeps the last good answer
-      return cached ? only({ ...await cached.json(), fout: String(error) }) : Response.json({ fout: String(error) }, { status: 502, headers: HEADERS });
+    const state = await env.FUA.get('staat', 'json') ?? {};
+    if (!last) {
+      return Response.json({ fout: state.fout ?? 'Nog niets gelezen.', gebieden: [] }, { status: 502, headers: HEADERS });
     }
-    const date = new Date().toUTCString(), all = parse(read);
-    ctx.waitUntil(Promise.all([
-      keep(env, all),
-      cache.put(key, Response.json(all, { headers: { ...HEADERS, Date: date } })),
-      cache.put(rawKey, new Response(`${read.header}\n\n${read.table}`, { headers: { ...HEADERS, 'Content-Type': 'text/plain; charset=utf-8', Date: date } })),
-    ]));
-    return only(all);
+    // a failed visit keeps the last good plan; only say so when it is over 12 hours old
+    return only({ ...last, fout: Date.now() - Date.parse(last.opgehaald) > 12 * 3600e3 ? state.fout : undefined });
   },
   // three reads a day for the archive, also on days nobody opens the app (cron in wrangler.jsonc)
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(scrape(env).then(read => keep(env, parse(read))));
+    ctx.waitUntil(refresh(env));
   },
 };
+
+// read the portal unless another request is already doing so; Browser Rendering allows few browsers at once.
+// Requests in this isolate share one visit; the KV lock covers the others
+let running;
+function refresh(env) {
+  running ??= visit(env).finally(() => running = undefined);
+  return running;
+}
+
+async function visit(env) {
+  const now = Date.now(), state = await env.FUA.get('staat', 'json') ?? {};
+  if (now - (state.bezig ?? 0) < 3 * 60e3) {
+    return;
+  }
+  await env.FUA.put('staat', JSON.stringify({ ...state, bezig: now }));
+  try {
+    const read = await scrape(env), all = parse(read);
+    await Promise.all([
+      env.FUA.put('laatste', JSON.stringify(all)),
+      env.FUA.put('ruw', `${read.header}\n\n${read.table}`),
+      keep(env, all),
+    ]);
+    delete state.fout;
+  } catch (error) {
+    state.fout = `${new Date(now).toISOString()} ${error}`;
+  }
+  await env.FUA.put('staat', JSON.stringify({ ...state, bezig: 0 }));
+}
 
 async function scrape(env) {
   const browser = await puppeteer.launch(env.BROWSER);
@@ -188,9 +215,6 @@ function designator(name, icao) {
 
 // the day's archive keeps every activation read that day, also those a later EUUP dropped
 async function keep(env, all) {
-  if (!env.FUA) {
-    return;
-  }
   const day = `dag:${new Date().toLocaleDateString('sv', { timeZone: 'Europe/Amsterdam' })}`;
   const kept = await env.FUA.get(day, 'json');
   const areas = new Map([...kept?.gebieden ?? [], ...all.gebieden].map(g => [`${g.naam} ${g.van} ${g.tot} ${g.ondergrensFL} ${g.bovengrensFL}`, g]));
