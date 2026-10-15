@@ -359,7 +359,7 @@ LAYERS.forEach(([, label, colour, show], i) => {
   }
 });
 const TODAY = ['NOTAMs', 'Vandaag actief (FUA)'], today = [], todayGroups = [];
-const NOTAMS_OFF = ['Drones/UAS', 'Windturbines', 'Kranen', 'Militair', 'Lasershow'];
+const NOTAMS_OFF = ['Drones/UAS', 'Windturbines', 'Kranen', 'Militair', 'Lasershow', 'Obstakelverlichting'];
 byLabel.forEach((items, label) => {
   if (TODAY.includes(label)) {
     for (const a of items.values()) {
