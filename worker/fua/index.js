@@ -74,7 +74,8 @@ function parse({ header, table }) {
   for (const line of table.split('\n')) {
     const m = line.match(/(\d{3})\s+(\d{3})\s+(\d\d:\d\d)\s+(\d\d:\d\d)/);
     const name = line.trim().split(/\s+/)[0];
-    if (!m || !(/^EH/.test(name) || /\bEHAA\b/.test(line))) {
+    // only Dutch areas (EH..), not foreign ones that reach into the Amsterdam FIR
+    if (!m || !/^EH/.test(name)) {
       continue;
     }
     const from = at(m[3]);
