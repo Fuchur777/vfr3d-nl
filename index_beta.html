@@ -189,9 +189,9 @@ const showTab = id => {
   // footer: only the update rows of the open tab (plus Code)
   document.querySelectorAll('#updates [data-for]').forEach(x => x.hidden = x.dataset.for !== id);
 };
-tabs.forEach(t => t.onclick = () => { showTab(t.dataset.tab); try { sessionStorage.setItem('vfr3d-tab', t.dataset.tab); } catch {} });
-// keep the open tab over a reload (e.g. NOTAMs verversen)
-showTab((() => { try { return sessionStorage.getItem('vfr3d-tab'); } catch {} })() || 'luchtruim');
+tabs.forEach(t => t.onclick = () => { showTab(t.dataset.tab); try { localStorage.setItem('vfr3d-tab', t.dataset.tab); } catch {} });
+// reopen the tab the visitor last used (also after NOTAMs verversen)
+showTab((() => { try { return localStorage.getItem('vfr3d-tab'); } catch {} })() || 'luchtruim');
 // click and double-click pick the nearest visible entity, skipping airspace hidden by the selection or FL filter
 const pickVisible = pos => viewer.scene.drillPick(pos, 10).map(p => p.id).find(e => e instanceof Cesium.Entity && e.isShowing);
 viewer.screenSpaceEventHandler.setInputAction(c => viewer.selectedEntity = pickVisible(c.position), Cesium.ScreenSpaceEventType.LEFT_CLICK);
