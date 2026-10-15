@@ -80,7 +80,7 @@ async function notams(env) {
       Tekst: (f.properties.coreNOTAMData.notamTranslation?.find(t => t.type === 'ICAO')?.formattedText ?? n.text ?? '').trim(),
     } });
   }
-  return { type: 'FeatureCollection', features };
+  return { type: 'FeatureCollection', opgehaald: new Date().toISOString(), features };
 }
 
 // 'GND', '2500FT AMSL', 'FL095', or else the three-digit minimumFl/maximumFl
