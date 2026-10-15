@@ -8,14 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          curl -sSL -A 'Mozilla/5.0' https://eaip.lvnl.nl/web/eaip/ -o index.html -w '%{http_code} %{url_effective}\n' || true
-          grep -o 'href="[^"]*"' index.html | head -60
-          B='https://eaip.lvnl.nl/web/eaip/AIRAC%20AMDT%2010-2026_2026_10_01'
-          curl -sSL -A 'Mozilla/5.0' "$B/" -o amdt.html -w '%{http_code}\n' || true
-          grep -o 'href="[^"]*"' amdt.html | head -40
-          curl -sSL -A 'Mozilla/5.0' "$B/html/index-en-GB.html" -o idx.html -w '%{http_code}\n' || true
-          grep -o 'href="[^"]*"' idx.html | head -40
-          curl -sSL -A 'Mozilla/5.0' "$B/html/eAIP/EH-ENR-5.5-en-GB.html" -o enr55.html -w '%{http_code}\n' || true
-          wc -c enr55.html; sed 's/<[^>]*>/ /g' enr55.html | tr -s ' \n' | head -c 4000
-      - uses: actions/upload-artifact@v4
-        with: { name: eaip, path: '*.html' }
+          curl -sS 'https://services-eu1.arcgis.com/OtUwzhpKSdeXgRIB/arcgis/rest/services?f=json' | jq -r '.services[] | "\(.name) \(.type)"'
+          for s in $(curl -sS 'https://services-eu1.arcgis.com/OtUwzhpKSdeXgRIB/arcgis/rest/services?f=json' | jq -r '.services[] | select(.type=="FeatureServer") | .name'); do
+            echo "== $s"; curl -sS "https://services-eu1.arcgis.com/OtUwzhpKSdeXgRIB/arcgis/rest/services/$s/FeatureServer?f=json" | jq -r '.layers[]? | "\(.id) \(.name)"'
+          done
