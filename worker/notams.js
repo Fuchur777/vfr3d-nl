@@ -8,13 +8,26 @@ const API = 'https://api-nms.aim.faa.gov';
 const CENTRE = { latitude: 52.2, longitude: 5.3, radius: 100 };
 // fetched at most once an hour; ?vernieuw asks for fresh data, at most once per 10 minutes
 const MAX_AGE = 3600e3, MIN_AGE = 600e3;
-// Q-code prefixes per heading, from briefing's config/notams.php; the rest (aerodrome, navaids, obstacles) is left out
+// Q-code prefixes per heading, from briefing's config/notams.php, plus obstacles (cranes, wind
+// turbines); the rest (aerodrome, navaids) is left out
 const CATEGORIES = [
   ['TRA/TSA', ['QR', 'QA']],
   ['Parachutespringen', ['QWP']],
   ['Evenementen', ['QWA', 'QWB', 'QWC', 'QWL', 'QWO', 'QWT', 'QWV', 'QWZ']],
-  ['Drones', ['QWU']],
+  ['Drones/UAS', ['QWU']],
+  ['Obstakels', ['QOB', 'QOL']],
   ['Overige activiteit', ['QWD', 'QWE', 'QWF', 'QWG', 'QWH', 'QWJ', 'QWM', 'QWR', 'QWS', 'QWW', 'QWY']],
+];
+// the text says more than the Q-code: an area activation stays airspace even when it is for drones;
+// otherwise the first matching kind wins, else the Q-code heading
+const KINDS = [
+  ['TRA/TSA', /\b(RESTRICTED|SEGREGATED|RESERVED|DANGER) AREA\b|\bCTR\b.*\bCLOSED\b/],
+  ['Lasershow', /\bLASER/],
+  ['Drones/UAS', /\b(UAS|RPAS|UAV|DRONES?)\b/],
+  ['Windturbines', /\bWIND ?(TURBINES?|MILLS?|PARK|FARM)\b/],
+  ['Kranen', /\bCRANES?\b/],
+  ['Militair', /\bMIL(ITARY)? (ACFT|AIRCRAFT|EXER|EXERCISES?)\b|\bEXERCISE\b/],
+  ['Parachutespringen', /\bPARACHUT|\bPJE\b/],
 ];
 
 export default {
@@ -57,7 +70,9 @@ async function notams(env) {
   const now = Date.now(), day = now + 24 * 3600e3, features = [];
   for (const f of (await response.json()).data?.geojson ?? []) {
     const n = f.properties?.coreNOTAMData?.notam;
-    const category = CATEGORIES.find(([, codes]) => codes.some(c => n?.selectionCode?.startsWith(c)))?.[0];
+    const heading = CATEGORIES.find(([, codes]) => codes.some(c => n?.selectionCode?.startsWith(c)))?.[0];
+    const text = (n?.text ?? '').toUpperCase();
+    const category = heading && (KINDS.find(([, pattern]) => pattern.test(text))?.[0] ?? heading);
     const start = Date.parse(n?.effectiveStart), end = Date.parse(n?.effectiveEnd);
     // only what is active now or starts within a day; no cancellations (type C), and no
     // country-wide notices drawn as a circle over half the map (radius in NM)
@@ -74,7 +89,7 @@ async function notams(env) {
     const [LowerLimit, LowerLimitUnit, LowerLimitReference] = limit(n.lowerLimit, n.minimumFl, false);
     const [UpperLimit, UpperLimitUnit, UpperLimitReference] = limit(n.upperLimit, n.maximumFl, true);
     features.push({ type: 'Feature', geometry, properties: {
-      Designator: n.number, Name: `${n.icaoLocation ?? n.location ?? ''} ${category}`.trim(), Type: 'NOTAM',
+      Designator: n.number, Name: `${n.icaoLocation ?? n.location ?? ''} ${category}`.trim(), Type: 'NOTAM', Soort: category,
       LowerLimit, LowerLimitUnit, LowerLimitReference, UpperLimit, UpperLimitUnit, UpperLimitReference,
       Van: n.effectiveStart, Tot: Number.isNaN(end) ? 'PERM' : n.effectiveEnd, Schema: n.schedule || undefined,
       Tekst: (f.properties.coreNOTAMData.notamTranslation?.find(t => t.type === 'ICAO')?.formattedText ?? n.text ?? '').trim(),
