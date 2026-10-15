@@ -159,8 +159,8 @@ const LAYERS = LAND ? [
 ];
 if (LAND) {
   document.title = `VFR3D ${LAND.naam} (beta)`;
-  document.querySelectorAll('#tabs button:not([data-tab=vandaag])').forEach(b => b.hidden = true);
-  document.getElementById('tabs').style.gridTemplateColumns = '1fr';
+  document.querySelectorAll('#tabs button:not([data-tab=vandaag]):not([data-tab=kaart])').forEach(b => b.hidden = true);
+  document.getElementById('tabs').style.gridTemplateColumns = '1fr 1fr';
   document.querySelector('#note p').textContent = 'Activeringen (FUA) © EUROCONTROL. Luchtruimvormen © openAIP (CC BY-NC 4.0). NOTAMs: FAA. De AIP van het land is leidend.';
 }
 const CLASS_COLOURS = { A: '#A32D2D', B: '#993C1D', C: '#185FA5', D: '#378ADD', E: '#534AB7', F: '#888780', G: '#3B6D11' };
@@ -213,7 +213,7 @@ const showTab = id => {
 tabs.forEach(t => t.onclick = () => { showTab(t.dataset.tab); refresh(); try { localStorage.setItem('vfr3d-tab', t.dataset.tab); } catch {} });
 // open the tab named in the link (#vandaag), else the tab the visitor last used (also after NOTAMs verversen)
 const tabIds = [...tabs].map(t => t.dataset.tab);
-showTab(LAND ? 'vandaag' : [location.hash.slice(1), (() => { try { return localStorage.getItem('vfr3d-tab'); } catch {} })()].find(id => tabIds.includes(id)) ?? 'luchtruim');
+showTab(LAND ? (location.hash === '#kaart' ? 'kaart' : 'vandaag') : [location.hash.slice(1), (() => { try { return localStorage.getItem('vfr3d-tab'); } catch {} })()].find(id => tabIds.includes(id)) ?? 'luchtruim');
 // click and double-click pick the nearest visible entity, skipping airspace hidden by the selection or FL filter
 const pickVisible = pos => viewer.scene.drillPick(pos, 10).map(p => p.id).find(e => e instanceof Cesium.Entity && e.isShowing);
 viewer.screenSpaceEventHandler.setInputAction(c => viewer.selectedEntity = pickVisible(c.position), Cesium.ScreenSpaceEventType.LEFT_CLICK);
@@ -240,21 +240,14 @@ for (const [name, layer] of [['Kaart', viewer.imageryLayers.get(0)], ['Satelliet
 const base = document.getElementById('base');
 // hidden layers request no tiles, so satellite does not also load the map underneath
 const osm = viewer.imageryLayers.get(0);
-// country pages: satellite only (the ICAO chart covers only the Netherlands)
-if (LAND) [...base.options].slice(1).forEach(o => o.remove());
+// country pages start on satellite (the ICAO chart covers only the Netherlands); the Kaart tab can switch
+if (LAND) base.selectedIndex = 0;
 (base.onchange = () => { esri.show = base.selectedIndex === 0; osm.show = !esri.show; icao.show = base.selectedIndex === 2; })();
 
-// 2D/3D button in Cesium's toolbar: 2D is a top-down view over OpenStreetMap (country pages keep satellite);
-// back in 3D the previous base layer returns
+// 2D/3D button in Cesium's toolbar: 2D is a top-down view on the chosen base layer
 const flat = Object.assign(document.createElement('button'), { type: 'button', className: 'cesium-button cesium-toolbar-button', textContent: '2D', title: 'Bekijk in 2D' });
-let base3d;
 flat.onclick = () => {
   const to2d = viewer.scene.mode === Cesium.SceneMode.SCENE3D;
-  if (!LAND) {
-    if (to2d) base3d = base.selectedIndex;
-    base.selectedIndex = to2d ? 1 : base3d;
-    base.onchange();
-  }
   to2d ? viewer.scene.morphTo2D(0.5) : viewer.scene.morphTo3D(0.5);
   Object.assign(flat, { textContent: to2d ? '3D' : '2D', title: to2d ? 'Terug naar 3D' : 'Bekijk in 2D' });
 };
@@ -580,7 +573,7 @@ function refresh() {
   // the map follows the tab: Vandaag draws only NOTAMs and FUA, the other tabs only airspace; each keeps its own selection
   for (const a of [...airspaces, ...today]) {
     a.box.checked = a.on;
-    for (const e of a.entities) e.show = a.on && today.includes(a) === (openTab === 'vandaag') && metres(e.limits.LowerLimit, e.limits.LowerLimitUnit, e.limits.LowerLimitReference) <= metres(maxFl.value, 'FL')
+    for (const e of a.entities) e.show = a.on && today.includes(a) === (LAND || openTab === 'vandaag') && metres(e.limits.LowerLimit, e.limits.LowerLimitUnit, e.limits.LowerLimitReference) <= metres(maxFl.value, 'FL')
       && (!e.windows || e.windows.some(([s, u]) => s <= live && live < u))
       && !(e.limits.Type === 'NOTAM' && notamFl.value && flOf(e.limits) < +notamFl.value);
   }
