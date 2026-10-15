@@ -63,7 +63,8 @@ export default {
     for (const f of stored.flatMap(c => c?.features ?? [])) {
       if (prefixes.some(p => f.properties.Name.startsWith(p))) features.set(`${f.properties.Name} ${f.properties.Designator}`, f);
     }
-    const fout = circles.map(i => state.fout?.[i]).filter(Boolean);
+    // a failed fetch is retried every 5 minutes and the last good NOTAMs stay; only say so when they are over 12 hours old
+    const fout = circles.filter((i, k) => !stored[k] || Date.now() - stored[k].opgehaald > 12 * 3600e3).map(i => state.fout?.[i]).filter(Boolean);
     return Response.json({
       type: 'FeatureCollection',
       opgehaald: stored.every(Boolean) ? new Date(Math.min(...stored.map(c => c.opgehaald))).toISOString() : undefined,
@@ -125,7 +126,11 @@ async function notams(env, [latitude, longitude]) {
   const response = await fetch(`${API}/nmsapi/v1/notams?${new URLSearchParams({ latitude, longitude, radius: 100 })}`, {
     headers: { Authorization: `Bearer ${await token(env)}`, nmsResponseFormat: 'GEOJSON', Accept: 'application/json' },
   });
-  if (!response.ok) throw new Error(`NMS-API: ${response.status} ${await response.text()}`);
+  if (!response.ok) {
+    // a refused token is fetched anew on the next try
+    if ([401, 403].includes(response.status)) await env.NOTAMS.delete('token');
+    throw new Error(`NMS-API: ${response.status} ${await response.text()}`);
+  }
 
   const now = Date.now(), day = now + 24 * 3600e3, features = [];
   for (const f of (await response.json()).data?.geojson ?? []) {
