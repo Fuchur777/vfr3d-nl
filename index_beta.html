@@ -97,7 +97,7 @@
 </div></section>
 <div id="note">
 <strong>Let op: alleen voor educatieve doeleinden. Niet geschikt voor vluchtvoorbereiding!</strong>
-<p>Luchtruim © LVNL (CC BY 4.0). De AIP Netherlands van LVNL is leidend.</p>
+<p>Luchtruim © LVNL (CC BY 4.0). Activeringen (FUA) © EUROCONTROL. De AIP Netherlands van LVNL is leidend.</p>
 <b>Laatste update</b>
 <dl><dt>Luchtruim LVNL</dt><dd id="vAirspace">…</dd><dt>Lierlocaties</dt><dd>ENR 5.5, AIRAC AMDT 10-2026 (1-10-2026)</dd><dt>Code</dt><dd id="vCode"></dd></dl>
 <dl id="links"><dt>Uitleg</dt><dd><a href="luchtruim.html" style="color: #d8e0e6">Luchtruim in Nederland uitgelegd</a></dd><dt>Feedback?</dt><dd><a id="contact" href="#">e-mail</a></dd><dt>Nuttig?</dt><dd><a id="donate" href="https://buymeacoffee.com/fuchur777" target="_blank" rel="noopener">✈ Doneer een vliegminuut</a></dd></dl>
@@ -209,6 +209,35 @@ const metres = (value, unit, ref) =>
 const sources = await Promise.all(LAYERS.map(([id, label]) =>
   Cesium.GeoJsonDataSource.load(typeof id === 'string' ? id : `${LVNL}/${id}/query?where=1%3D1&outFields=*&outSR=4326&f=geojson`)
     .catch(e => console.error(label, e))));
+
+// FUA: areas activated today (Eurocontrol EAUP/EUUP via Frank's Worker, worker/fua/) as their own type, drawn with the LVNL shape
+// of the TRA/TSA/D/R with that designator and the activated FL band. Names match without spaces or leading zeros (EHD09 = EHD9);
+// a trailing Z marks a variant, so it also matches the designator without Z.
+const fuaKey = s => String(s ?? '').toUpperCase().replace(/\s/g, '').replace(/(\D)0+(\d)/g, '$1$2');
+const fua = await fetch('https://vfr3d-fua.frank-e97.workers.dev').then(r => r.json()).catch(e => console.error('FUA', e));
+if (fua) {
+  const shapes = new Map(), byName = new Map(), ds = new Cesium.CustomDataSource('FUA');
+  for (const source of sources.filter(Boolean)) for (const e of source.entities.values) {
+    const k = fuaKey(e.properties.Designator?.getValue());
+    if (e.polygon) shapes.set(k, [...(shapes.get(k) ?? []), e]);
+  }
+  for (const g of fua.gebieden) byName.set(g.naam, [...(byName.get(g.naam) ?? []), g]);
+  const day = t => new Date(t).toLocaleString('nl-NL', { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+  const hour = t => new Date(t).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+  for (const [naam, windows] of byName) {
+    const k = fuaKey(naam), lvnl = shapes.get(k) ?? shapes.get(k.replace(/Z$/, ''));
+    if (!lvnl) { console.warn('FUA-gebied zonder LVNL-vorm:', naam); continue; }
+    // one tree item per area; one volume per distinct FL band, all windows in the infobox
+    const Actief = windows.map(w => `${day(w.van)}–${hour(w.tot)}  FL${w.ondergrensFL}–FL${w.bovengrensFL}`).join('\n');
+    const bands = new Map(windows.map(w => [`${w.ondergrensFL}-${w.bovengrensFL}`, w]));
+    for (const w of bands.values()) for (const e of lvnl) ds.entities.add({ polygon: { hierarchy: e.polygon.hierarchy.getValue() }, properties: {
+      Designator: naam, Name: e.properties.Name?.getValue(), Type: 'FUA', Actief,
+      LowerLimit: w.ondergrensFL, LowerLimitUnit: 'FL', LowerLimitReference: w.ondergrensFL ? 'STD' : 'SFC',
+      UpperLimit: w.bovengrensFL, UpperLimitUnit: 'FL', UpperLimitReference: 'STD' } });
+  }
+  LAYERS.push(['fua', 'Vandaag actief (FUA)', '#15aabf', true]);
+  sources.push(ds);
+}
 // loading screen: busy('text') shows it, busy() hides it
 const loading = document.getElementById('loading');
 const busy = text => { loading.classList.toggle('done', !text); if (text) loading.lastChild.textContent = text; };
@@ -268,8 +297,8 @@ LAYERS.forEach(([, label, colour, show], i) => {
     e.name = `${cls ? `[${cls}] ` : ''}${[p.Designator, p.Name].filter(Boolean).join(' ')}`;
     e.limits = p;
     // infobox: only the fields a pilot needs, in this order
-    e.description = '<table class="cesium-infoBox-defaultTable">' + ['UpperLimit', 'LowerLimit', 'LowerLimitUnit', 'Type', 'Class', 'Designator', 'UpperLimitUnit', 'UpperLimitReference', 'LowerLimitReference', 'Van', 'Tot', 'Schema', 'Tekst']
-      .filter(k => p[k] != null && p[k] !== '').map(k => `<tr><th>${k}</th><td${k === 'Tekst' ? ' style="white-space: pre-wrap; word-break: break-word"' : ''}>${String(p[k]).replace(/&/g, '&amp;').replace(/</g, '&lt;')}</td></tr>`).join('') + '</table>';
+    e.description = '<table class="cesium-infoBox-defaultTable">' + ['UpperLimit', 'LowerLimit', 'LowerLimitUnit', 'Type', 'Class', 'Designator', 'UpperLimitUnit', 'UpperLimitReference', 'LowerLimitReference', 'Actief', 'Van', 'Tot', 'Schema', 'Tekst']
+      .filter(k => p[k] != null && p[k] !== '').map(k => `<tr><th>${k}</th><td${k === 'Tekst' || k === 'Actief' ? ' style="white-space: pre-wrap; word-break: break-word"' : ''}>${String(p[k]).replace(/&/g, '&amp;').replace(/</g, '&lt;')}</td></tr>`).join('') + '</table>';
     e.polygon.material = color.withAlpha(0.25);
     e.polygon.outlineColor = color;
     // a MultiPolygon becomes several entities; list it once
