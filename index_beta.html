@@ -331,13 +331,13 @@ document.getElementById('notamRefresh').onclick = async () => {
   await fetch(`${NOTAMS}?vernieuw`).catch(() => {});
   location.reload();
 };
-// LXNAV: the checked FUA and NOTAMs of the Vandaag tab as a SeeYou CUB file (Naviter spec 2.0.2,
+// LXNAV: the checked FUA and NOTAMs of the Vandaag tab, for the whole day whatever the time sliders show, as a SeeYou CUB file (Naviter spec 2.0.2,
 // github.com/naviter/seeyou_file_formats), the airspace format LXNAV devices load. Little endian, radians,
 // heights in metres with a reference per limit, active period as packed UTC minutes since 2000.
 document.getElementById('lxnav').onclick = () => {
   const utf8 = s => new TextEncoder().encode(s), f32 = Math.fround;
   const packTime = t => { const d = new Date(t); return ((((d.getUTCFullYear() - 2000) * 12 + d.getUTCMonth()) * 31 + d.getUTCDate() - 1) * 24 + d.getUTCHours()) * 60 + d.getUTCMinutes(); };
-  const hhmm = t => new Date(t).toLocaleTimeString('nl-NL', { timeZone: 'Europe/Amsterdam', hour: '2-digit', minute: '2-digit' }).replace(':', '');
+  const hhmm = t => new Date(t).toLocaleTimeString('nl-NL', { timeZone: 'Europe/Amsterdam', hour: '2-digit', minute: '2-digit' });
   // [style 1=AGL 2=MSL 3=FL, metres]
   const alt = (v, unit, ref) => ref === 'SFC' || ref === 'GND' && !v ? [1, 0] : unit === 'FL' ? [3, Math.round(v * 30.48)]
     : [ref === 'GND' || ref === 'AGL' ? 1 : 2, Math.round(unit === 'M' ? v : v * 0.3048)];
@@ -347,7 +347,7 @@ document.getElementById('lxnav').onclick = () => {
     const p = e.limits, pts = e.polygon.hierarchy.getValue().positions.map(c => Cesium.Cartographic.fromCartesian(c));
     if (pts.length > 1 && Cesium.Cartographic.equals(pts[0], pts.at(-1))) pts.pop();
     const lo = pts.map(c => c.longitude), la = pts.map(c => c.latitude), w = e.windows ?? [];
-    const name = `${[p.Designator, a.soort === 'FUA' ? '' : p.Name].filter(Boolean).join(' ')} ${w.map(([s, u]) => `${hhmm(s)}-${u === Infinity ? 'PERM' : hhmm(u)}`).join(',')}LT`;
+    const name = `${[p.Designator, a.soort === 'FUA' ? '' : p.Name].filter(Boolean).join(' ')} ${w.length ? `${w.map(([s, u]) => `${hhmm(s)}-${u === Infinity ? 'PERM' : hhmm(u)}`).join(', ')} LT` : ''}`.trim();
     const remarks = `${a.soort}\n${w.map(([s, u]) => `${when(s)} - ${u === Infinity ? 'PERM' : when(u)}`).join('\n')}\n${p.Tekst ?? p.Actief ?? ''}`.trim();
     return { pts, name: utf8(name).slice(0, 63), remarks: utf8(remarks).slice(0, 65535), style: style(a, p.Designator ?? ''),
       min: alt(p.LowerLimit, p.LowerLimitUnit, p.LowerLimitReference), max: alt(p.UpperLimit, p.UpperLimitUnit, p.UpperLimitReference),
