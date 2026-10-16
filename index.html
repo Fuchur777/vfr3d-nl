@@ -137,7 +137,9 @@
 <script src="https://cdn.jsdelivr.net/npm/cesium@1.145.0/Build/Cesium/Cesium.js"></script>
 <script type="module">
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
-const disclaimer = document.getElementById('disclaimer'), codeDate = new Date(document.lastModified).toLocaleDateString('nl-NL');
+// code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
+const CODE_VERSION = '16-10-2026';
+const disclaimer = document.getElementById('disclaimer'), codeDate = CODE_VERSION;
 let accepted = (() => { try { return localStorage.getItem('vfr3d-disclaimer') === codeDate; } catch {} })();
 document.getElementById('accept').onclick = () => {
   if (!accepted) window.goatcounter?.count({ path: 'disclaimer-geaccepteerd', title: 'Disclaimer geaccepteerd', event: true });
@@ -396,7 +398,7 @@ const nlDate = t => new Date(t).toLocaleDateString('nl-NL');
 (LAND ? Promise.reject() : fetch('data/lvnl/meta.json').then(r => r.json()).then(j => j.lastEditDate)
   .catch(() => fetch(`${LVNL}/layers?f=json`).then(r => r.json()).then(j => Math.max(...j.layers.map(l => l.editingInfo?.lastEditDate ?? 0))))).catch(() => 0)
   .then(t => document.getElementById('vAirspace').textContent = t > 0 ? nlDate(t) : 'datum onbekend');
-document.getElementById('vCode').textContent = nlDate(document.lastModified);
+document.getElementById('vCode').textContent = CODE_VERSION;
 // feedback address is put together in the browser, so it is not in the HTML for robots that only read the page
 const contact = document.getElementById('contact'), mail = ['frank', 'schellenberg.nl'].join('@');
 contact.textContent = mail;
@@ -441,11 +443,11 @@ const STYLES = { CTR: 0x01, TMA: 0x06, CTA: 0x09, ATZ: 0x87, 'TMZ/RTMZ': 0x0b, R
 const style = (a, n, cls) => a.soort === 'FUA' ? (/^..TSA/.test(n) ? 0x8e : /^..D/.test(n) ? 0x04 : /^..R/.test(n) ? 0x02 : 0x05)
   : a.soort ? 0x0f : (STYLES[a.key.split('|')[0]] ?? 0) | ' ABCDEFG'.indexOf(cls || ' ') << 4;
 // one CUB item per drawn volume
-const cubItem = (a, e, name, remarks, max) => {
+const cubItem = (a, e, name, remarks, max, cls = e.cls ?? a.cls) => {
   const p = e.limits, pts = e.polygon.hierarchy.getValue().positions.map(c => Cesium.Cartographic.fromCartesian(c));
   if (pts.length > 1 && Cesium.Cartographic.equals(pts[0], pts.at(-1))) pts.pop();
   const lo = pts.map(c => c.longitude), la = pts.map(c => c.latitude), w = e.windows ?? [];
-  return { pts, name: utf8(name).slice(0, 63), remarks: utf8(remarks).slice(0, 65535), style: style(a, p.Designator ?? '', e.cls ?? a.cls),
+  return { pts, name: utf8(name).slice(0, 63), remarks: utf8(remarks).slice(0, 65535), style: style(a, p.Designator ?? '', cls),
     min: alt(p.LowerLimit, p.LowerLimitUnit, p.LowerLimitReference), max: max ?? alt(p.UpperLimit, p.UpperLimitUnit, p.UpperLimitReference),
     from: w.length ? Math.min(...w.map(x => x[0])) : 0, to: w.length ? Math.max(...w.map(x => x[1])) : Infinity,
     left: f32(Math.min(...lo)), right: f32(Math.max(...lo)), bottom: f32(Math.min(...la)), top: f32(Math.max(...la)) };
@@ -460,9 +462,14 @@ document.getElementById('lxnav').onclick = () => writeCub(today.filter(a => a.on
 document.getElementById('lxnavAirspace').onclick = () => {
   const top = metres(maxFl.value, 'FL'), cut = [3, Math.round(maxFl.value * 30.48)];
   writeCub(airspaces.filter(a => a.on).flatMap(a => a.entities.filter(e => metres(e.limits.LowerLimit, e.limits.LowerLimitUnit, e.limits.LowerLimitReference) <= top).map(e => {
-    const p = e.limits, cls = e.cls ?? a.cls;
-    return cubItem(a, e, [p.Designator, p.Name].filter(Boolean).join(' ') || a.name, cls ? `Klasse ${cls}` : '',
-      metres(p.UpperLimit, p.UpperLimitUnit, p.UpperLimitReference) > top + 1 ? cut : undefined);
+    const p = e.limits, name = [p.Designator, p.Name].filter(Boolean).join(' ') || a.name, max = metres(p.UpperLimit, p.UpperLimitUnit, p.UpperLimitReference) > top + 1 ? cut : undefined;
+    // time-dependent TMAs (AIP SUP 03/2022): the strictest class (D, 18-22 LT on a weekday), and when E applies in the name (Frank 2026-10-16)
+    if (a.rule) {
+      const [cls, , note] = a.rule({ weekday: 'Wed', hour: 20, hol: false }, p), [, text] = a.rule({ weekday: 'Sat', hour: 12, hol: false }, p);
+      return cubItem(a, e, `${name} (${note})`, `Klasse ${cls} (AIP SUP 03/2022)\n${text}`, max, cls);
+    }
+    const cls = e.cls ?? a.cls;
+    return cubItem(a, e, name, cls ? `Klasse ${cls}` : '', max);
   })), 'luchtruim', 'vfr3d.nl Luchtruim (c) LVNL CC BY 4.0. AIP Netherlands leidend. Niet voor navigatie.', 'Er staat geen luchtruim aan.');
 };
 function writeCub(items, kind, title, none) {
@@ -501,7 +508,7 @@ function writeCub(items, kind, title, none) {
   for (const r of recs) for (const b of r) { u8.set(b, at); at += b.length; }
   const link = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([buf])), download: `vfr3d-${kind}-${new Date(now).toLocaleDateString('sv', { timeZone: 'Europe/Amsterdam' })}.cub` });
   link.click();
-  URL.revokeObjectURL(link.href);
+  setTimeout(() => URL.revokeObjectURL(link.href), 40000); // Safari still needs it just after click()
 }
 // AIP SUP 03/2022: some TMAs change class during the day. W = 18:00–22:00 LT (1700–2100 UTC, summer 1600–2000 UTC).
 // Note 3 (FL065–FL095 of Nieuw Milligen TMA C2 and E): class E from Friday 17:00 to Monday 00:00 LT, except within W.
@@ -510,14 +517,15 @@ const amsAt = t => Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZon
 const simDay = t => ({ weekday: atDay.value, hour: +amsAt(t).hour, hol: atHol.checked });
 const inW = s => s.hour >= 18 && s.hour < 22;
 const weekend = ({ weekday, hour, hol }) => hol || weekday === 'Sat' || weekday === 'Sun' || (weekday === 'Fri' && hour >= 17);
-const lowerBand = t => inW(t) ? ['D', 'D tot 22:00 LT, daarna E'] : ['E', 'E, klasse D van 18:00 tot 22:00 LT'];
-const upperBand = t => weekend(t) && !inW(t) ? ['E', 'E (vrijdag 17:00 tot maandag 00:00 LT en feestdagen), klasse D van 18:00 tot 22:00 LT'] : ['D', 'D'];
+// [class now, rule text, short note on when the lower class E applies (for the .cub name)]
+const lowerBand = t => [...(inW(t) ? ['D', 'D tot 22:00 LT, daarna E'] : ['E', 'E, klasse D van 18:00 tot 22:00 LT']), 'E buiten 18-22 LT'];
+const upperBand = t => [...(weekend(t) && !inW(t) ? ['E', 'E (vrijdag 17:00 tot maandag 00:00 LT en feestdagen), klasse D van 18:00 tot 22:00 LT'] : ['D', 'D']), 'E vr17-ma00 LT, fd, niet 18-22'];
 const SUP = [
   [/LELYSTAD TMA ?[345]\b|NIEUW MILLIGEN TMA ?B\b/, t => lowerBand(t)],
   // two bands: FL065–FL095 follows note 3, FL055–FL065 follows W; a volume spanning both gets the class of its upper band
   [/NIEUW MILLIGEN TMA ?(C2|E)\b/, (t, p) => p.UpperLimitUnit === 'FL' && p.UpperLimit <= 65 ? lowerBand(t)
     : p.LowerLimitUnit === 'FL' && p.LowerLimit >= 65 ? upperBand(t)
-    : [upperBand(t)[0], `FL065–FL095: ${upperBand(t)[1]}\nFL055–FL065: ${lowerBand(t)[1]}`]],
+    : [upperBand(t)[0], `FL065–FL095: ${upperBand(t)[1]}\nFL055–FL065: ${lowerBand(t)[1]}`, 'deels E buiten 18-22 LT']],
 ];
 const supRows = (t, text) => `<tr><th>Klasse (AIP SUP 03/2022)</th><td style="white-space: pre-wrap">${text}</td></tr>`
   + `<tr><th>Radio</th><td>${inW(t) ? 'Lelystad Arrival 134.530' : 'Dutch MIL Info 132.350 (FIS)'}</td></tr>`;
@@ -655,7 +663,9 @@ function refresh() {
     e.polygon.material = c.withAlpha(0.25);
     e.polygon.outlineColor = c;
     // on a class change, follow the class buttons: on when the other airspace of the new class is on
-    if (i === 0 && cls !== a.cls) a.on = airspaces.some(b => !b.rule && b.cls === cls && b.on);
+    // except at page load, where a saved choice wins
+    if (i === 0 && cls !== a.cls && (a.loaded || saved[a.key] === undefined)) a.on = airspaces.some(b => !b.rule && b.cls === cls && b.on);
+    if (i === 0) a.loaded = true;
     if (i === 0) { Object.assign(a, { cls, colour: CLASS_COLOURS[cls] }); Object.assign(a.badge, { textContent: cls }); a.badge.style.background = a.colour; }
   }
   for (const a of today) if (a.land && a.on) {
@@ -824,8 +834,12 @@ const drop = document.getElementById('drop'), igcInput = document.getElementById
 drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
 drop.ondragleave = () => drop.classList.remove('over');
 drop.ondrop = e => { e.preventDefault(); drop.classList.remove('over'); igcInput.files = e.dataTransfer.files; igcInput.dispatchEvent(new Event('change')); };
-igcInput.onchange = async ({ target }) => {
+// the loading screen always goes away, also when a file cannot be read
+igcInput.onchange = ({ target }) => {
   busy('Vlucht laden…');
+  loadFlight(target).catch(e => (console.error(e), alert(`Dit vluchtbestand kan niet gelezen worden: ${e.message}`))).finally(() => busy());
+};
+async function loadFlight(target) {
   const file = target.files[0], ext = file.name.split('.').pop().toLowerCase();
   document.getElementById('fileName').textContent = file.name;
   const text = ext === 'kmz' ? await unzipKml(await file.arrayBuffer()) : await file.text();
@@ -879,8 +893,7 @@ igcInput.onchange = async ({ target }) => {
   updateHeights();
   await flown;
   await whenDrawn();
-  busy();
-};
+}
 
 const speed = document.getElementById('speed'), play = document.getElementById('play'), cockpit = document.getElementById('cockpit');
 speed.onchange = () => clock.multiplier = +speed.value;
