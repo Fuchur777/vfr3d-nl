@@ -293,7 +293,7 @@ const qnh = document.getElementById('qnh');
 const metres = (value, unit, ref) =>
   ref === 'SFC' ? 0 : (unit === 'FL' ? value * 100 + (qnh.value - 1013.25) * 27.3 : unit === 'M' ? value / 0.3048 : value) * 0.3048;
 
-let notamsFetched;
+let notamsFetched, notamsActueel;
 // a Worker that could not fetch says why in 'fout' (and serves the last good data)
 const showFout = (bron, fout) => fout && (document.getElementById('fout').textContent += `${bron}: ${fout}\n`);
 // FUA and the neighbouring countries are fetched at the same time as the airspace
@@ -308,7 +308,7 @@ const abroadFetch = Promise.all(ABROAD.map(([icao, land]) => Promise.all([
 ]).then(d => [land, ...d])));
 const sources = await Promise.all(LAYERS.map(([id, label]) =>
   // NOTAMs are fetched first, to read when the Worker last fetched them ('opgehaald')
-  (id === NOTAMS ? fetch(NOTAMS).then(r => r.json()).then(j => (notamsFetched = j.opgehaald, showFout('NOTAMs', j.fout), Cesium.GeoJsonDataSource.load(j)))
+  (id === NOTAMS ? fetch(NOTAMS).then(r => r.json()).then(j => (notamsFetched = j.opgehaald, notamsActueel = j.actueel, showFout('NOTAMs', j.fout), Cesium.GeoJsonDataSource.load(j)))
     // LVNL airspace: the copy in data/lvnl (kept current by the LVNL-luchtruim GitHub Action), else LVNL itself
     : typeof id === 'string' ? Cesium.GeoJsonDataSource.load(id)
     : Cesium.GeoJsonDataSource.load(`data/lvnl/${id}.geojson`).catch(() => Cesium.GeoJsonDataSource.load(`${LVNL}/${id}/query?where=1%3D1&outFields=*&outSR=4326&f=geojson`)))
@@ -382,18 +382,15 @@ busy('Luchtruim tekenen…');
 
 // versions under the disclaimer; LVNL's last edit date is the newest over all layers
 const nlDate = t => new Date(t).toLocaleDateString('nl-NL');
-// update dates are green when certainly current, orange when not checked (yet), red when certainly outdated; the tooltip says why
-const mark = (id, ok, why) => Object.assign(document.getElementById(id), { title: why }).style.color = ok === true ? '#69db7c' : ok === false ? '#ff8787' : '#ffc24b';
-// our stored LVNL set against LVNL's newest edit date (one small request); without a stored set the app loaded LVNL itself
-Promise.all([fetch('data/lvnl/meta.json').then(r => r.json()).then(j => j.lastEditDate),
-  fetch(`${LVNL}/layers?f=json`).then(r => r.json()).then(j => Math.max(...j.layers.map(l => l.editingInfo?.lastEditDate ?? 0)))].map(p => p.catch(() => 0)))
-  .then(([ours, theirs]) => {
-    document.getElementById('vAirspace').textContent = ours || theirs ? nlDate(ours || theirs) : 'datum onbekend';
-    mark('vAirspace', theirs ? !ours || ours >= theirs : null, !theirs ? 'LVNL niet bereikbaar om te controleren'
-      : ours && ours < theirs ? `LVNL heeft een nieuwere versie van ${nlDate(theirs)}` : 'Gelijk aan de nieuwste versie bij LVNL');
-  });
+// update dates are green when certainly current, orange when not checked (yet), red when certainly outdated; the tooltip says why.
+// The sources say it themselves ('actueel'): data/lvnl/meta.json (LVNL-luchtruim Action) and the NOTAM and FUA Workers
+const mark = (id, a) => Object.assign(document.getElementById(id), { title: a?.reden ?? 'Onbekend' }).style.color = { groen: '#69db7c', rood: '#ff8787' }[a?.kleur] ?? '#ffc24b';
+fetch('data/lvnl/meta.json').then(r => r.json()).catch(() => ({})).then(m => {
+  document.getElementById('vAirspace').textContent = m.lastEditDate ? nlDate(m.lastEditDate) : 'datum onbekend';
+  mark('vAirspace', m.actueel);
+});
 // ENR 5.5 of AIRAC AMDT 10-2026; from the next AIRAC date (29-10-2026) it has to be checked again (AIRAC-check issue)
-mark('vSport', Date.now() < Date.UTC(2026, 9, 29) ? true : null, 'Geldig tot de volgende AIRAC-datum, daarna nakijken');
+mark('vSport', { kleur: Date.now() < Date.UTC(2026, 9, 29) ? 'groen' : 'oranje', reden: 'Geldig tot de volgende AIRAC-datum, daarna nakijken' });
 document.getElementById('vCode').textContent = CODE_VERSION;
 // feedback address is put together in the browser, so it is not in the HTML for robots that only read the page
 const contact = document.getElementById('contact'), mail = ['frank', 'schellenberg.nl'].join('@');
@@ -411,15 +408,8 @@ const badge = (cls, colour) => Object.assign(document.createElement('span'), { c
 // Vandaag stays live for NOTAMs and FUA, from now until 06:00 LT tomorrow. Both in 15-minute steps
 const amsOffset = d => new Date(d.toLocaleString('en-US', { timeZone: 'Europe/Amsterdam' })) - new Date(d.toLocaleString('en-US', { timeZone: 'UTC' }));
 const now = Date.now(), ltAt = h => { const lt = new Date(now + amsOffset(new Date(now))); lt.setUTCHours(h, 0, 0, 0); return lt - amsOffset(lt); }, dayStart = ltAt(0), until = ltAt(30);
-// NOTAMs: current when fetched after the last fetch moment (06, 18, 22 LT; the first hour after it they may still be coming in)
-const slot = Math.max(...[-2, 6, 18, 22].map(ltAt).filter(t => t <= now)), notamTime = Date.parse(notamsFetched), fuaTime = Date.parse(fua?.opgehaald);
-mark('vNotams', notamTime >= slot ? true : !notamTime || now - slot < 3600e3 ? null : false,
-  notamTime >= slot ? `Opgehaald na het laatste ophaalmoment (${when(slot)})` : `Nog niet opgehaald na het ophaalmoment van ${when(slot)}`);
-// FUA (Frank 2026-10-16): red when there is still no plan from after 06:00 LT this morning, orange when the Worker's
-// last scheduled fetch failed ('mislukt'; the next good one makes it green again), else green
-const fuaRed = now >= ltAt(6) && !(fuaTime >= ltAt(6));
-mark('vFua', fuaRed ? false : fua?.mislukt || !fuaTime ? null : true, fuaRed ? `Nog geen plan van na ${when(ltAt(6))}`
-  : fua?.mislukt ? `Laatste ophaalpoging mislukt: ${fua.mislukt}` : fuaTime ? 'Laatste geplande ophaalpoging gelukt' : 'Onbekend');
+mark('vNotams', notamsActueel);
+mark('vFua', fua?.actueel);
 const atTime = document.getElementById('atTime'), atDay = document.getElementById('atDay'), atHol = document.getElementById('atHol'), showAt = () => dayStart + atTime.value * 60000;
 atTime.value = Math.floor((now - dayStart) / 900000) * 15;
 atDay.value = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Amsterdam', weekday: 'short' }).format(now);

@@ -1,8 +1,9 @@
 name: LVNL-luchtruim
-# Daily: if LVNL published a newer airspace set, store it in data/lvnl (the app reads it from vfr3d.nl itself)
+# Hourly: if LVNL published a newer airspace set, store it in data/lvnl (the app reads it from vfr3d.nl itself).
+# meta.json says whether the set is current ('actueel'); a refused set is marked red there and the run fails
 on:
   schedule:
-    - cron: '30 4 * * *'
+    - cron: '30 * * * *'
   workflow_dispatch:
 permissions:
   contents: write
@@ -13,10 +14,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - run: node .github/lvnl-data.mjs
       - run: |
+          node .github/lvnl-data.mjs || failed=1
           git add data/lvnl
-          git diff --cached --quiet && exit 0
+          git diff --cached --quiet && exit ${failed:-0}
           git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m "LVNL-luchtruim bijgewerkt ($(jq -r '.lastEditDate / 1000 | strftime("%Y-%m-%d")' data/lvnl/meta.json))"
           git pull --rebase origin main
           git push
+          exit ${failed:-0}
