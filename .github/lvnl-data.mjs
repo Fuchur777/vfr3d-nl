@@ -3,11 +3,14 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 
 const LVNL = 'https://services-eu1.arcgis.com/OtUwzhpKSdeXgRIB/arcgis/rest/services/Airspaces_data/FeatureServer';
-const { layers } = await (await fetch(`${LVNL}/layers?f=json`)).json();
+// only the layers the app draws (LAYERS in index.html)
+const USED = [3, 5, 6, 7, 8, 10, 11, 13, 14, 15, 17, 18, 19];
+const layers = (await (await fetch(`${LVNL}/layers?f=json`)).json()).layers.filter(l => USED.includes(l.id));
+if (layers.length !== USED.length) throw new Error(`LVNL mist lagen: ${USED.filter(id => !layers.some(l => l.id === id))}`);
 const lastEditDate = Math.max(...layers.map(l => l.editingInfo?.lastEditDate ?? 0));
 const stored = JSON.parse(await readFile('data/lvnl/meta.json', 'utf8').catch(() => '{}'));
 if (!lastEditDate || lastEditDate <= (stored.lastEditDate ?? 0)) {
-  console.log('LVNL ongewijzigd sinds', new Date(stored.lastEditDate).toISOString());
+  console.log('LVNL ongewijzigd sinds', stored.lastEditDate ? new Date(stored.lastEditDate).toISOString() : 'onbekend');
   process.exit(0);
 }
 // fetch everything first; any doubtful layer stops the run (GitHub mails a failed run) and nothing is written
