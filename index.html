@@ -158,17 +158,7 @@ if (!accepted) disclaimer.showModal();
 const LVNL = 'https://services-eu1.arcgis.com/OtUwzhpKSdeXgRIB/arcgis/rest/services/Airspaces_data/FeatureServer';
 // [layer id or local GeoJSON file, label, colour when unclassified, type shown by default; classes A-D are always on by default]
 const NOTAMS = 'https://vfr3d-notams.frank-e97.workers.dev', FUA = 'https://vfr3d-fua.frank-e97.workers.dev';
-// country pages: index_be.html and index_de.html open this page with ?land=be or ?land=de. They show only the Vandaag tab,
-// with NOTAMs and FUA of that country and the shapes of its switchable areas from openAIP (via the FUA Worker)
-const LAND = {
-  be: { naam: 'België en Luxemburg', icao: 'EB,EL', lon: 4.9, lat: 50.3, hoogte: 300000 },
-  de: { naam: 'Duitsland', icao: 'ED', lon: 10.4, lat: 51.1, hoogte: 500000 },
-}[new URLSearchParams(location.search).get('land')];
-const Q = LAND ? `?land=${LAND.icao}` : '';
-const LAYERS = LAND ? [
-  [`${FUA}/gebieden${Q}`, 'Luchtruim (openAIP)', '#888780', false],
-  [NOTAMS, 'NOTAMs', '#e8590c', true],
-] : [
+const LAYERS = [
   [15, 'CTR', '#185FA5', false],
   [14, 'TMA', '#185FA5', false],
   [13, 'CTA', '#185FA5', false],
@@ -186,13 +176,6 @@ const LAYERS = LAND ? [
   [19, 'Prohibited (P)', '#1a1a1a', true],
   [NOTAMS, 'NOTAMs', '#e8590c', true], // FAA NMS via Frank's Cloudflare Worker (worker/notams.js)
 ];
-if (LAND) {
-  document.title = `VFR3D ${LAND.naam} (beta)`;
-  document.querySelectorAll('#tabs button:not([data-tab=vandaag]):not([data-tab=kaart])').forEach(b => b.hidden = true);
-  document.getElementById('tabs').style.gridTemplateColumns = '1fr 1fr';
-  document.querySelectorAll('#updates [data-for=luchtruim]').forEach(x => x.hidden = true);
-  for (const p of document.querySelectorAll('.credits')) p.textContent = 'Activeringen (FUA) © EUROCONTROL. Luchtruimvormen © openAIP (CC BY-NC 4.0). NOTAMs: FAA. De AIP van het land is leidend.';
-}
 const CLASS_COLOURS = { A: '#A32D2D', B: '#993C1D', C: '#185FA5', D: '#378ADD', E: '#534AB7', F: '#888780', G: '#3B6D11' };
 
 // light mode everywhere (Frank, 2026-10-15): WebGL 1 and no atmosphere, sky or lighting. Safari on macOS 27 draws no imagery
@@ -251,7 +234,7 @@ const showTab = id => {
 tabs.forEach(t => t.onclick = () => { try { localStorage.setItem('vfr3d-tab', t.dataset.tab); } catch {} showTab(t.dataset.tab); if (ready) refresh(); });
 // open the tab named in the link (#vandaag), else the tab the visitor last used (also after NOTAMs verversen)
 const tabIds = [...tabs].map(t => t.dataset.tab);
-showTab(LAND ? (location.hash === '#kaart' ? 'kaart' : 'vandaag') : [location.hash.slice(1), (() => { try { return localStorage.getItem('vfr3d-tab'); } catch {} })()].find(id => tabIds.includes(id)) ?? 'luchtruim');
+showTab([location.hash.slice(1), (() => { try { return localStorage.getItem('vfr3d-tab'); } catch {} })()].find(id => tabIds.includes(id)) ?? 'luchtruim');
 // click and double-click pick the nearest visible entity, skipping airspace hidden by the selection or FL filter
 const pickVisible = pos => viewer.scene.drillPick(pos, 10).map(p => p.id).find(e => e instanceof Cesium.Entity && e.isShowing);
 viewer.screenSpaceEventHandler.setInputAction(c => viewer.selectedEntity = pickVisible(c.position), Cesium.ScreenSpaceEventType.LEFT_CLICK);
@@ -278,8 +261,6 @@ for (const [name, layer] of [['Kaart', viewer.imageryLayers.get(0)], ['Satelliet
 const base = document.getElementById('base');
 // hidden layers request no tiles, so satellite does not also load the map underneath
 const osm = viewer.imageryLayers.get(0);
-// country pages start on satellite (the ICAO chart covers only the Netherlands); the Kaart tab can switch
-if (LAND) base.selectedIndex = 0;
 (base.onchange = () => { esri.show = base.selectedIndex === 0; osm.show = !esri.show; icao.show = base.selectedIndex === 2; })();
 
 // 2D/3D button in Cesium's toolbar: 2D is a top-down view on the chosen base layer
@@ -291,11 +272,11 @@ flat.onclick = () => {
 };
 viewer.container.querySelector('.cesium-viewer-toolbar').prepend(flat);
 // after the morph: the Netherlands from above in 2D, the start view in 3D
-const startView = () => viewer.scene.mode === Cesium.SceneMode.SCENE2D ? { destination: LAND ? Cesium.Rectangle.fromDegrees(lon - h / 125000, lat - h / 200000, lon + h / 125000, lat + h / 200000) : Cesium.Rectangle.fromDegrees(3.2, 50.7, 7.3, 53.6) } : home;
+const startView = () => viewer.scene.mode === Cesium.SceneMode.SCENE2D ? { destination: Cesium.Rectangle.fromDegrees(3.2, 50.7, 7.3, 53.6) } : home;
 viewer.scene.morphComplete.addEventListener(() => viewer.camera.setView(startView()));
 
 // looking 40° down, the camera stands about 1.19 × its height south of what it looks at
-const [lon, lat, h] = LAND ? [LAND.lon, LAND.lat, LAND.hoogte] : [5.3, 52.2, 280000];
+const [lon, lat, h] = [5.3, 52.2, 280000];
 const home = { destination: Cesium.Cartesian3.fromDegrees(lon, lat - h * 1.19 / 111000, h), orientation: { pitch: Cesium.Math.toRadians(-40) } };
 viewer.camera.setView(home);
 // the home button returns to the view at page load instead of the whole globe
@@ -314,10 +295,10 @@ let notamsFetched;
 // a Worker that could not fetch says why in 'fout' (and serves the last good data)
 const showFout = (bron, fout) => fout && (document.getElementById('fout').textContent += `${bron}: ${fout}\n`);
 // FUA and the neighbouring countries are fetched at the same time as the airspace
-const fuaFetch = fetch(FUA + Q).then(r => r.json()).catch(e => console.error('FUA', e));
+const fuaFetch = fetch(FUA).then(r => r.json()).catch(e => console.error('FUA', e));
 // Vandaag also lists Belgium/Luxembourg and Germany, off by default: their NOTAMs and FUA (shapes from openAIP via the FUA Worker).
 // Labels 'NOTAMs|<country>' and 'FUA|<country>' keep them apart from the Dutch ones
-const ABROAD = LAND ? [] : [['EB,EL', 'België/Luxemburg'], ['ED', 'Duitsland']];
+const ABROAD = [['EB,EL', 'België/Luxemburg'], ['ED', 'Duitsland']];
 const abroadFetch = Promise.all(ABROAD.map(([icao, land]) => Promise.all([
   fetch(`${NOTAMS}?land=${icao}`).then(r => r.json()).then(j => (showFout(`NOTAMs ${land}`, j.fout), Cesium.GeoJsonDataSource.load(j))).catch(e => console.error(land, e)),
   fetch(`${FUA}?land=${icao}`).then(r => r.json()).then(j => (showFout(`FUA ${land}`, j.fout), j)).catch(e => console.error(land, e)),
@@ -325,7 +306,7 @@ const abroadFetch = Promise.all(ABROAD.map(([icao, land]) => Promise.all([
 ]).then(d => [land, ...d])));
 const sources = await Promise.all(LAYERS.map(([id, label]) =>
   // NOTAMs are fetched first, to read when the Worker last fetched them ('opgehaald')
-  (id === NOTAMS ? fetch(NOTAMS + Q).then(r => r.json()).then(j => (notamsFetched = j.opgehaald, showFout('NOTAMs', j.fout), Cesium.GeoJsonDataSource.load(j)))
+  (id === NOTAMS ? fetch(NOTAMS).then(r => r.json()).then(j => (notamsFetched = j.opgehaald, showFout('NOTAMs', j.fout), Cesium.GeoJsonDataSource.load(j)))
     // LVNL airspace: the copy in data/lvnl (kept current by the LVNL-luchtruim GitHub Action), else LVNL itself
     : typeof id === 'string' ? Cesium.GeoJsonDataSource.load(id)
     : Cesium.GeoJsonDataSource.load(`data/lvnl/${id}.geojson`).catch(() => Cesium.GeoJsonDataSource.load(`${LVNL}/${id}/query?where=1%3D1&outFields=*&outSR=4326&f=geojson`)))
@@ -399,8 +380,8 @@ busy('Luchtruim tekenen…');
 
 // versions under the disclaimer; LVNL's last edit date is the newest over all layers
 const nlDate = t => new Date(t).toLocaleDateString('nl-NL');
-(LAND ? Promise.reject() : fetch('data/lvnl/meta.json').then(r => r.json()).then(j => j.lastEditDate)
-  .catch(() => fetch(`${LVNL}/layers?f=json`).then(r => r.json()).then(j => Math.max(...j.layers.map(l => l.editingInfo?.lastEditDate ?? 0))))).catch(() => 0)
+fetch('data/lvnl/meta.json').then(r => r.json()).then(j => j.lastEditDate)
+  .catch(() => fetch(`${LVNL}/layers?f=json`).then(r => r.json()).then(j => Math.max(...j.layers.map(l => l.editingInfo?.lastEditDate ?? 0)))).catch(() => 0)
   .then(t => document.getElementById('vAirspace').textContent = t > 0 ? nlDate(t) : 'datum onbekend');
 document.getElementById('vCode').textContent = CODE_VERSION;
 // feedback address is put together in the browser, so it is not in the HTML for robots that only read the page
@@ -682,7 +663,7 @@ function refresh() {
   // the map follows the tab: Vandaag draws only NOTAMs and FUA, the other tabs only airspace; each keeps its own selection
   for (const a of [...airspaces, ...today]) {
     a.box.checked = a.on;
-    for (const e of a.entities) e.show = a.on && !!a.today === (!!LAND || openTab === 'vandaag') && metres(e.limits.LowerLimit, e.limits.LowerLimitUnit, e.limits.LowerLimitReference) <= metres(maxFl.value, 'FL')
+    for (const e of a.entities) e.show = a.on && !!a.today === (openTab === 'vandaag') && metres(e.limits.LowerLimit, e.limits.LowerLimitUnit, e.limits.LowerLimitReference) <= metres(maxFl.value, 'FL')
       && (!e.windows || e.windows.some(([s, u]) => s <= live && live < u))
       && !(e.limits.Type === 'NOTAM' && notamFl.value && flOf(e.limits) < +notamFl.value);
   }
