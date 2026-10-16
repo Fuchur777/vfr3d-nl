@@ -6,6 +6,6 @@
   "browser": { "binding": "BROWSER" },
   // day archive (?datum=), namespace vfr3d-fua
   "kv_namespaces": [{ "binding": "FUA", "id": "ddbf784f9bbd4cbd8f0c66e35ab24670" }],
-  // 07:00, 13:00 and 19:00 UTC: read the AUP/UUP for the day archive
-  "triggers": { "crons": ["0 7,13,19 * * *"] }
+  // the only portal reads; index.js picks the hours in Dutch time
+  "triggers": { "crons": ["0 * * * *"] }
 }
