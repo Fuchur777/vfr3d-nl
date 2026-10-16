@@ -1,6 +1,6 @@
 // Same rules as the red update dates in the app: prints what is certainly outdated (empty = all fine).
 // LVNL: a newer edit date than our stored set. NOTAMs: not fetched more than an hour after a fetch moment (06, 18, 22 LT).
-// FUA: plan older than 2 h 15 min.
+// FUA: no plan from this morning after 06:00 LT (a missed fetch otherwise is only orange, Frank 2026-10-16).
 import { readFileSync } from 'node:fs';
 
 const LVNL = 'https://services-eu1.arcgis.com/OtUwzhpKSdeXgRIB/arcgis/rest/services/Airspaces_data/FeatureServer';
@@ -21,6 +21,6 @@ if (notamTime < slot && now - slot >= 3600e3) red.push(`NOTAMs: opgehaald ${lt(n
 
 const fua = await fetch('https://vfr3d-fua.frank-e97.workers.dev/').then(r => r.json()).catch(e => ({ fout: String(e) }));
 const fuaTime = Date.parse(fua.opgehaald);
-if (fuaTime && now - fuaTime > 2.25 * 3600e3) red.push(`FUA: plan opgehaald ${lt(fuaTime)}, ouder dan 2 uur${fua.fout ? ` (fout: ${fua.fout})` : ''}`);
+if (now >= ltAt(6) && !(fuaTime >= ltAt(6))) red.push(`FUA: ${fuaTime ? `plan opgehaald ${lt(fuaTime)}` : 'geen plan'}, nog niets van na ${lt(ltAt(6))}${fua.fout ? ` (fout: ${fua.fout})` : ''}`);
 
 if (red.length) console.log(red.map(r => `- ${r}`).join('\n'));

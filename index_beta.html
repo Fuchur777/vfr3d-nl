@@ -323,7 +323,9 @@ const sources = await Promise.all(LAYERS.map(([id, label]) =>
 // NOTAM and FUA times are UTC; show Dutch local time (Intl handles summer/winter time) with Zulu, e.g. "do 15 okt 09:30 LT (07:30Z)"
 const when = (t, withDay = true) => {
   if (t === 'PERM') return t;
-  const d = new Date(t), lt = d.toLocaleString('nl-NL', { timeZone: 'Europe/Amsterdam', hour: '2-digit', minute: '2-digit', ...(withDay && { weekday: 'short', day: 'numeric', month: 'short' }) });
+  const d = new Date(t);
+  if (isNaN(d)) return String(t); // an unreadable time from a Worker must not stop the app
+  const lt = d.toLocaleString('nl-NL', { timeZone: 'Europe/Amsterdam', hour: '2-digit', minute: '2-digit', ...(withDay && { weekday: 'short', day: 'numeric', month: 'short' }) });
   return `${lt} LT (${d.toISOString().slice(11, 16).replace(':', '')}Z)`;
 };
 // FUA: areas activated today (Eurocontrol EAUP/EUUP via Frank's Worker, worker/fua/) as their own type, drawn with the LVNL shape
@@ -426,8 +428,11 @@ const now = Date.now(), ltAt = h => { const lt = new Date(now + amsOffset(new Da
 const slot = Math.max(...[-2, 6, 18, 22].map(ltAt).filter(t => t <= now)), notamTime = Date.parse(notamsFetched), fuaTime = Date.parse(fua?.opgehaald);
 mark('vNotams', notamTime >= slot ? true : !notamTime || now - slot < 3600e3 ? null : false,
   notamTime >= slot ? `Opgehaald na het laatste ophaalmoment (${when(slot)})` : `Nog niet opgehaald na het ophaalmoment van ${when(slot)}`);
-// FUA: the Worker fetches the plan at most every 2 hours
-mark('vFua', fuaTime ? now - fuaTime <= 2.25 * 3600e3 : null, fuaTime ? 'De FUA-Worker haalt het plan elke 2 uur op' : 'Onbekend');
+// FUA (Frank 2026-10-16): red when there is still no plan from after 06:00 LT this morning, orange when the Worker's
+// last scheduled fetch failed ('mislukt'; the next good one makes it green again), else green
+const fuaRed = now >= ltAt(6) && !(fuaTime >= ltAt(6));
+mark('vFua', fuaRed ? false : fua?.mislukt || !fuaTime ? null : true, fuaRed ? `Nog geen plan van na ${when(ltAt(6))}`
+  : fua?.mislukt ? `Laatste ophaalpoging mislukt: ${fua.mislukt}` : fuaTime ? 'Laatste geplande ophaalpoging gelukt' : 'Onbekend');
 const atTime = document.getElementById('atTime'), atDay = document.getElementById('atDay'), atHol = document.getElementById('atHol'), showAt = () => dayStart + atTime.value * 60000;
 atTime.value = Math.floor((now - dayStart) / 900000) * 15;
 atDay.value = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Amsterdam', weekday: 'short' }).format(now);
@@ -567,7 +572,8 @@ LAYERS.forEach(([, label, colour, show], i) => {
     // a MultiPolygon becomes several entities; list it once
     e.baseDescription = e.description.getValue();
     if (!items.has(key)) items.set(key, { key, cls, show, name: e.name, colour: CLASS_COLOURS[cls] ?? colour, entities: [],
-      rule: SUP.find(([re]) => re.test(`${p.Designator} ${p.Name}`.toUpperCase()))?.[1] });
+      // SUP 03/2022 covers up to FL095; volumes from FL095 up (e.g. EHMCC2B, class B) keep their LVNL class
+      rule: !(p.LowerLimitUnit === 'FL' && p.LowerLimit >= 95) && SUP.find(([re]) => re.test(`${p.Designator} ${p.Name}`.toUpperCase()))?.[1] });
     items.get(key).entities.push(e);
   }
 });
@@ -927,11 +933,12 @@ const inRing = ([x, y], r) => {
     if ((r[i][1] > y) !== (r[j][1] > y) && x < (r[j][0] - r[i][0]) * (y - r[i][1]) / (r[j][1] - r[i][1]) + r[i][0]) inside = !inside;
   return inside;
 };
-const containing = (pt, alt) => [...airspaces, ...today].filter(a => a.entities.some(e => {
+// only what the map shows (selection, FL filter, flight-day NOTAMs/FUA at the flight clock), with its current class
+const containing = (pt, alt) => [...new Set([...airspaces, ...today].flatMap(a => a.entities).concat(flightDay.flatMap(ds => ds.entities.values)).filter(e => {
   const p = e.limits;
-  return alt >= metres(p.LowerLimit, p.LowerLimitUnit, p.LowerLimitReference) &&
+  return e.show && alt >= metres(p.LowerLimit, p.LowerLimitUnit, p.LowerLimitReference) &&
     alt <= metres(p.UpperLimit, p.UpperLimitUnit, p.UpperLimitReference) && inRing(pt, ring(e));
-})).map(a => a.name);
+}).map(e => e.name))];
 
 // only touch the DOM when the text changes; rewriting it every frame swallows clicks
 const setText = (el, text) => { if (el.textContent !== text) el.textContent = text; };
