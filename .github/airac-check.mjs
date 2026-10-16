@@ -5,9 +5,15 @@ import { readFileSync } from 'node:fs';
 
 const LVNL = 'https://services-eu1.arcgis.com/OtUwzhpKSdeXgRIB/arcgis/rest/services/Aerodrome_data/FeatureServer';
 const lvnl = new Map();
-for (const layer of [10, 11]) {
-  const { features } = await (await fetch(`${LVNL}/${layer}/query?where=1%3D1&outFields=Designator,Name,EffectiveDate&outSR=4326&f=geojson`)).json();
-  for (const f of features) lvnl.set(f.properties.Designator, { name: f.properties.Name, at: f.geometry.coordinates, since: f.properties.EffectiveDate });
+// if LVNL can't be read, the issue still comes with the manual checklist and the error
+let failed;
+try {
+  for (const layer of [10, 11]) {
+    const { features } = await (await fetch(`${LVNL}/${layer}/query?where=1%3D1&outFields=Designator,Name,EffectiveDate&outSR=4326&f=geojson`)).json();
+    for (const f of features) lvnl.set(f.properties.Designator, { name: f.properties.Name, at: f.geometry.coordinates, since: f.properties.EffectiveDate });
+  }
+} catch (error) {
+  failed = error;
 }
 // our sites are 1 NM circles; their centre is the mean of the ring without the closing point
 const ours = new Map();
@@ -28,13 +34,13 @@ for (const [id, site] of lvnl) {
 }
 // aerodrome winches (EHxxGLD) are not in the LVNL service, so only EHAA sites can disappear
 for (const id of ours.keys()) {
-  if (id.startsWith('EHAA') && !lvnl.has(id)) lines.push(`- Niet meer bij LVNL: **${id}** (${ours.get(id).file})`);
+  if (!failed && id.startsWith('EHAA') && !lvnl.has(id)) lines.push(`- Niet meer bij LVNL: **${id}** (${ours.get(id).file})`);
 }
 const since = Math.max(...[...lvnl.values()].map(s => s.since));
-console.log(`Nieuwe AIRAC-editie. LVNL-lierpunten bijgewerkt per ${new Date(since).toISOString().slice(0, 10)}.
+console.log(`Nieuwe AIRAC-editie. ${failed ? 'LVNL-lierpunten niet gelezen.' : `LVNL-lierpunten bijgewerkt per ${new Date(since).toISOString().slice(0, 10)}.`}
 
 ## Lierlocaties (LVNL open data vs. vfr3d)
-${lines.length ? lines.join('\n') : 'Geen verschillen gevonden.'}
+${failed ? `LVNL niet bereikbaar (${failed}); lierlocaties handmatig in ENR 5.5 nakijken.` : lines.length ? lines.join('\n') : 'Geen verschillen gevonden.'}
 
 ## Handmatig in de eAIP nakijken
 - [ ] ENR 5.5: hoogtes en lierlocaties op vliegvelden (bij wijzigingen ENR 5.5 in de vfr3d-chat plakken)
