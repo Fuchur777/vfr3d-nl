@@ -44,6 +44,8 @@
   #note dl, #disclaimer dl { display: grid; grid-template-columns: auto 1fr; gap: 1px 8px; margin: 0; }
   #note dt, #disclaimer dt { color: #8a9aa8; }
   #note dd, #disclaimer dd { margin: 0; font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  #updates dd[id]:not(#vCode) { color: #ffc24b; } /* orange until checked, see mark() */
+  #disclaimer .legend { font-size: 11px; color: #8a9aa8; }
   #disclaimer b { display: block; margin: 10px 0 2px; color: #8a9aa8; font-weight: 500; }
   #links { align-items: center; }
   #disclaimer { max-width: 420px; border: 1px solid #2f3b46; border-radius: 10px; background: #1b232b; color: #d8e0e6; font: 13px/1.5 sans-serif; padding: 18px 20px; }
@@ -130,7 +132,8 @@
 <strong>Let op: alleen voor educatieve doeleinden. Niet geschikt voor vluchtvoorbereiding!</strong>
 <p class="credits">Luchtruim © LVNL (CC BY 4.0). Activeringen (FUA) © EUROCONTROL. Vormen België/Luxemburg en Duitsland © openAIP (CC BY-NC 4.0). De AIP Netherlands van LVNL is leidend.</p>
 <b>Laatste update</b>
-<dl id="updates"><dt data-for="luchtruim">Luchtruim LVNL</dt><dd data-for="luchtruim" id="vAirspace">…</dd><dt data-for="luchtruim">Sporting Areas</dt><dd data-for="luchtruim">ENR 5.5, AIRAC AMDT 10-2026 (1-10-2026)</dd><dt data-for="vandaag">NOTAMs</dt><dd data-for="vandaag" id="vNotams">…</dd><dt data-for="vandaag">FUA</dt><dd data-for="vandaag" id="vFua">…</dd><dt>Code</dt><dd id="vCode"></dd></dl>
+<dl id="updates"><dt data-for="luchtruim">Luchtruim LVNL</dt><dd data-for="luchtruim" id="vAirspace">…</dd><dt data-for="luchtruim">Sporting Areas</dt><dd data-for="luchtruim" id="vSport">ENR 5.5, AIRAC AMDT 10-2026 (1-10-2026)</dd><dt data-for="vandaag">NOTAMs</dt><dd data-for="vandaag" id="vNotams">…</dd><dt data-for="vandaag">FUA</dt><dd data-for="vandaag" id="vFua">…</dd><dt>Code</dt><dd id="vCode"></dd></dl>
+<p class="legend"><span style="color: #69db7c">groen</span> zeker actueel · <span style="color: #ffc24b">oranje</span> nog niet gecontroleerd · <span style="color: #ff8787">rood</span> verouderd</p>
 <div class="buttons"><button type="button" id="decline">Weigeren</button><button type="button" id="accept">Accepteren</button></div>
 </dialog>
 <script src="https://cdn.jsdelivr.net/npm/cesium@1.145.0/Build/Cesium/Cesium.js"></script>
@@ -390,9 +393,18 @@ busy('Luchtruim tekenen…');
 
 // versions under the disclaimer; LVNL's last edit date is the newest over all layers
 const nlDate = t => new Date(t).toLocaleDateString('nl-NL');
-(LAND ? Promise.reject() : fetch('data/lvnl/meta.json').then(r => r.json()).then(j => j.lastEditDate)
-  .catch(() => fetch(`${LVNL}/layers?f=json`).then(r => r.json()).then(j => Math.max(...j.layers.map(l => l.editingInfo?.lastEditDate ?? 0))))).catch(() => 0)
-  .then(t => document.getElementById('vAirspace').textContent = t > 0 ? nlDate(t) : 'datum onbekend');
+// update dates are green when certainly current, orange when not checked (yet), red when certainly outdated; the tooltip says why
+const mark = (id, ok, why) => Object.assign(document.getElementById(id), { title: why }).style.color = ok === true ? '#69db7c' : ok === false ? '#ff8787' : '#ffc24b';
+// our stored LVNL set against LVNL's newest edit date (one small request); without a stored set the app loaded LVNL itself
+if (!LAND) Promise.all([fetch('data/lvnl/meta.json').then(r => r.json()).then(j => j.lastEditDate),
+  fetch(`${LVNL}/layers?f=json`).then(r => r.json()).then(j => Math.max(...j.layers.map(l => l.editingInfo?.lastEditDate ?? 0)))].map(p => p.catch(() => 0)))
+  .then(([ours, theirs]) => {
+    document.getElementById('vAirspace').textContent = ours || theirs ? nlDate(ours || theirs) : 'datum onbekend';
+    mark('vAirspace', theirs ? !ours || ours >= theirs : null, !theirs ? 'LVNL niet bereikbaar om te controleren'
+      : ours && ours < theirs ? `LVNL heeft een nieuwere versie van ${nlDate(theirs)}` : 'Gelijk aan de nieuwste versie bij LVNL');
+  });
+// ENR 5.5 of AIRAC AMDT 10-2026; from the next AIRAC date (29-10-2026) it has to be checked again (AIRAC-check issue)
+mark('vSport', Date.now() < Date.UTC(2026, 9, 29) ? true : null, 'Geldig tot de volgende AIRAC-datum, daarna nakijken');
 document.getElementById('vCode').textContent = nlDate(document.lastModified);
 // feedback address is put together in the browser, so it is not in the HTML for robots that only read the page
 const contact = document.getElementById('contact'), mail = ['frank', 'schellenberg.nl'].join('@');
@@ -410,6 +422,12 @@ const badge = (cls, colour) => Object.assign(document.createElement('span'), { c
 // Vandaag stays live for NOTAMs and FUA, from now until 06:00 LT tomorrow. Both in 15-minute steps
 const amsOffset = d => new Date(d.toLocaleString('en-US', { timeZone: 'Europe/Amsterdam' })) - new Date(d.toLocaleString('en-US', { timeZone: 'UTC' }));
 const now = Date.now(), ltAt = h => { const lt = new Date(now + amsOffset(new Date(now))); lt.setUTCHours(h, 0, 0, 0); return lt - amsOffset(lt); }, dayStart = ltAt(0), until = ltAt(30);
+// NOTAMs: current when fetched after the last fetch moment (06, 18, 22 LT; the first hour after it they may still be coming in)
+const slot = Math.max(...[-2, 6, 18, 22].map(ltAt).filter(t => t <= now)), notamTime = Date.parse(notamsFetched), fuaTime = Date.parse(fua?.opgehaald);
+mark('vNotams', notamTime >= slot ? true : !notamTime || now - slot < 3600e3 ? null : false,
+  notamTime >= slot ? `Opgehaald na het laatste ophaalmoment (${when(slot)})` : `Nog niet opgehaald na het ophaalmoment van ${when(slot)}`);
+// FUA: the Worker fetches the plan at most every 2 hours
+mark('vFua', fuaTime ? now - fuaTime <= 2.25 * 3600e3 : null, fuaTime ? 'De FUA-Worker haalt het plan elke 2 uur op' : 'Onbekend');
 const atTime = document.getElementById('atTime'), atDay = document.getElementById('atDay'), atHol = document.getElementById('atHol'), showAt = () => dayStart + atTime.value * 60000;
 atTime.value = Math.floor((now - dayStart) / 900000) * 15;
 atDay.value = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Amsterdam', weekday: 'short' }).format(now);
