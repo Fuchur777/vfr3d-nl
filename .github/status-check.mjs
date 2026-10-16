@@ -23,4 +23,4 @@ const fua = await fetch('https://vfr3d-fua.frank-e97.workers.dev/').then(r => r.
 const fuaTime = Date.parse(fua.opgehaald);
 if (fuaTime && now - fuaTime > 2.25 * 3600e3) red.push(`FUA: plan opgehaald ${lt(fuaTime)}, ouder dan 2 uur${fua.fout ? ` (fout: ${fua.fout})` : ''}`);
 
-console.log(red.map(r => `- ${r}`).join('\n'));
+if (red.length) console.log(red.map(r => `- ${r}`).join('\n'));
