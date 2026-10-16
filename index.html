@@ -221,7 +221,7 @@ const NL = {
 viewer.navigationHelpButton.viewModel.tooltip = 'Navigatie-uitleg';
 // hamburger on phones
 const menu = document.getElementById('menu');
-menu.onclick = () => menu.setAttribute('aria-expanded', document.body.classList.toggle('menu-open'));
+menu.onclick = () => { const open = document.body.classList.toggle('menu-open'); menu.setAttribute('aria-expanded', open); menu.textContent = open ? '✕' : '☰'; };
 // tapping the map also closes the menu, so it can always be closed, even when the button is out of reach
 document.getElementById('map').addEventListener('pointerdown', () => document.body.classList.contains('menu-open') && menu.click(), true);
 // panel tabs; Luchtruim is open at load, unless another tab was open before a reload
