@@ -1,0 +1,19 @@
+name: LVNL-luchtruim
+# Daily: if LVNL published a newer airspace set, store it in data/lvnl (the app reads it from vfr3d.nl itself)
+on:
+  schedule:
+    - cron: '30 4 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: node .github/lvnl-data.mjs
+      - run: |
+          git add data/lvnl
+          git diff --cached --quiet && exit 0
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m "LVNL-luchtruim bijgewerkt ($(jq -r '.lastEditDate / 1000 | strftime("%Y-%m-%d")' data/lvnl/meta.json))"
+          git push

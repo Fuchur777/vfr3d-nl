@@ -312,7 +312,9 @@ const showFout = (bron, fout) => fout && (document.getElementById('fout').textCo
 const sources = await Promise.all(LAYERS.map(([id, label]) =>
   // NOTAMs are fetched first, to read when the Worker last fetched them ('opgehaald')
   (id === NOTAMS ? fetch(NOTAMS + Q).then(r => r.json()).then(j => (notamsFetched = j.opgehaald, showFout('NOTAMs', j.fout), Cesium.GeoJsonDataSource.load(j)))
-    : Cesium.GeoJsonDataSource.load(typeof id === 'string' ? id : `${LVNL}/${id}/query?where=1%3D1&outFields=*&outSR=4326&f=geojson`))
+    // LVNL airspace: the copy in data/lvnl (kept current by the LVNL-luchtruim GitHub Action), else LVNL itself
+    : typeof id === 'string' ? Cesium.GeoJsonDataSource.load(id)
+    : Cesium.GeoJsonDataSource.load(`data/lvnl/${id}.geojson`).catch(() => Cesium.GeoJsonDataSource.load(`${LVNL}/${id}/query?where=1%3D1&outFields=*&outSR=4326&f=geojson`)))
     .catch(e => console.error(label, e))));
 
 // NOTAM and FUA times are UTC; show Dutch local time (Intl handles summer/winter time) with Zulu, e.g. "do 15 okt 09:30 LT (07:30Z)"
@@ -388,7 +390,8 @@ busy('Luchtruim tekenen…');
 
 // versions under the disclaimer; LVNL's last edit date is the newest over all layers
 const nlDate = t => new Date(t).toLocaleDateString('nl-NL');
-(LAND ? Promise.reject() : fetch(`${LVNL}/layers?f=json`)).then(r => r.json()).then(j => Math.max(...j.layers.map(l => l.editingInfo?.lastEditDate ?? 0))).catch(() => 0)
+(LAND ? Promise.reject() : fetch('data/lvnl/meta.json').then(r => r.json()).then(j => j.lastEditDate)
+  .catch(() => fetch(`${LVNL}/layers?f=json`).then(r => r.json()).then(j => Math.max(...j.layers.map(l => l.editingInfo?.lastEditDate ?? 0))))).catch(() => 0)
   .then(t => document.getElementById('vAirspace').textContent = t > 0 ? nlDate(t) : 'datum onbekend');
 document.getElementById('vCode').textContent = nlDate(document.lastModified);
 // feedback address is put together in the browser, so it is not in the HTML for robots that only read the page
