@@ -67,7 +67,7 @@ export default {
     const fout = circles.filter((i, k) => !stored[k] || Date.now() - stored[k].opgehaald > 12 * 3600e3).map(i => state.fout?.[i]).filter(Boolean);
     return Response.json({
       type: 'FeatureCollection',
-      opgehaald: stored.every(Boolean) ? new Date(Math.min(...stored.map(c => c.opgehaald))).toISOString() : undefined,
+      opgehaald: stored.length && stored.every(Boolean) ? new Date(Math.min(...stored.map(c => c.opgehaald))).toISOString() : undefined,
       fout: fout.length ? fout.join('; ') : undefined,
       features: [...features.values()],
     }, { headers: HEADERS });
