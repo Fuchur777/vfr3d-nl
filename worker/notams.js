@@ -63,12 +63,15 @@ export default {
     for (const f of stored.flatMap(c => c?.features ?? [])) {
       if (prefixes.some(p => f.properties.Name.startsWith(p))) features.set(`${f.properties.Name} ${f.properties.Designator}`, f);
     }
-    // a failed fetch is retried every 5 minutes and the last good NOTAMs stay; only say so when they are over 12 hours old
-    const fout = circles.filter((i, k) => !stored[k] || Date.now() - stored[k].opgehaald > 12 * 3600e3).map(i => state.fout?.[i]).filter(Boolean);
+    // a failed fetch is retried every 5 minutes and the last good NOTAMs stay; 'fout' only for a circle never fetched,
+    // 'actueel' says whether these NOTAMs are current (the app's update date and the Status-check Action read it)
+    const fout = circles.map((i, k) => !stored[k] && state.fout?.[i]).filter(Boolean);
+    const fetched = stored.length && stored.every(Boolean) ? Math.min(...stored.map(c => c.opgehaald)) : undefined;
     return Response.json({
       type: 'FeatureCollection',
-      opgehaald: stored.length && stored.every(Boolean) ? new Date(Math.min(...stored.map(c => c.opgehaald))).toISOString() : undefined,
+      opgehaald: fetched && new Date(fetched).toISOString(),
       fout: fout.length ? fout.join('; ') : undefined,
+      actueel: date || !circles.length ? undefined : current(fetched, circles.map(i => state.fout?.[i]).filter(Boolean)),
       features: [...features.values()],
     }, { headers: HEADERS });
   },
@@ -76,6 +79,21 @@ export default {
     ctx.waitUntil(step(env));
   },
 };
+
+// green when fetched after the latest fetch moment, orange in the hour after it, then red (Frank 2026-10-16)
+function current(fetched, errors) {
+  const now = Date.now(), slot = lastSlot(now), failed = errors.length ? ` (laatste fout: ${errors.join('; ')})` : '';
+  if (fetched >= slot) {
+    return { kleur: 'groen', reden: `Opgehaald na het ophaalmoment van ${lt(slot)}` };
+  }
+  return { kleur: now - slot < 3600e3 ? 'oranje' : 'rood', reden: `Nog niet opgehaald na het ophaalmoment van ${lt(slot)}${failed}` };
+}
+
+// "vr 16 okt 06:00 LT (0400Z)"
+function lt(t) {
+  const d = new Date(t);
+  return `${d.toLocaleString('nl-NL', { timeZone: 'Europe/Amsterdam', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} LT (${d.toISOString().slice(11, 16).replace(':', '')}Z)`;
+}
 
 // the latest 06:00, 18:00 or 22:00 Amsterdam time before now
 function lastSlot(now) {

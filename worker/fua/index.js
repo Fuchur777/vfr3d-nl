@@ -44,19 +44,44 @@ export default {
     if (!last) {
       return Response.json({ fout: state.fout ?? 'Nog niets gelezen.', gebieden: [] }, { status: 502, headers: HEADERS });
     }
-    // a failed read keeps the last good plan; 'mislukt' always says the latest read failed (time and reason, gone after
-    // a good read), 'fout' only once the plan is over 12 hours old
-    return only({ ...last, mislukt: state.fout, fout: Date.now() - Date.parse(last.opgehaald) > 12 * 3600e3 ? state.fout : undefined });
+    // a failed read keeps the last good plan; 'mislukt' says the latest read failed (time and reason, gone after a good
+    // read); 'actueel' says whether the plan is current (the app's update date and the Status-check Action read it)
+    return only({ ...last, mislukt: state.fout, actueel: current(Date.parse(last.opgehaald), state.fout) });
   },
-  // the cron fires every hour (wrangler.jsonc); read every 3 hours, and every hour from 06:00 to 10:00 LT (Frank),
-  // 11 reads a day; also for the day archive
+  // the cron fires every hour (wrangler.jsonc); read on the scheduled hours; also for the day archive
   async scheduled(event, env, ctx) {
-    const hour = +new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Amsterdam', hour: 'numeric', hourCycle: 'h23' }).format(event.scheduledTime);
-    if ((hour >= 6 && hour <= 10) || hour % 3 === 0) {
+    if (scheduled(hourLT(event.scheduledTime))) {
       ctx.waitUntil(refresh(env));
     }
   },
 };
+
+// every 3 hours, and every hour from 06:00 to 10:00 LT (Frank), 11 reads a day
+const scheduled = hour => (hour >= 6 && hour <= 10) || hour % 3 === 0;
+const hourLT = t => +new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Amsterdam', hour: 'numeric', hourCycle: 'h23' }).format(t);
+
+// red once it is past 06:00 LT without a plan read after it; orange when the latest scheduled read failed or is
+// missing (10 minutes for it to finish); else green (Frank 2026-10-16)
+function current(fetched, failed) {
+  const now = Date.now(), hour = now - now % 3600e3, latest = test => { let t = hour; while (!test(hourLT(t))) t -= 3600e3; return t; };
+  const six = latest(h => h === 6), slot = latest(scheduled);
+  if (hourLT(now) >= 6 && !(fetched >= six)) {
+    return { kleur: 'rood', reden: `Nog geen plan van na ${lt(six)}${failed ? ` (laatste fout: ${failed})` : ''}` };
+  }
+  if (failed) {
+    return { kleur: 'oranje', reden: `Laatste ophaalpoging mislukt: ${failed}` };
+  }
+  if (!(fetched >= slot) && now - slot >= 600e3) {
+    return { kleur: 'oranje', reden: `Geplande ophaalpoging van ${lt(slot)} niet gelukt` };
+  }
+  return { kleur: 'groen', reden: `Laatste geplande ophaalpoging gelukt, opgehaald ${lt(fetched)}` };
+}
+
+// "vr 16 okt 06:00 LT (0400Z)"
+function lt(t) {
+  const d = new Date(t);
+  return `${d.toLocaleString('nl-NL', { timeZone: 'Europe/Amsterdam', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} LT (${d.toISOString().slice(11, 16).replace(':', '')}Z)`;
+}
 
 async function refresh(env) {
   const now = Date.now(), state = {};
