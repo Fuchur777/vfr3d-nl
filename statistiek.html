@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bezoekersstatistiek | VFR3D</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+  body { margin: 0; font: 16px/1.6 system-ui, sans-serif; color: #1b232b; background: #f6f7f9; }
+  header { background: #1b232b; color: #d8e0e6; padding: 28px 16px; }
+  header a { color: #ffc24b; }
+  main, header > div, footer { max-width: 760px; margin: 0 auto; }
+  main { padding: 8px 16px 40px; }
+  h1 { margin: 0 0 8px; font-size: 28px; color: #fff; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; margin-top: 20px; }
+  th, td { border: 1px solid #d5dbe1; padding: 6px 8px; text-align: left; }
+  th { background: #e9edf1; }
+  td + td { text-align: right; }
+  footer { padding: 16px; color: #66727d; font-size: 13px; }
+</style>
+</head>
+<body>
+<header><div><h1>Bezoekersstatistiek</h1>Weergaven van <a href="/">vfr3d.nl</a> sinds de start, gemeten met GoatCounter (zonder cookies).</div></header>
+<main>
+<table><thead><tr><th>Pagina</th><th>Weergaven</th></tr></thead><tbody id="rijen"></tbody></table>
+</main>
+<footer>Cijfers © <a href="https://fuchur777.goatcounter.com">GoatCounter</a> · <a href="/">vfr3d.nl</a></footer>
+<script>
+// Public GoatCounter counter endpoint; needs "Allow adding visitor counts on your website" in GoatCounter settings
+const paginas = [['3D-kaart', '/'], ['Uitleg luchtruim', '/luchtruim.html'], ['Totaal', 'TOTAL']];
+const rijen = document.getElementById('rijen');
+for (const [naam, pad] of paginas) {
+  const td = rijen.insertRow().insertCell(); td.textContent = naam;
+  const n = td.parentNode.insertCell(); n.textContent = '…';
+  fetch('https://fuchur777.goatcounter.com/counter/' + encodeURIComponent(pad) + '.json')
+    .then(r => r.ok ? r.json() : { count: '0' })
+    .then(d => n.textContent = d.count, () => n.textContent = '–');
+}
+</script>
+</body>
+</html>
