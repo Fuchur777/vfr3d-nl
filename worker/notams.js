@@ -87,9 +87,11 @@ function lastSlot(now) {
 // fetch the first circle not yet fetched since the latest slot, if the FAA's limit allows
 async function step(env) {
   const now = Date.now(), state = await env.NOTAMS.get('staat', 'json') ?? { klaar: {}, fout: {} };
-  const due = CIRCLES.findIndex((_, i) => !(state.klaar[i] >= lastSlot(now)));
-  if (due < 0 || now - (state.laatste ?? 0) < 200e3) return;
-  state.laatste = now;
+  // of the circles not yet fetched since the slot, the one tried longest ago, so one failing circle can't block the rest
+  state.poging ??= {};
+  const due = CIRCLES.map((_, i) => i).filter(i => !(state.klaar[i] >= lastSlot(now))).sort((a, b) => (state.poging[a] ?? 0) - (state.poging[b] ?? 0))[0];
+  if (due === undefined || now - (state.laatste ?? 0) < 200e3) return;
+  state.laatste = state.poging[due] = now;
   await env.NOTAMS.put('staat', JSON.stringify(state));
   try {
     const features = await notams(env, CIRCLES[due]);
@@ -176,9 +178,11 @@ function limit(text, fl, top) {
   return [0, 'FT', 'SFC'];
 }
 
-// [[lon, lat], radius in NM] from "WI 45M RADIUS CENTRED ON 514842N 0043132E", or null
+// [[lon, lat], radius in NM] from "WI 45M RADIUS CENTRED ON 514842N 0043132E", or null when there is none, several, or an exception
 function textCircle(text) {
-  const m = text.match(/\bWI\s+(\d+(?:\.\d+)?)\s*(M|KM|NM)\s+RADIUS\s+(?:CENTRED|CENTERED)\s+(?:ON|AT)\s+(\d{2})(\d{2})(\d{2}(?:\.\d+)?)([NS])\s*(\d{3})(\d{2})(\d{2}(?:\.\d+)?)([EW])/);
+  const all = [...text.matchAll(/\bWI\s+(\d+(?:\.\d+)?)\s*(M|KM|NM)\s+RADIUS\s+(?:CENTRED|CENTERED)\s+(?:ON|AT)\s+(\d{2})(\d{2})(\d{2}(?:\.\d+)?)([NS])\s*(\d{3})(\d{2})(\d{2}(?:\.\d+)?)([EW])/g)];
+  // only a single circle that is the area itself, not one cut out of it ("... EXC WI 500M RADIUS ...")
+  const m = all.length === 1 && !/\bEXC(EPT)?\s*$/.test(text.slice(0, all[0].index)) ? all[0] : null;
   if (!m) return null;
   const nm = +m[1] / { M: 1852, KM: 1.852, NM: 1 }[m[2]];
   const lat = (+m[3] + m[4] / 60 + m[5] / 3600) * (m[6] === 'S' ? -1 : 1), lon = (+m[7] + m[8] / 60 + m[9] / 3600) * (m[10] === 'W' ? -1 : 1);

@@ -140,7 +140,7 @@ async function areas(url, env, ctx) {
         return cached.json();
       }
       const features = await openaip(env, ISO[country], country);
-      ctx.waitUntil(caches.default.put(key, Response.json(features, { headers: { ...HEADERS, Date: new Date().toUTCString() } })));
+      ctx.waitUntil(caches.default.put(key, Response.json(features, { headers: { ...HEADERS, 'Cache-Control': 'public, s-maxage=604800', Date: new Date().toUTCString() } })));
       return features;
     }));
     return Response.json({ type: 'FeatureCollection', bron: 'openAIP (CC BY-NC)', features: all.flat() }, { headers: HEADERS });
