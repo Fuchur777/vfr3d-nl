@@ -2,7 +2,7 @@
 <html lang="nl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"><!-- no auto-zoom on input focus (iOS), which pushed the menu button off screen -->
 <title>VFR3D Nederland (beta)</title>
 <meta name="description" content="Bekijk het Nederlandse luchtruim in 3D: ICAO-klassen, CTR, TMA, ATZ, TMZ, RMZ en D/R/P-gebieden, en speel je eigen IGC-, GPX- of KML-vlucht af. Alleen voor educatieve doeleinden.">
 <meta name="robots" content="noindex, nofollow"><!-- beta: new features land here first, not indexed -->
@@ -37,7 +37,7 @@
     #layers { position: fixed; z-index: 20; top: 0; bottom: 0; left: 0; width: min(290px, 85vw); transform: translateX(-100%); transition: transform .2s; }
     body.menu-open #layers { transform: none; box-shadow: 0 0 24px #0008; }
     #menu { display: block; position: fixed; z-index: 21; top: 8px; left: 8px; width: 40px; height: 40px; border: 0; border-radius: 6px; background: #1b232b; color: #ffc24b; font-size: 22px; cursor: pointer; }
-    body.menu-open #menu { left: calc(min(290px, 85vw) + 8px); }
+    body.menu-open #menu { left: min(calc(min(290px, 85vw) + 8px), calc(100vw - 48px)); }
   }
   #disclaimer strong { display: block; color: #ff8787; font-size: 15px; }
   #disclaimer p { margin: 8px 0; }
@@ -221,6 +221,8 @@ viewer.navigationHelpButton.viewModel.tooltip = 'Navigatie-uitleg';
 // hamburger on phones
 const menu = document.getElementById('menu');
 menu.onclick = () => menu.setAttribute('aria-expanded', document.body.classList.toggle('menu-open'));
+// tapping the map also closes the menu, so it can always be closed, even when the button is out of reach
+document.getElementById('map').addEventListener('pointerdown', () => document.body.classList.contains('menu-open') && menu.click(), true);
 // panel tabs; Luchtruim is open at load, unless another tab was open before a reload
 const tabs = document.querySelectorAll('#tabs button');
 let openTab, ready = false; // ready after the first refresh(); a tab clicked while loading only switches the panel
