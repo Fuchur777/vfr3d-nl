@@ -9,7 +9,6 @@ import puppeteer from '@cloudflare/puppeteer';
 
 const PORTAL = 'https://www.public.nm.eurocontrol.int/PUBPORTAL/gateway/spec/';
 // the free plan has 10 browser minutes a day and few browsers at once; one visit takes well under a minute
-const MAX_AGE = 3 * 3600e3;
 const HEADERS = { 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=300' };
 
 // /gebieden?land=EB,EL gives the shapes of those countries' switchable areas from openAIP (CC BY-NC),
@@ -40,42 +39,26 @@ export default {
       const kept = await env.FUA.get(`dag:${day}`, 'json');
       return kept ? only(kept) : Response.json({ fout: `Niets bewaard voor ${day}.`, gebieden: [] }, { status: 404, headers: HEADERS });
     }
-    // before the first visit after this version, today's archive stands in
-    let last = await env.FUA.get('laatste', 'json') ?? await env.FUA.get(`dag:${new Date().toLocaleDateString('sv', { timeZone: 'Europe/Amsterdam' })}`, 'json');
-    // one portal visit for all countries and all visitors: the answer never waits for it, except the very first time
-    if (!last) {
-      await refresh(env);
-      last = await env.FUA.get('laatste', 'json');
-    } else if (Date.now() - Date.parse(last.opgehaald) > MAX_AGE) {
-      ctx.waitUntil(refresh(env));
-    }
-    const state = await env.FUA.get('staat', 'json') ?? {};
+    // only the cron reads the portal (no 30 s limit there, and no visitor can use up the browser minutes)
+    const last = await env.FUA.get('laatste', 'json'), state = await env.FUA.get('staat', 'json') ?? {};
     if (!last) {
       return Response.json({ fout: state.fout ?? 'Nog niets gelezen.', gebieden: [] }, { status: 502, headers: HEADERS });
     }
-    // a failed visit keeps the last good plan; only say so when it is over 12 hours old
+    // a failed read keeps the last good plan; only say so when it is over 12 hours old
     return only({ ...last, fout: Date.now() - Date.parse(last.opgehaald) > 12 * 3600e3 ? state.fout : undefined });
   },
-  // three reads a day for the archive, also on days nobody opens the app (cron in wrangler.jsonc)
+  // the cron fires every hour (wrangler.jsonc); read every 3 hours, and every hour from 06:00 to 10:00 LT (Frank),
+  // 11 reads a day; also for the day archive
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(refresh(env));
+    const hour = +new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Amsterdam', hour: 'numeric', hourCycle: 'h23' }).format(event.scheduledTime);
+    if ((hour >= 6 && hour <= 10) || hour % 3 === 0) {
+      ctx.waitUntil(refresh(env));
+    }
   },
 };
 
-// read the portal unless another request is already doing so; Browser Rendering allows few browsers at once.
-// Requests in this isolate share one visit; the KV lock covers the others
-let running;
-function refresh(env) {
-  running ??= visit(env).finally(() => running = undefined);
-  return running;
-}
-
-async function visit(env) {
-  const now = Date.now(), state = await env.FUA.get('staat', 'json') ?? {};
-  if (now - (state.bezig ?? 0) < 3 * 60e3) {
-    return;
-  }
-  await env.FUA.put('staat', JSON.stringify({ ...state, bezig: now }));
+async function refresh(env) {
+  const now = Date.now(), state = {};
   try {
     const read = await scrape(env), all = parse(read);
     await Promise.all([
@@ -83,11 +66,10 @@ async function visit(env) {
       env.FUA.put('ruw', `${read.header}\n\n${read.table}`),
       keep(env, all),
     ]);
-    delete state.fout;
   } catch (error) {
     state.fout = `${new Date(now).toISOString()} ${error}`;
   }
-  await env.FUA.put('staat', JSON.stringify({ ...state, bezig: 0 }));
+  await env.FUA.put('staat', JSON.stringify(state));
 }
 
 async function scrape(env) {
@@ -99,7 +81,10 @@ async function scrape(env) {
     const link = await page.waitForSelector(`${row} div.eurocontrol_gwt_ext_linkEnabled`, { timeout: 60e3 });
     const header = await page.$eval(row, element => element.innerText);
     // the AUP opens in a new window
-    const [table] = await Promise.all([new Promise(resolve => page.once('popup', resolve)), link.click()]);
+    const [table] = await Promise.all([new Promise((resolve, reject) => {
+      page.once('popup', resolve);
+      setTimeout(() => reject(new Error('Geen AUP-venster binnen 60 s')), 60e3);
+    }), link.click()]);
     await table.waitForFunction(() => /\d{3}\s+\d{3}\s+\d\d:\d\d\s+\d\d:\d\d/.test(document.body.innerText), { timeout: 60e3 });
     return { header, table: await table.evaluate(() => document.body.innerText) };
   } finally {
@@ -112,10 +97,11 @@ async function scrape(env) {
 function parse({ header, table }) {
   const text = `${header}\n${table}`;
   const d = text.match(/(\d\d)\/(\d\d)\/(\d{4})/), date = d ? `${d[3]}-${d[2]}-${d[1]}` : text.match(/\d{4}-\d\d-\d\d/)?.[0];
+  // without the AUP date the times can't be placed; keep the last good plan instead
+  if (!date) {
+    throw new Error('Geen AUP-datum gevonden');
+  }
   const at = (time, after) => {
-    if (!date) {
-      return null;
-    }
     const moment = new Date(`${date}T${time}:00Z`);
     if (time < '06:00' || moment <= after) {
       moment.setUTCDate(moment.getUTCDate() + 1);
@@ -131,7 +117,7 @@ function parse({ header, table }) {
       continue;
     }
     const from = at(m[3]);
-    areas.push({ naam: name, ondergrensFL: +m[1], bovengrensFL: +m[2], van: from?.toISOString() ?? m[3], tot: at(m[4], from)?.toISOString() ?? m[4] });
+    areas.push({ naam: name, ondergrensFL: +m[1], bovengrensFL: +m[2], van: from.toISOString(), tot: at(m[4], from).toISOString() });
   }
   return {
     bron: 'EUROCONTROL NOP, European AUP/UUP',
