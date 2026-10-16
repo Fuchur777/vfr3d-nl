@@ -44,8 +44,9 @@ export default {
     if (!last) {
       return Response.json({ fout: state.fout ?? 'Nog niets gelezen.', gebieden: [] }, { status: 502, headers: HEADERS });
     }
-    // a failed read keeps the last good plan; only say so when it is over 12 hours old
-    return only({ ...last, fout: Date.now() - Date.parse(last.opgehaald) > 12 * 3600e3 ? state.fout : undefined });
+    // a failed read keeps the last good plan; 'mislukt' always says the latest read failed (time and reason, gone after
+    // a good read), 'fout' only once the plan is over 12 hours old
+    return only({ ...last, mislukt: state.fout, fout: Date.now() - Date.parse(last.opgehaald) > 12 * 3600e3 ? state.fout : undefined });
   },
   // the cron fires every hour (wrangler.jsonc); read every 3 hours, and every hour from 06:00 to 10:00 LT (Frank),
   // 11 reads a day; also for the day archive
