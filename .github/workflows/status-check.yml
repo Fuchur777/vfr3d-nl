@@ -1,0 +1,25 @@
+name: Status-check
+# Hourly: when data in the app is certainly outdated (red), open an issue; GitHub mails it to the repo owner.
+# Closes that issue again once everything is current.
+on:
+  schedule:
+    - cron: '15 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+  issues: write
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: |
+          node .github/status-check.mjs > red.md
+          open=$(gh issue list --state open --search 'in:title "Verouderde data"' --json number --jq '.[0].number')
+          if [ -s red.md ] && [ -z "$open" ]; then
+            gh issue create --title "Verouderde data op vfr3d.nl" --body-file red.md
+          elif [ ! -s red.md ] && [ -n "$open" ]; then
+            gh issue close "$open" --comment "Alles weer actueel."
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
