@@ -428,12 +428,11 @@ const now = Date.now(), ltAt = h => { const lt = new Date(now + amsOffset(new Da
 const slot = Math.max(...[-2, 6, 18, 22].map(ltAt).filter(t => t <= now)), notamTime = Date.parse(notamsFetched), fuaTime = Date.parse(fua?.opgehaald);
 mark('vNotams', notamTime >= slot ? true : !notamTime || now - slot < 3600e3 ? null : false,
   notamTime >= slot ? `Opgehaald na het laatste ophaalmoment (${when(slot)})` : `Nog niet opgehaald na het ophaalmoment van ${when(slot)}`);
-// FUA: the Worker fetches the plan hourly 06–10 LT and further every 3 hours (00, 03, 12, 15, 18, 21 LT) (Frank 2026-10-16):
-// green when fetched after the last fetch moment (10 minutes for the fetch itself), orange when that one was missed,
-// red when there is still no plan from this morning after 06:00 LT
-const fuaSlot = Math.max(...[-3, 0, 3, 6, 7, 8, 9, 10, 12, 15, 18, 21].map(ltAt).filter(t => t <= now - 600e3));
-mark('vFua', now >= ltAt(6) && !(fuaTime >= ltAt(6)) ? false : fuaTime >= fuaSlot ? true : null,
-  fuaTime >= fuaSlot ? `Opgehaald na het laatste ophaalmoment (${when(fuaSlot)})` : `Nog niet opgehaald na het ophaalmoment van ${when(fuaSlot)}`);
+// FUA (Frank 2026-10-16): red when there is still no plan from after 06:00 LT this morning, orange when the Worker's
+// last scheduled fetch failed ('mislukt'; the next good one makes it green again), else green
+const fuaRed = now >= ltAt(6) && !(fuaTime >= ltAt(6));
+mark('vFua', fuaRed ? false : fua?.mislukt || !fuaTime ? null : true, fuaRed ? `Nog geen plan van na ${when(ltAt(6))}`
+  : fua?.mislukt ? `Laatste ophaalpoging mislukt: ${fua.mislukt}` : fuaTime ? 'Laatste geplande ophaalpoging gelukt' : 'Onbekend');
 const atTime = document.getElementById('atTime'), atDay = document.getElementById('atDay'), atHol = document.getElementById('atHol'), showAt = () => dayStart + atTime.value * 60000;
 atTime.value = Math.floor((now - dayStart) / 900000) * 15;
 atDay.value = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Amsterdam', weekday: 'short' }).format(now);
