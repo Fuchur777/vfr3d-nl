@@ -38,6 +38,10 @@
     body.menu-open #layers { transform: none; box-shadow: 0 0 24px #0008; }
     #menu { display: block; position: fixed; z-index: 21; top: 8px; left: 8px; width: 40px; height: 40px; border: 0; border-radius: 6px; background: #1b232b; color: #ffc24b; font-size: 22px; cursor: pointer; }
     body.menu-open #menu { left: min(calc(min(290px, 85vw) + 8px), calc(100vw - 48px)); }
+    /* the infobox of a clicked airspace: a full-height panel from the right, like the menu, with a larger ✕ */
+    .cesium-viewer .cesium-infoBox { z-index: 2; top: 0; bottom: 0; width: min(320px, 85vw); max-width: none; border-radius: 0; background: #1b232b; }
+    .cesium-viewer .cesium-infoBox-title { border-radius: 0; height: 30px; line-height: 30px; padding-left: 90px; padding-right: 40px; }
+    .cesium-viewer button.cesium-infoBox-close { top: 2px; right: 2px; width: 36px; height: 36px; font-size: 22px; }
   }
   #disclaimer strong { display: block; color: #ff8787; font-size: 15px; }
   #disclaimer p { margin: 8px 0; }
