@@ -53,6 +53,9 @@
   #note dt, #disclaimer dt { color: #8a9aa8; }
   #note dd, #disclaimer dd { margin: 0; font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; }
   #updates dd[id]:not(#vCode) { color: #ffc24b; } /* orange until checked, see mark() */
+  #updates .refresh { background: none; border: 0; box-shadow: none; min-width: 0; height: auto; padding: 0 4px; color: #d8e0e6; font-size: 15px; cursor: pointer; }
+  #updates .refresh:disabled { animation: spin 1s linear infinite; cursor: wait; }
+  @keyframes spin { to { transform: rotate(360deg); } }
   #disclaimer .legend { font-size: 11px; color: #8a9aa8; }
   #disclaimer b { display: block; margin: 10px 0 2px; color: #8a9aa8; font-weight: 500; }
   #links { align-items: center; }
@@ -283,6 +286,19 @@ flat.onclick = () => {
   Object.assign(flat, { textContent: to2d ? '3D' : '2D', title: to2d ? 'Terug naar 3D' : 'Bekijk in 2D' });
 };
 viewer.container.querySelector('.cesium-viewer-toolbar').prepend(flat);
+// traffic light next to 2D (Frank 2026-10-19): the worst of the four update dates (LVNL, Sporting Areas, NOTAMs, FUA);
+// red if one is red, else orange if one is not green (yet), green only when all four are; a click opens the disclaimer
+const light = Object.assign(document.createElement('button'), { type: 'button', className: 'cesium-button cesium-toolbar-button', title: 'Actualiteit van de gegevens',
+  innerHTML: '<svg viewBox="0 0 12 28" width="12" height="28"><rect width="12" height="28" rx="3" fill="#111"/><circle cx="6" cy="6" r="3.5"/><circle cx="6" cy="14" r="3.5"/><circle cx="6" cy="22" r="3.5"/></svg>',
+  onclick: () => disclaimer.showModal() });
+flat.after(light);
+const colours = {};
+const setLight = () => {
+  const ids = ['vAirspace', 'vSport', 'vNotams', 'vFua'].map(id => colours[id]);
+  const on = ids.includes('rood') ? 0 : ids.every(k => k === 'groen') ? 2 : 1;
+  light.querySelectorAll('circle').forEach((c, i) => c.setAttribute('fill', i === on ? ['#ff6b6b', '#ffc24b', '#69db7c'][i] : '#333'));
+};
+setLight();
 // after the morph: the Netherlands from above in 2D, the start view in 3D
 const startView = () => viewer.scene.mode === Cesium.SceneMode.SCENE2D ? { destination: Cesium.Rectangle.fromDegrees(3.2, 50.7, 7.3, 53.6) } : home;
 viewer.scene.morphComplete.addEventListener(() => viewer.camera.setView(startView()));
@@ -307,7 +323,7 @@ let notamsFetched, notamsActueel;
 // a Worker that could not fetch says why in 'fout' (and serves the last good data)
 const showFout = (bron, fout) => fout && (document.getElementById('fout').textContent += `${bron}: ${fout}\n`);
 // FUA and the neighbouring countries are fetched at the same time as the airspace
-const fuaFetch = fetch(FUA).then(r => r.json()).catch(e => console.error('FUA', e));
+const fuaFetch = fetch(FUA, { cache: 'no-cache' }).then(r => r.json()).catch(e => console.error('FUA', e));
 // Vandaag also lists Belgium/Luxembourg and Germany, off by default: their NOTAMs and FUA (shapes from openAIP via the FUA Worker).
 // Labels 'NOTAMs|<country>' and 'FUA|<country>' keep them apart from the Dutch ones
 const ABROAD = [['EB,EL', 'België/Luxemburg'], ['ED', 'Duitsland']];
@@ -318,7 +334,7 @@ const abroadFetch = Promise.all(ABROAD.map(([icao, land]) => Promise.all([
 ]).then(d => [land, ...d])));
 const sources = await Promise.all(LAYERS.map(([id, label]) =>
   // NOTAMs are fetched first, to read when the Worker last fetched them ('opgehaald')
-  (id === NOTAMS ? fetch(NOTAMS).then(r => r.json()).then(j => (notamsFetched = j.opgehaald, notamsActueel = j.actueel, showFout('NOTAMs', j.fout), Cesium.GeoJsonDataSource.load(j)))
+  (id === NOTAMS ? fetch(NOTAMS, { cache: 'no-cache' }).then(r => r.json()).then(j => (notamsFetched = j.opgehaald, notamsActueel = j.actueel, showFout('NOTAMs', j.fout), Cesium.GeoJsonDataSource.load(j)))
     // LVNL airspace: the copy in data/lvnl (kept current by the LVNL-luchtruim GitHub Action), else LVNL itself
     : typeof id === 'string' ? Cesium.GeoJsonDataSource.load(id)
     : Cesium.GeoJsonDataSource.load(`data/lvnl/${id}.geojson`).catch(() => Cesium.GeoJsonDataSource.load(`${LVNL}/${id}/query?where=1%3D1&outFields=*&outSR=4326&f=geojson`)))
@@ -394,7 +410,23 @@ busy('Luchtruim tekenen…');
 const nlDate = t => new Date(t).toLocaleDateString('nl-NL');
 // update dates are green when certainly current, orange when not checked (yet), red when certainly outdated; the tooltip says why.
 // The sources say it themselves ('actueel'): data/lvnl/meta.json (LVNL-luchtruim Action) and the NOTAM and FUA Workers
-const mark = (id, a) => Object.assign(document.getElementById(id), { title: a?.reden ?? 'Onbekend' }).style.color = { groen: '#69db7c', rood: '#ff8787' }[a?.kleur] ?? '#ffc24b';
+const mark = (id, a, url) => {
+  const dd = Object.assign(document.getElementById(id), { title: a?.reden ?? 'Onbekend' });
+  dd.style.color = { groen: '#69db7c', rood: '#ff8787' }[a?.kleur] ?? '#ffc24b';
+  colours[id] = a?.kleur;
+  setLight();
+  if (url && a?.kleur !== 'groen') dd.append(' ', refetchButton(url));
+};
+// orange or red NOTAMs/FUA: ↻ asks the Worker to fetch now (POST; the FUA scrape can take a minute), then the page
+// reloads with the new data. The Worker refuses (429) when it is already current, tried recently or 3 times today
+const refetchButton = url => Object.assign(document.createElement('button'), { type: 'button', className: 'refresh', textContent: '↻', title: 'Nu ophalen',
+  onclick: async ({ currentTarget: b }) => {
+    b.disabled = true;
+    const r = await fetch(url, { method: 'POST' }).catch(e => ({ ok: false, json: async () => ({ fout: e.message }) }));
+    if (r.ok) return location.reload();
+    b.disabled = false;
+    alert(`Ophalen niet gestart: ${(await r.json().catch(() => ({}))).fout ?? 'onbekende fout'}`);
+  } });
 fetch('data/lvnl/meta.json').then(r => r.json()).catch(() => ({})).then(m => {
   document.getElementById('vAirspace').textContent = m.lastEditDate ? nlDate(m.lastEditDate) : 'datum onbekend';
   mark('vAirspace', m.actueel);
@@ -418,8 +450,8 @@ const badge = (cls, colour) => Object.assign(document.createElement('span'), { c
 // Vandaag stays live for NOTAMs and FUA, from now until 06:00 LT tomorrow. Both in 15-minute steps
 const amsOffset = d => new Date(d.toLocaleString('en-US', { timeZone: 'Europe/Amsterdam' })) - new Date(d.toLocaleString('en-US', { timeZone: 'UTC' }));
 const now = Date.now(), ltAt = h => { const lt = new Date(now + amsOffset(new Date(now))); lt.setUTCHours(h, 0, 0, 0); return lt - amsOffset(lt); }, dayStart = ltAt(0), until = ltAt(30);
-mark('vNotams', notamsActueel);
-mark('vFua', fua?.actueel);
+mark('vNotams', notamsActueel, NOTAMS);
+mark('vFua', fua?.actueel, FUA);
 const atTime = document.getElementById('atTime'), atDay = document.getElementById('atDay'), atHol = document.getElementById('atHol'), showAt = () => dayStart + atTime.value * 60000;
 atTime.value = Math.floor((now - dayStart) / 900000) * 15;
 atDay.value = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Amsterdam', weekday: 'short' }).format(now);
