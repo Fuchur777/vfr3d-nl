@@ -409,10 +409,7 @@ busy('Luchtruim tekenen…');
 const nlDate = t => new Date(t).toLocaleDateString('nl-NL');
 // update dates are green when certainly current, orange when not checked (yet), red when certainly outdated; the tooltip says why.
 // The sources say it themselves ('actueel'): data/lvnl/meta.json (LVNL-luchtruim Action) and the NOTAM and FUA Workers
-const SIMULATE = new URLSearchParams(location.search).get('simuleer');
 const mark = (id, a, url) => {
-  // beta test (Frank 2026-10-19): ?simuleer=oranje or ?simuleer=rood colours the NOTAM and FUA dates; ↻ then really asks the Worker
-  if (url && SIMULATE) a = { kleur: SIMULATE, reden: `Gesimuleerd: ${SIMULATE}` };
   const dd = Object.assign(document.getElementById(id), { title: a?.reden ?? 'Onbekend' });
   dd.style.color = { groen: '#69db7c', rood: '#ff8787' }[a?.kleur] ?? '#ffc24b';
   colours[id] = a?.kleur;
