@@ -5,6 +5,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          curl -s "https://vfr3d-notams.frank-e97.workers.dev/?staat"; echo
-          for l in EH EB,EL ED; do echo "== notams $l"; curl -s "https://vfr3d-notams.frank-e97.workers.dev/?land=$l" | jq -c '{fout, opgehaald, n: (.features|length)}'; done
-# 20:08
+          date -u
+          curl -s "https://vfr3d-fua.frank-e97.workers.dev/" | jq -c '{type, kop, opgehaald, mislukt, fout, actueel, n: (.gebieden|length)}'
+          curl -s "https://vfr3d-fua.frank-e97.workers.dev/?debug" | head -5
+# 2026-10-19 fua
