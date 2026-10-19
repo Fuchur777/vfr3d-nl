@@ -39,7 +39,14 @@ export default {
       const kept = await env.FUA.get(`dag:${day}`, 'json');
       return kept ? only(kept) : Response.json({ fout: `Niets bewaard voor ${day}.`, gebieden: [] }, { status: 404, headers: HEADERS });
     }
-    // only the cron reads the portal (no 30 s limit there, and no visitor can use up the browser minutes)
+    // the cron reads the portal; a visitor only through the refresh button (POST) when the plan is not current,
+    // at most 3 times a day and 30 minutes after the latest read, so the 10 browser minutes a day stay for the cron
+    if (request.method === 'POST') {
+      const refused = await manual(env);
+      if (refused) {
+        return Response.json({ fout: refused }, { status: 429, headers: HEADERS });
+      }
+    }
     const last = await env.FUA.get('laatste', 'json'), state = await env.FUA.get('staat', 'json') ?? {};
     if (!last) {
       return Response.json({ fout: state.fout ?? 'Nog niets gelezen.', gebieden: [] }, { status: 502, headers: HEADERS });
@@ -83,8 +90,26 @@ function lt(t) {
   return `${d.toLocaleString('nl-NL', { timeZone: 'Europe/Amsterdam', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} LT (${d.toISOString().slice(11, 16).replace(':', '')}Z)`;
 }
 
+// a read asked for with the refresh button; gives the reason when it is refused
+async function manual(env) {
+  const last = await env.FUA.get('laatste', 'json'), state = await env.FUA.get('staat', 'json') ?? {};
+  const day = `handmatig:${new Date().toLocaleDateString('sv', { timeZone: 'Europe/Amsterdam' })}`, used = +(await env.FUA.get(day) ?? 0);
+  if (last && current(Date.parse(last.opgehaald), state.fout).kleur === 'groen') {
+    return 'Het plan is al actueel.';
+  }
+  if (Date.now() - (state.poging ?? 0) < 30 * 60e3) {
+    return 'Net al geprobeerd; probeer het over een half uur opnieuw.';
+  }
+  if (used >= 3) {
+    return 'Vandaag al 3 keer handmatig ververst.';
+  }
+  await env.FUA.put(day, String(used + 1), { expirationTtl: 2 * 24 * 3600 });
+  await refresh(env);
+}
+
 async function refresh(env) {
-  const now = Date.now(), state = {};
+  const now = Date.now(), state = { poging: now };
+  await env.FUA.put('staat', JSON.stringify({ ...await env.FUA.get('staat', 'json'), poging: now }));
   try {
     const read = await scrape(env), all = parse(read);
     await Promise.all([

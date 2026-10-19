@@ -55,6 +55,9 @@ export default {
     const prefixes = (url.searchParams.get('land') ?? 'EH').toUpperCase().split(',');
     const circles = [...new Set(prefixes.flatMap(p => COUNTRIES[p] ?? []))];
     const date = url.searchParams.get('datum');
+    // POST (the app's refresh button when the date is orange or red): fetch one of these circles now if it is
+    // behind and the FAA's limit allows; otherwise nothing happens and the answer is the same as a GET
+    if (request.method === 'POST') await step(env, circles);
     const stored = await Promise.all(circles.map(i => env.NOTAMS.get(date ? `dag:${date}:${i}` : `cirkel:${i}`, 'json')));
     // never fetched yet (a fresh deploy): fetch one circle now instead of waiting for the next slot
     if (!date && stored.some(c => !c)) ctx.waitUntil(step(env));
@@ -102,12 +105,12 @@ function lastSlot(now) {
   return now - ((t.hour - slot) * 60 + t.minute) * 60e3 - now % 60e3;
 }
 
-// fetch the first circle not yet fetched since the latest slot, if the FAA's limit allows
-async function step(env) {
+// fetch the first circle (of 'only', default all) not yet fetched since the latest slot, if the FAA's limit allows
+async function step(env, only = CIRCLES.map((_, i) => i)) {
   const now = Date.now(), state = await env.NOTAMS.get('staat', 'json') ?? { klaar: {}, fout: {} };
   // of the circles not yet fetched since the slot, the one tried longest ago, so one failing circle can't block the rest
   state.poging ??= {};
-  const due = CIRCLES.map((_, i) => i).filter(i => !(state.klaar[i] >= lastSlot(now))).sort((a, b) => (state.poging[a] ?? 0) - (state.poging[b] ?? 0))[0];
+  const due = only.filter(i => !(state.klaar[i] >= lastSlot(now))).sort((a, b) => (state.poging[a] ?? 0) - (state.poging[b] ?? 0))[0];
   if (due === undefined || now - (state.laatste ?? 0) < 200e3) return;
   state.laatste = state.poging[due] = now;
   await env.NOTAMS.put('staat', JSON.stringify(state));
