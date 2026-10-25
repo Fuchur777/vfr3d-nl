@@ -93,10 +93,11 @@
   .bar[hidden] { display: none; }
   #today details details { margin-left: 14px; }
   #today summary { padding: 3px 0; }
-  .today { display: grid; grid-template-columns: auto 1fr; gap: 0 6px; padding: 5px 0; border-bottom: 1px solid #2a3540; }
+  .today { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0 6px; padding: 5px 0; border-bottom: 1px solid #2a3540; }
   .today a { color: #d8e0e6; text-decoration: none; font-weight: 600; }
-  .today small { grid-column: 2; color: #8a9aa8; white-space: pre-line; }
-  .status { font-weight: 500; margin-left: 6px; font-size: 11px; }
+  .today small { grid-column: 2; color: #8a9aa8; white-space: pre-line; overflow-wrap: anywhere; }
+  #layers .today label { white-space: normal; }
+  .status { font-weight: 500; margin-left: 6px; font-size: 11px; white-space: nowrap; }
   .status.now { color: #69db7c; } .status.later { color: #ffc24b; } .status.past { color: #6c7a86; }
   #donate { display: inline-block; padding: 3px 8px; border-radius: 5px; background: #ffc24b; color: #1b232b; font-weight: 600; text-decoration: none; }
 #loading { position: absolute; inset: 0; z-index: 100000; background: rgba(27, 35, 43, .6); color: #ffc24b; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; font: 15px sans-serif; transition: opacity .4s; }
