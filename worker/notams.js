@@ -62,9 +62,13 @@ export default {
     // never fetched yet (a fresh deploy): fetch one circle now instead of waiting for the next slot
     if (!date && stored.some(c => !c)) ctx.waitUntil(step(env));
     const state = await env.NOTAMS.get('staat', 'json') ?? {};
-    const features = new Map();
+    const features = new Map(), at = date ? Date.parse(`${date}T12:00:00Z`) : Date.now();
     for (const f of stored.flatMap(c => c?.features ?? [])) {
-      if (prefixes.some(p => f.properties.Name.startsWith(p))) features.set(`${f.properties.Name} ${f.properties.Designator}`, f);
+      const p = f.properties;
+      if (!prefixes.some(c => p.Name.startsWith(c))) continue;
+      // the days of the schedule, worked out now so they always run from a day ago to three days ahead
+      if (p.Schema) p.Vensters = windows(p.Schema, Date.parse(p.Van), p.Tot === 'PERM' ? NaN : Date.parse(p.Tot), at);
+      features.set(`${p.Name} ${p.Designator}`, f);
     }
     // a failed fetch is retried every 5 minutes and the last good NOTAMs stay; 'fout' only for a circle never fetched,
     // 'actueel' says whether these NOTAMs are current (the app's update date and the Status-check Action read it)
@@ -180,7 +184,6 @@ async function notams(env, [latitude, longitude]) {
       Designator: n.number, Name: `${n.icaoLocation ?? n.location ?? ''} ${category}`.trim(), Type: 'NOTAM', Soort: category,
       LowerLimit, LowerLimitUnit, LowerLimitReference, UpperLimit, UpperLimitUnit, UpperLimitReference,
       Van: n.effectiveStart, Tot: Number.isNaN(end) ? 'PERM' : n.effectiveEnd, Schema: n.schedule || undefined,
-      Vensters: n.schedule ? windows(n.schedule, start, end, now) : undefined,
       Tekst: (f.properties.coreNOTAMData.notamTranslation?.find(t => t.type === 'ICAO')?.formattedText ?? n.text ?? '').trim(),
     } });
   }
