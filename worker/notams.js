@@ -217,7 +217,7 @@ const circle = ([lon, lat], nm) => [[...Array(65).keys()].map(i => {
   return [lon + d * Math.sin(a) / Math.cos(lat * Math.PI / 180), lat + d * Math.cos(a)];
 })];
 
-// The D line ('Schema', UTC) as time windows in ms: "MON WED THU SR MINUS15-SS PLUS15", "MON-FRI 0500-1700",
+// The D line ('Schema', UTC) as the Dutch days it is active, as whole-day windows in ms: "MON WED THU SR MINUS15-SS PLUS15", "MON-FRI 0500-1700",
 // "14-16 19-23 0600-1500, 26 0830-1630", "OCT 26-28 NOV 02-04 0700-2255", "SUN 2300-THU 2259", "DAILY SS PLUS30 - 0300".
 // Only from a day ago to three days ahead, which is all the app shows; undefined when the text is not understood,
 // and the app then uses Van to Tot as before.
@@ -262,7 +262,7 @@ function windows(schedule, start, end, [lon, lat], now) {
   if (!group.times.length) return;
   groups.push(group);
 
-  const first = start - start % DAY, last = Number.isNaN(end) ? now + 3 * DAY : end, from = Math.max(start, now - DAY), to = Math.min(last, now + 3 * DAY);
+  const first = start - start % DAY, last = Number.isNaN(end) ? now + 3 * DAY : end, from = now - DAY, to = now + 3 * DAY;
   // days of the month in the NOTAM's period, in order: "26-28" after "OCT" is 26 to 28 October
   const dates = days => {
     const items = [], monthFirst = days[0].k === 'mon';
@@ -329,18 +329,25 @@ function windows(schedule, start, end, [lon, lat], now) {
           if (later === undefined) return;
           e = b(later);
         }
-        if (e > from && s < to) found.push([Math.max(s, from), Math.min(e, to)]);
+        // only the days count, the times are in the FUA (Frank 2026-10-25): every Dutch day the window touches, whole
+        if (e > Math.max(start, from) && s < Math.min(last, to)) found.push([midnight(Math.max(s, start)), midnight(midnight(Math.min(e, last) - 1) + DAY + 3 * 3600e3)]);
       }
     }
   }
-  // sorted, and touching windows ("0000-2359" on following days) joined
+  // sorted, touching days joined, and only from a day ago to three days ahead
   found.sort((x, y) => x[0] - y[0]);
   const merged = [];
-  for (const w of found) {
+  for (const w of found.map(([s, e]) => [Math.max(s, from), Math.min(e, to)]).filter(([s, e]) => s < e)) {
     if (merged.length && w[0] - merged.at(-1)[1] <= 60e3) merged.at(-1)[1] = Math.max(merged.at(-1)[1], w[1]);
     else merged.push(w);
   }
   return merged;
+}
+
+// 00:00 Amsterdam time of the day t falls on
+function midnight(t) {
+  const utc = Date.parse(`${new Date(t).toLocaleDateString('sv', { timeZone: 'Europe/Amsterdam' })}T00:00:00Z`);
+  return utc - (Date.parse(`${new Date(utc).toLocaleString('sv', { timeZone: 'Europe/Amsterdam' }).replace(' ', 'T')}Z`) - utc);
 }
 
 // the first [lon, lat] of a polygon or multipolygon, for the sun times
