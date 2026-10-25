@@ -2,7 +2,7 @@
 <html lang="nl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"><!-- no auto-zoom on input focus (iOS), which pushed the menu button off screen -->
 <title>VFR3D Nederland – luchtruim in 3D</title>
 <meta name="description" content="Bekijk het Nederlandse luchtruim in 3D: ICAO-klassen, CTR, TMA, ATZ, TMZ, RMZ en D/R/P-gebieden, en speel je eigen IGC-, GPX- of KML-vlucht af. Alleen voor educatieve doeleinden.">
 <link rel="canonical" href="https://vfr3d.nl/">
@@ -38,13 +38,25 @@
     #layers { position: fixed; z-index: 20; top: 0; bottom: 0; left: 0; width: min(290px, 85vw); transform: translateX(-100%); transition: transform .2s; }
     body.menu-open #layers { transform: none; box-shadow: 0 0 24px #0008; }
     #menu { display: block; position: fixed; z-index: 21; top: 8px; left: 8px; width: 40px; height: 40px; border: 0; border-radius: 6px; background: #1b232b; color: #ffc24b; font-size: 22px; cursor: pointer; }
-    body.menu-open #menu { left: calc(min(290px, 85vw) + 8px); }
+    body.menu-open #menu { left: min(calc(min(290px, 85vw) + 8px), calc(100vw - 48px)); }
+    /* the infobox of a clicked airspace: a sheet at the bottom, as high as its rows (at most half the screen, then it scrolls), so the area stays visible above it, with a larger ✕ */
+    .cesium-viewer .cesium-infoBox { z-index: 2; top: auto; bottom: 0; left: 0; width: auto; max-width: none; border-radius: 0; background: #1b232b; transform: translate(0, 100%); }
+    .cesium-viewer .cesium-infoBox-visible { transform: none; }
+    .cesium-viewer .cesium-infoBox-iframe { max-height: calc(50vh - 40px) !important; } /* long NOTAM text scrolls inside the sheet */
+    .cesium-viewer .cesium-infoBox-title { border-radius: 0; height: 30px; line-height: 30px; padding-left: 90px; padding-right: 40px; }
+    .cesium-viewer button.cesium-infoBox-close { top: 2px; right: 2px; width: 36px; height: 36px; font-size: 22px; }
   }
+  .icons svg { width: 20px; height: 20px; vertical-align: middle; margin-right: 6px; } /* Feedback: e-mail icon, inline SVG */
   #disclaimer strong { display: block; color: #ff8787; font-size: 15px; }
   #disclaimer p { margin: 8px 0; }
   #note dl, #disclaimer dl { display: grid; grid-template-columns: auto 1fr; gap: 1px 8px; margin: 0; }
   #note dt, #disclaimer dt { color: #8a9aa8; }
   #note dd, #disclaimer dd { margin: 0; font-family: ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  #updates dd[id]:not(#vCode) { color: #ffc24b; } /* orange until checked, see mark() */
+  #updates .refresh { background: none; border: 0; box-shadow: none; min-width: 0; height: auto; padding: 0 4px; color: #d8e0e6; font-size: 15px; cursor: pointer; }
+  #updates .refresh:disabled { animation: spin 1s linear infinite; cursor: wait; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #disclaimer .legend { font-size: 11px; color: #8a9aa8; }
   #disclaimer b { display: block; margin: 10px 0 2px; color: #8a9aa8; font-weight: 500; }
   #links { align-items: center; }
   #disclaimer { max-width: 420px; border: 1px solid #2f3b46; border-radius: 10px; background: #1b232b; color: #d8e0e6; font: 13px/1.5 sans-serif; padding: 18px 20px; }
@@ -97,9 +109,9 @@
 <button type="button" id="menu" aria-label="Menu" aria-expanded="false">☰</button>
 <form id="layers">
 <div id="tabs" role="tablist"><button type="button" role="tab" data-tab="kaart">Kaart</button><button type="button" role="tab" data-tab="luchtruim">Luchtruim</button><button type="button" role="tab" data-tab="vandaag">Vandaag</button><button type="button" role="tab" data-tab="vlucht">Vlucht</button></div>
-<section id="kaart" role="tabpanel"><label>Onderlaag <select id="base"><option>Satelliet</option><option>Kaart</option><option selected>ICAO-kaart</option></select></label><div id="tileError" style="color: #ff8787"></div><h3>Hoogte</h3><label>Verticale schaal <output id="scaleOut">5</output>×<br><input id="scale" type="range" min="1" max="10" step="0.5" value="5"></label><label>Verberg luchtruim boven <select id="maxFl"><option value="10">FL 10</option><option value="15">FL 15</option><option value="20">FL 20</option><option value="25">FL 25</option><option value="30">FL 30</option><option value="35">FL 35</option><option value="40">FL 40</option><option value="45">FL 45</option><option value="50">FL 50</option><option value="55">FL 55</option><option value="60">FL 60</option><option value="65">FL 65</option><option value="70">FL 70</option><option value="75">FL 75</option><option value="80">FL 80</option><option value="85">FL 85</option><option value="90">FL 90</option><option value="95" selected>FL 95</option><option value="100">FL 100</option><option value="105">FL 105</option><option value="110">FL 110</option><option value="115">FL 115</option><option value="120">FL 120</option><option value="125">FL 125</option><option value="130">FL 130</option><option value="135">FL 135</option><option value="140">FL 140</option><option value="145">FL 145</option><option value="150">FL 150</option></select></label><p class="credits">Luchtruim © LVNL (CC BY 4.0). Activeringen (FUA) © EUROCONTROL. Vormen België/Luxemburg en Duitsland © openAIP (CC BY-NC 4.0). De AIP Netherlands van LVNL is leidend.</p><p><a href="luchtruim.html">Luchtruim in Nederland uitgelegd</a></p><button type="button" id="showDisclaimer" style="width: 100%">Disclaimer en updates</button></section>
+<section id="kaart" role="tabpanel"><label>Onderlaag <select id="base"><option>Satelliet</option><option>Kaart</option><option selected>ICAO-kaart</option></select></label><div id="tileError" style="color: #ff8787"></div><h3>Hoogte</h3><label>Verticale schaal <output id="scaleOut">10</output>×<br><input id="scale" type="range" min="1" max="20" step="0.5" value="10"></label><label>Verberg luchtruim boven <select id="maxFl"><option value="10">FL 10</option><option value="15">FL 15</option><option value="20">FL 20</option><option value="25">FL 25</option><option value="30">FL 30</option><option value="35">FL 35</option><option value="40">FL 40</option><option value="45">FL 45</option><option value="50">FL 50</option><option value="55">FL 55</option><option value="60">FL 60</option><option value="65">FL 65</option><option value="70">FL 70</option><option value="75">FL 75</option><option value="80">FL 80</option><option value="85">FL 85</option><option value="90">FL 90</option><option value="95" selected>FL 95</option><option value="100">FL 100</option><option value="105">FL 105</option><option value="110">FL 110</option><option value="115">FL 115</option><option value="120">FL 120</option><option value="125">FL 125</option><option value="130">FL 130</option><option value="135">FL 135</option><option value="140">FL 140</option><option value="145">FL 145</option><option value="150">FL 150</option></select></label><p class="credits">Luchtruim © LVNL (CC BY 4.0). Activeringen (FUA) © EUROCONTROL. Vormen België/Luxemburg en Duitsland © openAIP (CC BY-NC 4.0). De AIP Netherlands van LVNL is leidend.</p><p><a href="luchtruim.html">Luchtruim in Nederland uitgelegd</a></p><button type="button" id="showDisclaimer" style="width: 100%">Disclaimer en updates</button></section>
 <section id="luchtruim" role="tabpanel"><label><input id="all" type="checkbox"> <b>Alle luchtruimen</b></label><div id="classes"></div><div style="display:flex;gap:6px;flex-wrap:wrap"><button type="button" id="expand">Alles uitklappen</button><button type="button" id="collapse">Alles inklappen</button></div><input id="search" type="search" placeholder="Zoek luchtruim op naam" style="width:100%;box-sizing:border-box"><div id="tree"></div><button type="button" id="lxnavAirspace" title="SeeYou CUB-bestand met het aangevinkte luchtruim, voor LXNAV en SeeYou" style="width: 100%; margin-top: 8px">Download als .cub</button></section>
-<section id="vandaag" role="tabpanel"><div class="hint">FUA-activaties en NOTAMs van vandaag 00:00 tot 06:00 LT morgen. NOTAMs worden om 06:00, 18:00 en 22:00 LT opgehaald. Klik op een naam om erheen te vliegen.</div><div id="fout" style="color: #ff8787"></div><label>Verberg NOTAMs onder <select id="notamFl"><option value="">uit</option><option value="10">FL 10</option><option value="15">FL 15</option><option value="20">FL 20</option><option value="25">FL 25</option><option value="30">FL 30</option><option value="35">FL 35</option><option value="40">FL 40</option><option value="45">FL 45</option><option value="50">FL 50</option><option value="55">FL 55</option><option value="60">FL 60</option><option value="65">FL 65</option><option value="70">FL 70</option><option value="75">FL 75</option><option value="80">FL 80</option><option value="85">FL 85</option><option value="90">FL 90</option><option value="95">FL 95</option><option value="100">FL 100</option><option value="105">FL 105</option><option value="110">FL 110</option><option value="115">FL 115</option><option value="120">FL 120</option><option value="125">FL 125</option><option value="130">FL 130</option><option value="135">FL 135</option><option value="140">FL 140</option><option value="145">FL 145</option><option value="150">FL 150</option></select></label><div id="today"></div><button type="button" id="lxnav" title="SeeYou CUB-bestand met de aangevinkte FUA en NOTAMs, voor LXNAV en SeeYou">Download als .cub</button></section>
+<section id="vandaag" role="tabpanel"><div class="hint">FUA-activaties en NOTAMs van vandaag 00:00 tot 06:00 LT morgen. NOTAMs worden om 06:00, 18:00 en 22:00 LT opgehaald. Klik op een naam om erheen te vliegen.</div><div id="fout" style="color: #ff8787; white-space: pre-line"></div><label>Verberg NOTAMs onder <select id="notamFl"><option value="">uit</option><option value="10">FL 10</option><option value="15">FL 15</option><option value="20">FL 20</option><option value="25">FL 25</option><option value="30">FL 30</option><option value="35">FL 35</option><option value="40">FL 40</option><option value="45">FL 45</option><option value="50">FL 50</option><option value="55">FL 55</option><option value="60">FL 60</option><option value="65">FL 65</option><option value="70">FL 70</option><option value="75">FL 75</option><option value="80">FL 80</option><option value="85">FL 85</option><option value="90">FL 90</option><option value="95">FL 95</option><option value="100">FL 100</option><option value="105">FL 105</option><option value="110">FL 110</option><option value="115">FL 115</option><option value="120">FL 120</option><option value="125">FL 125</option><option value="130">FL 130</option><option value="135">FL 135</option><option value="140">FL 140</option><option value="145">FL 145</option><option value="150">FL 150</option></select></label><div id="today"></div><button type="button" id="lxnav" title="SeeYou CUB-bestand met de aangevinkte FUA en NOTAMs, voor LXNAV en SeeYou">Download als .cub</button></section>
 <section id="vlucht" role="tabpanel">
 <label id="drop"><input id="igc" type="file" accept=".igc,.gpx,.kml,.kmz">
   <span class="pick">✈ Kies een vluchtbestand</span>
@@ -110,6 +122,7 @@
 <div id="player" hidden>
   <h3>Vlucht</h3>
   <div id="flight" style="white-space: pre-line"></div>
+  <button type="button" id="removeFlight" style="width: 100%; margin-top: 6px">Vlucht verwijderen</button>
   <label>QNH <input id="qnh" type="number" step="1" value="1013" style="width:60px"> hPa</label>
   <div class="hint">Flightlevels en IGC-drukhoogte omgerekend met deze QNH.</div>
   <h3>Afspelen</h3>
@@ -124,20 +137,23 @@
 <div id="at" class="bar"><label><span class="head">Toon om <output id="atOut"></output></span><input id="atTime" type="range" min="0" max="1425" step="15"></label><div class="row"><label>Dag <select id="atDay"><option value="Mon">ma</option><option value="Tue">di</option><option value="Wed">wo</option><option value="Thu">do</option><option value="Fri">vr</option><option value="Sat">za</option><option value="Sun">zo</option></select></label> <label><input type="checkbox" id="atHol"> Feestdag</label></div><div class="hint">Simulatie van de tijdsafhankelijke luchtruimklassen (AIP SUP 03/2022).</div></div>
 <div id="live" class="bar"><label><span class="head">Toon om <output id="liveOut">nu</output></span><input id="liveTime" type="range" min="0" max="0" step="15" value="0"></label></div>
 <div id="note">
-<dl id="links"><dt>Feedback?</dt><dd><a id="contact" href="#">e-mail</a></dd><dt>Nuttig?</dt><dd><a id="donate" href="https://ko-fi.com/fuchur" target="_blank" rel="noopener">✈ Doneer een vliegminuut</a></dd></dl>
+<dl id="links"><dt>Feedback?</dt><dd class="icons"><a id="contact" href="#" aria-label="E-mail"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 6 10 7 10-7"/></svg></a></dd><dt>Nuttig?</dt><dd><a id="donate" href="https://ko-fi.com/fuchur" target="_blank" rel="noopener">✈ Doneer een vliegminuut</a></dd></dl>
 </div></form>
 <!-- disclaimer at page load: Accepteren remembers it until the code date changes, Weigeren goes to LVNL -->
 <dialog id="disclaimer">
 <strong>Let op: alleen voor educatieve doeleinden. Niet geschikt voor vluchtvoorbereiding!</strong>
 <p class="credits">Luchtruim © LVNL (CC BY 4.0). Activeringen (FUA) © EUROCONTROL. Vormen België/Luxemburg en Duitsland © openAIP (CC BY-NC 4.0). De AIP Netherlands van LVNL is leidend.</p>
 <b>Laatste update</b>
-<dl id="updates"><dt data-for="luchtruim">Luchtruim LVNL</dt><dd data-for="luchtruim" id="vAirspace">…</dd><dt data-for="luchtruim">Sporting Areas</dt><dd data-for="luchtruim">ENR 5.5, AIRAC AMDT 10-2026 (1-10-2026)</dd><dt data-for="vandaag">NOTAMs</dt><dd data-for="vandaag" id="vNotams">…</dd><dt data-for="vandaag">FUA</dt><dd data-for="vandaag" id="vFua">…</dd><dt>Code</dt><dd id="vCode"></dd></dl>
+<dl id="updates"><dt data-for="luchtruim">Luchtruim LVNL</dt><dd data-for="luchtruim" id="vAirspace">…</dd><dt data-for="luchtruim">Sporting Areas</dt><dd data-for="luchtruim" id="vSport">ENR 5.5, AIRAC AMDT 10-2026 (1-10-2026)</dd><dt data-for="vandaag">NOTAMs</dt><dd data-for="vandaag" id="vNotams">…</dd><dt data-for="vandaag">FUA</dt><dd data-for="vandaag" id="vFua">…</dd><dt>Code</dt><dd id="vCode"></dd></dl>
+<p class="legend"><span style="color: #69db7c">groen</span> zeker actueel · <span style="color: #ffc24b">oranje</span> nog niet gecontroleerd · <span style="color: #ff8787">rood</span> verouderd</p>
 <div class="buttons"><button type="button" id="decline">Weigeren</button><button type="button" id="accept">Accepteren</button></div>
 </dialog>
 <script src="https://cdn.jsdelivr.net/npm/cesium@1.145.0/Build/Cesium/Cesium.js"></script>
 <script type="module">
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
-const disclaimer = document.getElementById('disclaimer'), codeDate = new Date(document.lastModified).toLocaleDateString('nl-NL');
+// code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
+const CODE_VERSION = '16-10-2026';
+const disclaimer = document.getElementById('disclaimer'), codeDate = CODE_VERSION;
 let accepted = (() => { try { return localStorage.getItem('vfr3d-disclaimer') === codeDate; } catch {} })();
 document.getElementById('accept').onclick = () => {
   if (!accepted) window.goatcounter?.count({ path: 'disclaimer-geaccepteerd', title: 'Disclaimer geaccepteerd', event: true });
@@ -155,17 +171,7 @@ if (!accepted) disclaimer.showModal();
 const LVNL = 'https://services-eu1.arcgis.com/OtUwzhpKSdeXgRIB/arcgis/rest/services/Airspaces_data/FeatureServer';
 // [layer id or local GeoJSON file, label, colour when unclassified, type shown by default; classes A-D are always on by default]
 const NOTAMS = 'https://vfr3d-notams.frank-e97.workers.dev', FUA = 'https://vfr3d-fua.frank-e97.workers.dev';
-// country pages: index_be.html and index_de.html open this page with ?land=be or ?land=de. They show only the Vandaag tab,
-// with NOTAMs and FUA of that country and the shapes of its switchable areas from openAIP (via the FUA Worker)
-const LAND = {
-  be: { naam: 'België en Luxemburg', icao: 'EB,EL', lon: 4.9, lat: 50.3, hoogte: 300000 },
-  de: { naam: 'Duitsland', icao: 'ED', lon: 10.4, lat: 51.1, hoogte: 500000 },
-}[new URLSearchParams(location.search).get('land')];
-const Q = LAND ? `?land=${LAND.icao}` : '';
-const LAYERS = LAND ? [
-  [`${FUA}/gebieden${Q}`, 'Luchtruim (openAIP)', '#888780', false],
-  [NOTAMS, 'NOTAMs', '#e8590c', true],
-] : [
+const LAYERS = [
   [15, 'CTR', '#185FA5', false],
   [14, 'TMA', '#185FA5', false],
   [13, 'CTA', '#185FA5', false],
@@ -183,13 +189,6 @@ const LAYERS = LAND ? [
   [19, 'Prohibited (P)', '#1a1a1a', true],
   [NOTAMS, 'NOTAMs', '#e8590c', true], // FAA NMS via Frank's Cloudflare Worker (worker/notams.js)
 ];
-if (LAND) {
-  document.title = `VFR3D ${LAND.naam} (beta)`;
-  document.querySelectorAll('#tabs button:not([data-tab=vandaag]):not([data-tab=kaart])').forEach(b => b.hidden = true);
-  document.getElementById('tabs').style.gridTemplateColumns = '1fr 1fr';
-  document.querySelectorAll('#updates [data-for=luchtruim]').forEach(x => x.hidden = true);
-  for (const p of document.querySelectorAll('.credits')) p.textContent = 'Activeringen (FUA) © EUROCONTROL. Luchtruimvormen © openAIP (CC BY-NC 4.0). NOTAMs: FAA. De AIP van het land is leidend.';
-}
 const CLASS_COLOURS = { A: '#A32D2D', B: '#993C1D', C: '#185FA5', D: '#378ADD', E: '#534AB7', F: '#888780', G: '#3B6D11' };
 
 // light mode everywhere (Frank, 2026-10-15): WebGL 1 and no atmosphere, sky or lighting. Safari on macOS 27 draws no imagery
@@ -232,10 +231,12 @@ const NL = {
 viewer.navigationHelpButton.viewModel.tooltip = 'Navigatie-uitleg';
 // hamburger on phones
 const menu = document.getElementById('menu');
-menu.onclick = () => menu.setAttribute('aria-expanded', document.body.classList.toggle('menu-open'));
+menu.onclick = () => { const open = document.body.classList.toggle('menu-open'); menu.setAttribute('aria-expanded', open); menu.textContent = open ? '✕' : '☰'; };
+// tapping the map also closes the menu, so it can always be closed, even when the button is out of reach
+document.getElementById('map').addEventListener('pointerdown', () => document.body.classList.contains('menu-open') && menu.click(), true);
 // panel tabs; Luchtruim is open at load, unless another tab was open before a reload
 const tabs = document.querySelectorAll('#tabs button');
-let openTab;
+let openTab, ready = false; // ready after the first refresh(); a tab clicked while loading only switches the panel
 // Vlucht tab: NOTAMs and FUA of the flight day from the Workers' day archive, timed by the flight clock
 let flightDay = [];
 const showTab = id => {
@@ -245,10 +246,10 @@ const showTab = id => {
   document.getElementById('live').hidden = id !== 'vandaag';
   tabs.forEach(t => { t.setAttribute('aria-selected', t.dataset.tab === id); document.getElementById(t.dataset.tab).hidden = t.dataset.tab !== id; });
 };
-tabs.forEach(t => t.onclick = () => { showTab(t.dataset.tab); refresh(); try { localStorage.setItem('vfr3d-tab', t.dataset.tab); } catch {} });
+tabs.forEach(t => t.onclick = () => { try { localStorage.setItem('vfr3d-tab', t.dataset.tab); } catch {} showTab(t.dataset.tab); if (ready) refresh(); });
 // open the tab named in the link (#vandaag), else the tab the visitor last used (also after NOTAMs verversen)
 const tabIds = [...tabs].map(t => t.dataset.tab);
-showTab(LAND ? (location.hash === '#kaart' ? 'kaart' : 'vandaag') : [location.hash.slice(1), (() => { try { return localStorage.getItem('vfr3d-tab'); } catch {} })()].find(id => tabIds.includes(id)) ?? 'luchtruim');
+showTab([location.hash.slice(1), (() => { try { return localStorage.getItem('vfr3d-tab'); } catch {} })()].find(id => tabIds.includes(id)) ?? 'luchtruim');
 // click and double-click pick the nearest visible entity, skipping airspace hidden by the selection or FL filter
 const pickVisible = pos => viewer.scene.drillPick(pos, 10).map(p => p.id).find(e => e instanceof Cesium.Entity && e.isShowing);
 viewer.screenSpaceEventHandler.setInputAction(c => viewer.selectedEntity = pickVisible(c.position), Cesium.ScreenSpaceEventType.LEFT_CLICK);
@@ -275,8 +276,6 @@ for (const [name, layer] of [['Kaart', viewer.imageryLayers.get(0)], ['Satelliet
 const base = document.getElementById('base');
 // hidden layers request no tiles, so satellite does not also load the map underneath
 const osm = viewer.imageryLayers.get(0);
-// country pages start on satellite (the ICAO chart covers only the Netherlands); the Kaart tab can switch
-if (LAND) base.selectedIndex = 0;
 (base.onchange = () => { esri.show = base.selectedIndex === 0; osm.show = !esri.show; icao.show = base.selectedIndex === 2; })();
 
 // 2D/3D button in Cesium's toolbar: 2D is a top-down view on the chosen base layer
@@ -287,12 +286,25 @@ flat.onclick = () => {
   Object.assign(flat, { textContent: to2d ? '3D' : '2D', title: to2d ? 'Terug naar 3D' : 'Bekijk in 2D' });
 };
 viewer.container.querySelector('.cesium-viewer-toolbar').prepend(flat);
+// traffic light next to 2D (Frank 2026-10-19): the worst of the four update dates (LVNL, Sporting Areas, NOTAMs, FUA);
+// red if one is red, else orange if one is not green (yet), green only when all four are; a click opens the disclaimer
+const light = Object.assign(document.createElement('button'), { type: 'button', className: 'cesium-button cesium-toolbar-button', title: 'Actualiteit van de gegevens',
+  innerHTML: '<svg viewBox="0 0 12 28" width="12" height="28"><rect width="12" height="28" rx="3" fill="#111"/><circle cx="6" cy="6" r="3.5"/><circle cx="6" cy="14" r="3.5"/><circle cx="6" cy="22" r="3.5"/></svg>',
+  onclick: () => disclaimer.showModal() });
+flat.after(light);
+const colours = {};
+const setLight = () => {
+  const ids = ['vAirspace', 'vSport', 'vNotams', 'vFua'].map(id => colours[id]);
+  const on = ids.includes('rood') ? 0 : ids.every(k => k === 'groen') ? 2 : 1;
+  light.querySelectorAll('circle').forEach((c, i) => c.setAttribute('fill', i === on ? ['#ff6b6b', '#ffc24b', '#69db7c'][i] : '#333'));
+};
+setLight();
 // after the morph: the Netherlands from above in 2D, the start view in 3D
-const startView = () => viewer.scene.mode === Cesium.SceneMode.SCENE2D ? { destination: LAND ? Cesium.Rectangle.fromDegrees(lon - h / 125000, lat - h / 200000, lon + h / 125000, lat + h / 200000) : Cesium.Rectangle.fromDegrees(3.2, 50.7, 7.3, 53.6) } : home;
+const startView = () => viewer.scene.mode === Cesium.SceneMode.SCENE2D ? { destination: Cesium.Rectangle.fromDegrees(3.2, 50.7, 7.3, 53.6) } : home;
 viewer.scene.morphComplete.addEventListener(() => viewer.camera.setView(startView()));
 
 // looking 40° down, the camera stands about 1.19 × its height south of what it looks at
-const [lon, lat, h] = LAND ? [LAND.lon, LAND.lat, LAND.hoogte] : [5.3, 52.2, 280000];
+const [lon, lat, h] = [5.3, 52.2, 280000];
 const home = { destination: Cesium.Cartesian3.fromDegrees(lon, lat - h * 1.19 / 111000, h), orientation: { pitch: Cesium.Math.toRadians(-40) } };
 viewer.camera.setView(home);
 // the home button returns to the view at page load instead of the whole globe
@@ -307,12 +319,22 @@ const qnh = document.getElementById('qnh');
 const metres = (value, unit, ref) =>
   ref === 'SFC' ? 0 : (unit === 'FL' ? value * 100 + (qnh.value - 1013.25) * 27.3 : unit === 'M' ? value / 0.3048 : value) * 0.3048;
 
-let notamsFetched;
+let notamsFetched, notamsActueel;
 // a Worker that could not fetch says why in 'fout' (and serves the last good data)
 const showFout = (bron, fout) => fout && (document.getElementById('fout').textContent += `${bron}: ${fout}\n`);
+// FUA and the neighbouring countries are fetched at the same time as the airspace
+const fuaFetch = fetch(FUA, { cache: 'no-cache' }).then(r => r.json()).catch(e => console.error('FUA', e));
+// Vandaag also lists Belgium/Luxembourg and Germany, off by default: their NOTAMs and FUA (shapes from openAIP via the FUA Worker).
+// Labels 'NOTAMs|<country>' and 'FUA|<country>' keep them apart from the Dutch ones
+const ABROAD = [['EB,EL', 'België/Luxemburg'], ['ED', 'Duitsland']];
+const abroadFetch = Promise.all(ABROAD.map(([icao, land]) => Promise.all([
+  fetch(`${NOTAMS}?land=${icao}`).then(r => r.json()).then(j => (showFout(`NOTAMs ${land}`, j.fout), Cesium.GeoJsonDataSource.load(j))).catch(e => console.error(land, e)),
+  fetch(`${FUA}?land=${icao}`).then(r => r.json()).then(j => (showFout(`FUA ${land}`, j.fout), j)).catch(e => console.error(land, e)),
+  Cesium.GeoJsonDataSource.load(`${FUA}/gebieden?land=${icao}`).catch(e => console.error(land, e)),
+]).then(d => [land, ...d])));
 const sources = await Promise.all(LAYERS.map(([id, label]) =>
   // NOTAMs are fetched first, to read when the Worker last fetched them ('opgehaald')
-  (id === NOTAMS ? fetch(NOTAMS + Q).then(r => r.json()).then(j => (notamsFetched = j.opgehaald, showFout('NOTAMs', j.fout), Cesium.GeoJsonDataSource.load(j)))
+  (id === NOTAMS ? fetch(NOTAMS, { cache: 'no-cache' }).then(r => r.json()).then(j => (notamsFetched = j.opgehaald, notamsActueel = j.actueel, showFout('NOTAMs', j.fout), Cesium.GeoJsonDataSource.load(j)))
     // LVNL airspace: the copy in data/lvnl (kept current by the LVNL-luchtruim GitHub Action), else LVNL itself
     : typeof id === 'string' ? Cesium.GeoJsonDataSource.load(id)
     : Cesium.GeoJsonDataSource.load(`data/lvnl/${id}.geojson`).catch(() => Cesium.GeoJsonDataSource.load(`${LVNL}/${id}/query?where=1%3D1&outFields=*&outSR=4326&f=geojson`)))
@@ -330,7 +352,7 @@ const when = (t, withDay = true) => {
 // of the TRA/TSA/D/R with that designator and the activated FL band. Names match without spaces or leading zeros (EHD09 = EHD9);
 // a trailing Z marks a variant, so it also matches the designator without Z.
 const fuaKey = s => String(s ?? '').toUpperCase().replace(/\s/g, '').replace(/(\D)0+(\d)/g, '$1$2');
-const fua = await fetch(FUA + Q).then(r => r.json()).catch(e => console.error('FUA', e));
+const fua = await fuaFetch;
 showFout('FUA', fua?.fout);
 // footer: when the Workers last fetched NOTAMs and the FUA plan (EAUP or EUUP)
 document.getElementById('vNotams').textContent = notamsFetched ? when(notamsFetched) : 'onbekend';
@@ -360,14 +382,7 @@ if (fua?.gebieden) {
   LAYERS.push(['fua', 'Vandaag actief (FUA)', '#15aabf', true]);
   sources.push(fuaSource(fua, sources));
 }
-// Vandaag also lists Belgium/Luxembourg and Germany, off by default: their NOTAMs and FUA (shapes from openAIP via the FUA Worker).
-// Labels 'NOTAMs|<country>' and 'FUA|<country>' keep them apart from the Dutch ones
-const ABROAD = LAND ? [] : [['EB,EL', 'België/Luxemburg'], ['ED', 'Duitsland']];
-const abroad = await Promise.all(ABROAD.map(([icao, land]) => Promise.all([
-  fetch(`${NOTAMS}?land=${icao}`).then(r => r.json()).then(j => (showFout(`NOTAMs ${land}`, j.fout), Cesium.GeoJsonDataSource.load(j))).catch(e => console.error(land, e)),
-  fetch(`${FUA}?land=${icao}`).then(r => r.json()).then(j => (showFout(`FUA ${land}`, j.fout), j)).catch(e => console.error(land, e)),
-  Cesium.GeoJsonDataSource.load(`${FUA}/gebieden?land=${icao}`).catch(e => console.error(land, e)),
-]).then(d => [land, ...d])));
+const abroad = await abroadFetch;
 for (const [land, notams, fuaLand, shapes] of abroad) {
   LAYERS.push([NOTAMS, `NOTAMs|${land}`, '#e8590c', false]);
   sources.push(notams);
@@ -393,13 +408,35 @@ busy('Luchtruim tekenen…');
 
 // versions under the disclaimer; LVNL's last edit date is the newest over all layers
 const nlDate = t => new Date(t).toLocaleDateString('nl-NL');
-(LAND ? Promise.reject() : fetch('data/lvnl/meta.json').then(r => r.json()).then(j => j.lastEditDate)
-  .catch(() => fetch(`${LVNL}/layers?f=json`).then(r => r.json()).then(j => Math.max(...j.layers.map(l => l.editingInfo?.lastEditDate ?? 0))))).catch(() => 0)
-  .then(t => document.getElementById('vAirspace').textContent = t > 0 ? nlDate(t) : 'datum onbekend');
-document.getElementById('vCode').textContent = nlDate(document.lastModified);
+// update dates are green when certainly current, orange when not checked (yet), red when certainly outdated; the tooltip says why.
+// The sources say it themselves ('actueel'): data/lvnl/meta.json (LVNL-luchtruim Action) and the NOTAM and FUA Workers
+const mark = (id, a, url) => {
+  const dd = Object.assign(document.getElementById(id), { title: a?.reden ?? 'Onbekend' });
+  dd.style.color = { groen: '#69db7c', rood: '#ff8787' }[a?.kleur] ?? '#ffc24b';
+  colours[id] = a?.kleur;
+  setLight();
+  if (url && a?.kleur !== 'groen') dd.append(' ', refetchButton(url));
+};
+// orange or red NOTAMs/FUA: ↻ asks the Worker to fetch now (POST; the FUA scrape can take a minute), then the page
+// reloads with the new data. The Worker refuses (429) when it is already current, tried recently or 3 times today
+const refetchButton = url => Object.assign(document.createElement('button'), { type: 'button', className: 'refresh', textContent: '↻', title: 'Nu ophalen',
+  onclick: async ({ currentTarget: b }) => {
+    b.disabled = true;
+    const r = await fetch(url, { method: 'POST' }).catch(e => ({ ok: false, json: async () => ({ fout: e.message }) }));
+    if (r.ok) return location.reload();
+    b.disabled = false;
+    alert(`Ophalen niet gestart: ${(await r.json().catch(() => ({}))).fout ?? 'onbekende fout'}`);
+  } });
+fetch('data/lvnl/meta.json').then(r => r.json()).catch(() => ({})).then(m => {
+  document.getElementById('vAirspace').textContent = m.lastEditDate ? nlDate(m.lastEditDate) : 'datum onbekend';
+  mark('vAirspace', m.actueel);
+});
+// ENR 5.5 of AIRAC AMDT 10-2026; from the next AIRAC date (29-10-2026) it has to be checked again (AIRAC-check issue)
+mark('vSport', { kleur: Date.now() < Date.UTC(2026, 9, 29) ? 'groen' : 'oranje', reden: 'Geldig tot de volgende AIRAC-datum, daarna nakijken' });
+document.getElementById('vCode').textContent = CODE_VERSION;
 // feedback address is put together in the browser, so it is not in the HTML for robots that only read the page
 const contact = document.getElementById('contact'), mail = ['frank', 'schellenberg.nl'].join('@');
-contact.textContent = mail;
+contact.title = `E-mail: ${mail}`;
 contact.href = `mailto:${mail}?subject=vfr3d.nl`;
 
 // One source of truth: the on/off state per airspace. Type and class only set those states.
@@ -413,6 +450,8 @@ const badge = (cls, colour) => Object.assign(document.createElement('span'), { c
 // Vandaag stays live for NOTAMs and FUA, from now until 06:00 LT tomorrow. Both in 15-minute steps
 const amsOffset = d => new Date(d.toLocaleString('en-US', { timeZone: 'Europe/Amsterdam' })) - new Date(d.toLocaleString('en-US', { timeZone: 'UTC' }));
 const now = Date.now(), ltAt = h => { const lt = new Date(now + amsOffset(new Date(now))); lt.setUTCHours(h, 0, 0, 0); return lt - amsOffset(lt); }, dayStart = ltAt(0), until = ltAt(30);
+mark('vNotams', notamsActueel, NOTAMS);
+mark('vFua', fua?.actueel, FUA);
 const atTime = document.getElementById('atTime'), atDay = document.getElementById('atDay'), atHol = document.getElementById('atHol'), showAt = () => dayStart + atTime.value * 60000;
 atTime.value = Math.floor((now - dayStart) / 900000) * 15;
 atDay.value = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Amsterdam', weekday: 'short' }).format(now);
@@ -441,28 +480,34 @@ const STYLES = { CTR: 0x01, TMA: 0x06, CTA: 0x09, ATZ: 0x87, 'TMZ/RTMZ': 0x0b, R
 const style = (a, n, cls) => a.soort === 'FUA' ? (/^..TSA/.test(n) ? 0x8e : /^..D/.test(n) ? 0x04 : /^..R/.test(n) ? 0x02 : 0x05)
   : a.soort ? 0x0f : (STYLES[a.key.split('|')[0]] ?? 0) | ' ABCDEFG'.indexOf(cls || ' ') << 4;
 // one CUB item per drawn volume
-const cubItem = (a, e, name, remarks, max) => {
+const cubItem = (a, e, name, remarks, max, cls = e.cls ?? a.cls, w = e.windows ?? []) => {
   const p = e.limits, pts = e.polygon.hierarchy.getValue().positions.map(c => Cesium.Cartographic.fromCartesian(c));
   if (pts.length > 1 && Cesium.Cartographic.equals(pts[0], pts.at(-1))) pts.pop();
-  const lo = pts.map(c => c.longitude), la = pts.map(c => c.latitude), w = e.windows ?? [];
-  return { pts, name: utf8(name).slice(0, 63), remarks: utf8(remarks).slice(0, 65535), style: style(a, p.Designator ?? '', e.cls ?? a.cls),
+  const lo = pts.map(c => c.longitude), la = pts.map(c => c.latitude);
+  return { pts, name: utf8(name).slice(0, 63), remarks: utf8(remarks).slice(0, 65535), style: style(a, p.Designator ?? '', cls),
     min: alt(p.LowerLimit, p.LowerLimitUnit, p.LowerLimitReference), max: max ?? alt(p.UpperLimit, p.UpperLimitUnit, p.UpperLimitReference),
     from: w.length ? Math.min(...w.map(x => x[0])) : 0, to: w.length ? Math.max(...w.map(x => x[1])) : Infinity,
     left: f32(Math.min(...lo)), right: f32(Math.max(...lo)), bottom: f32(Math.min(...la)), top: f32(Math.max(...la)) };
 };
 document.getElementById('lxnav').onclick = () => writeCub(today.filter(a => a.on).flatMap(a => a.entities
-  .filter(e => !(e.limits.Type === 'NOTAM' && notamFl.value && flOf(e.limits) < +notamFl.value)).map(e => {
-    const p = e.limits, w = e.windows ?? [];
+  // one item per active window, so the logger shows each one only while it is active
+  .filter(e => !(e.limits.Type === 'NOTAM' && notamFl.value && flOf(e.limits) < +notamFl.value)).flatMap(e => (e.windows?.length ? e.windows.map(x => [x]) : [[]]).map(w => {
+    const p = e.limits;
     const name = `${[p.Designator, a.soort === 'FUA' ? '' : p.Name].filter(Boolean).join(' ')} ${w.length ? `${w.map(([s, u]) => `${hhmm(s)}-${u === Infinity ? 'PERM' : hhmm(u)}`).join(', ')} LT` : ''}`.trim();
     const remarks = `${a.soort}\n${w.map(([s, u]) => `${when(s)} - ${u === Infinity ? 'PERM' : when(u)}`).join('\n')}\n${p.Tekst ?? p.Actief ?? ''}`.trim();
-    return cubItem(a, e, name, remarks);
-  })), 'vandaag', 'vfr3d.nl Vandaag: FUA (c) EUROCONTROL, NOTAMs FAA. Niet voor navigatie.', 'Er staan geen FUA of NOTAMs aan.');
+    return cubItem(a, e, name, remarks, undefined, undefined, w);
+  }))), 'vandaag', 'vfr3d.nl Vandaag: FUA (c) EUROCONTROL, NOTAMs FAA. Niet voor navigatie.', 'Er staan geen FUA of NOTAMs aan.');
 document.getElementById('lxnavAirspace').onclick = () => {
   const top = metres(maxFl.value, 'FL'), cut = [3, Math.round(maxFl.value * 30.48)];
   writeCub(airspaces.filter(a => a.on).flatMap(a => a.entities.filter(e => metres(e.limits.LowerLimit, e.limits.LowerLimitUnit, e.limits.LowerLimitReference) <= top).map(e => {
-    const p = e.limits, cls = e.cls ?? a.cls;
-    return cubItem(a, e, [p.Designator, p.Name].filter(Boolean).join(' ') || a.name, cls ? `Klasse ${cls}` : '',
-      metres(p.UpperLimit, p.UpperLimitUnit, p.UpperLimitReference) > top + 1 ? cut : undefined);
+    const p = e.limits, name = [p.Designator, p.Name].filter(Boolean).join(' ') || a.name, max = metres(p.UpperLimit, p.UpperLimitUnit, p.UpperLimitReference) > top + 1 ? cut : undefined;
+    // time-dependent TMAs (AIP SUP 03/2022): the strictest class (D, 18-22 LT on a weekday), and when E applies in the name (Frank 2026-10-16)
+    if (a.rule) {
+      const [cls, , note] = a.rule({ weekday: 'Wed', hour: 20, hol: false }, p), [, text] = a.rule({ weekday: 'Sat', hour: 12, hol: false }, p);
+      return cubItem(a, e, `${name} (${note})`, `Klasse ${cls} (AIP SUP 03/2022)\n${text}`, max, cls);
+    }
+    const cls = e.cls ?? a.cls;
+    return cubItem(a, e, name, cls ? `Klasse ${cls}` : '', max);
   })), 'luchtruim', 'vfr3d.nl Luchtruim (c) LVNL CC BY 4.0. AIP Netherlands leidend. Niet voor navigatie.', 'Er staat geen luchtruim aan.');
 };
 function writeCub(items, kind, title, none) {
@@ -501,7 +546,7 @@ function writeCub(items, kind, title, none) {
   for (const r of recs) for (const b of r) { u8.set(b, at); at += b.length; }
   const link = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([buf])), download: `vfr3d-${kind}-${new Date(now).toLocaleDateString('sv', { timeZone: 'Europe/Amsterdam' })}.cub` });
   link.click();
-  URL.revokeObjectURL(link.href);
+  setTimeout(() => URL.revokeObjectURL(link.href), 40000); // Safari still needs it just after click()
 }
 // AIP SUP 03/2022: some TMAs change class during the day. W = 18:00–22:00 LT (1700–2100 UTC, summer 1600–2000 UTC).
 // Note 3 (FL065–FL095 of Nieuw Milligen TMA C2 and E): class E from Friday 17:00 to Monday 00:00 LT, except within W.
@@ -510,20 +555,24 @@ const amsAt = t => Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZon
 const simDay = t => ({ weekday: atDay.value, hour: +amsAt(t).hour, hol: atHol.checked });
 const inW = s => s.hour >= 18 && s.hour < 22;
 const weekend = ({ weekday, hour, hol }) => hol || weekday === 'Sat' || weekday === 'Sun' || (weekday === 'Fri' && hour >= 17);
-const lowerBand = t => inW(t) ? ['D', 'D tot 22:00 LT, daarna E'] : ['E', 'E, klasse D van 18:00 tot 22:00 LT'];
-const upperBand = t => weekend(t) && !inW(t) ? ['E', 'E (vrijdag 17:00 tot maandag 00:00 LT en feestdagen), klasse D van 18:00 tot 22:00 LT'] : ['D', 'D'];
+// [class now, rule text, short note on when the lower class E applies (for the .cub name)]
+const lowerBand = t => [...(inW(t) ? ['D', 'D tot 22:00 LT, daarna E'] : ['E', 'E, klasse D van 18:00 tot 22:00 LT']), 'E buiten 18-22 LT'];
+const upperBand = t => [...(weekend(t) && !inW(t) ? ['E', 'E (vrijdag 17:00 tot maandag 00:00 LT en feestdagen), klasse D van 18:00 tot 22:00 LT'] : ['D', 'D']), 'E vr17-ma00 LT, fd, niet 18-22'];
 const SUP = [
   [/LELYSTAD TMA ?[345]\b|NIEUW MILLIGEN TMA ?B\b/, t => lowerBand(t)],
   // two bands: FL065–FL095 follows note 3, FL055–FL065 follows W; a volume spanning both gets the class of its upper band
   [/NIEUW MILLIGEN TMA ?(C2|E)\b/, (t, p) => p.UpperLimitUnit === 'FL' && p.UpperLimit <= 65 ? lowerBand(t)
     : p.LowerLimitUnit === 'FL' && p.LowerLimit >= 65 ? upperBand(t)
-    : [upperBand(t)[0], `FL065–FL095: ${upperBand(t)[1]}\nFL055–FL065: ${lowerBand(t)[1]}`]],
+    : [upperBand(t)[0], `FL065–FL095: ${upperBand(t)[1]}\nFL055–FL065: ${lowerBand(t)[1]}`, 'deels E buiten 18-22 LT']],
 ];
 const supRows = (t, text) => `<tr><th>Klasse (AIP SUP 03/2022)</th><td style="white-space: pre-wrap">${text}</td></tr>`
   + `<tr><th>Radio</th><td>${inW(t) ? 'Lelystad Arrival 134.530' : 'Dutch MIL Info 132.350 (FIS)'}</td></tr>`;
 // infobox: only the fields a pilot needs, in this order
-const describe = p => '<table class="cesium-infoBox-defaultTable">' + ['UpperLimit', 'LowerLimit', 'LowerLimitUnit', 'Type', 'Class', 'Designator', 'UpperLimitUnit', 'UpperLimitReference', 'LowerLimitReference', 'Actief', 'Van', 'Tot', 'Schema', 'Tekst']
-  .filter(k => p[k] != null && p[k] !== '').map(k => `<tr><th>${k}</th><td${k === 'Tekst' || k === 'Actief' ? ' style="white-space: pre-wrap; word-break: break-word"' : ''}>${String(k === 'Van' || k === 'Tot' ? when(p[k]) : p[k]).replace(/&/g, '&amp;').replace(/</g, '&lt;')}</td></tr>`).join('') + '</table>';
+// a limit with its unit and reference on one line (Frank 2026-10-17): "FL 95", "1500 FT MSL", "SFC"
+const limit = (v, unit, ref) => ref === 'SFC' || ref === 'GND' && !v ? ref : unit === 'FL' ? `FL ${v}` : [v, unit, ref].filter(x => x != null && x !== '').join(' ');
+const describe = p => '<table class="cesium-infoBox-defaultTable">' + ['UpperLimit', 'LowerLimit', 'Type', 'Class', 'Designator', 'Actief', 'Van', 'Tot', 'Schema', 'Tekst']
+  .filter(k => p[k] != null && p[k] !== '').map(k => `<tr><th>${k}</th><td${k === 'Tekst' || k === 'Actief' ? ' style="white-space: pre-wrap; word-break: break-word"' : ''}>${String(k === 'Van' || k === 'Tot' ? when(p[k])
+    : k === 'UpperLimit' ? limit(p.UpperLimit, p.UpperLimitUnit, p.UpperLimitReference) : k === 'LowerLimit' ? limit(p.LowerLimit, p.LowerLimitUnit, p.LowerLimitReference) : p[k]).replace(/&/g, '&amp;').replace(/</g, '&lt;')}</td></tr>`).join('') + '</table>';
 const byLabel = new Map();
 LAYERS.forEach(([, label, colour, show], i) => {
   const source = sources[i];
@@ -567,6 +616,7 @@ byLabel.forEach((items, label) => {
       a.soort = label.startsWith('NOTAMs') ? a.entities[0].limits.Soort ?? 'Overige activiteit' : 'FUA';
       a.box = box(() => setOn([a], a.box.checked));
       a.on = saved[a.key] ?? (a.show && !NOTAMS_OFF.includes(a.soort));
+      a.today = true;
       today.push(a);
     }
     return;
@@ -590,8 +640,7 @@ byLabel.forEach((items, label) => {
 });
 
 // Vandaag tab: foldable FUA and NOTAMs sections (NOTAMs per kind), rows sorted by start time; each row on/off, the name flies the map there
-const limit = (v, unit, ref) => ref === 'SFC' ? 'SFC' : unit === 'FL' ? `FL${v}` : `${v} ft`;
-const status = a => { const t = Date.now(); return a.windows.some(([s, u]) => s <= t && t < u) ? ['now', 'nu actief'] : a.start > t ? ['later', `vanaf ${new Date(a.start).toLocaleTimeString('nl-NL', { timeZone: 'Europe/Amsterdam', hour: '2-digit', minute: '2-digit' })} LT`] : ['past', 'voorbij']; };
+const status = a => { const t = Date.now(); return a.windows.some(([s, u]) => s <= t && t < u) ? ['now', 'nu actief'] : a.start > t ? ['later', `vanaf ${hhmm(a.start)} LT`] : ['past', 'voorbij']; };
 for (const a of today) { a.windows = a.entities.flatMap(e => e.windows ?? []); a.start = Math.min(...a.windows.map(w => w[0])); }
 today.sort((x, y) => x.start - y.start);
 const row = a => {
@@ -643,6 +692,7 @@ maxFl.onchange = () => { busy('Luchtruim tekenen…'); updateHeights(); whenDraw
 const notamFl = document.getElementById('notamFl');
 notamFl.onchange = () => refresh();
 const flOf = p => p.UpperLimitReference === 'SFC' ? 0 : p.UpperLimitUnit === 'FL' ? p.UpperLimit : p.UpperLimit * (p.UpperLimitUnit === 'M' ? 3.28 : 1) / 100;
+let savedSelection; // written to localStorage only when it changes
 function refresh() {
   const t = showAt(), live = liveAt();
   // airspace that changes class during the day (AIP SUP 03/2022): class, colour, badge and infobox for moment t
@@ -655,7 +705,9 @@ function refresh() {
     e.polygon.material = c.withAlpha(0.25);
     e.polygon.outlineColor = c;
     // on a class change, follow the class buttons: on when the other airspace of the new class is on
-    if (i === 0 && cls !== a.cls) a.on = airspaces.some(b => !b.rule && b.cls === cls && b.on);
+    // except at page load, where a saved choice wins
+    if (i === 0 && cls !== a.cls && (a.loaded || saved[a.key] === undefined)) a.on = airspaces.some(b => !b.rule && b.cls === cls && b.on);
+    if (i === 0) a.loaded = true;
     if (i === 0) { Object.assign(a, { cls, colour: CLASS_COLOURS[cls] }); Object.assign(a.badge, { textContent: cls }); a.badge.style.background = a.colour; }
   }
   for (const a of today) if (a.land && a.on) {
@@ -665,15 +717,15 @@ function refresh() {
   // the map follows the tab: Vandaag draws only NOTAMs and FUA, the other tabs only airspace; each keeps its own selection
   for (const a of [...airspaces, ...today]) {
     a.box.checked = a.on;
-    for (const e of a.entities) e.show = a.on && today.includes(a) === (!!LAND || openTab === 'vandaag') && metres(e.limits.LowerLimit, e.limits.LowerLimitUnit, e.limits.LowerLimitReference) <= metres(maxFl.value, 'FL')
+    for (const e of a.entities) e.show = a.on && !!a.today === (openTab === 'vandaag') && metres(e.limits.LowerLimit, e.limits.LowerLimitUnit, e.limits.LowerLimitReference) <= metres(maxFl.value, 'FL')
       && (!e.windows || e.windows.some(([s, u]) => s <= live && live < u))
       && !(e.limits.Type === 'NOTAM' && notamFl.value && flOf(e.limits) < +notamFl.value);
   }
   showFlightDay();
-  for (const a of today) [a.status.className, a.status.textContent] = ['status ' + status(a)[0], status(a)[1]];
+  for (const a of today) { const [c, text] = status(a); a.status.className = 'status ' + c; a.status.textContent = text; }
   const tri = (b, list) => {
     const n = list.filter(a => a.on).length;
-    b.checked = n === list.length;
+    b.checked = list.length > 0 && n === list.length;
     b.indeterminate = n > 0 && n < list.length;
     return n;
   };
@@ -681,7 +733,8 @@ function refresh() {
   tri(allBox, airspaces);
   // a class button is grey when none of its airspaces is on
   for (const [b, cls, colour] of classButtons) b.style.background = airspaces.some(a => a.cls === cls && a.on) ? colour : '#bbb';
-  try { localStorage.setItem('vfr3d-selection-2', JSON.stringify(Object.fromEntries([...airspaces, ...today].map(a => [a.key, a.on])))); } catch {}
+  const selection = JSON.stringify(Object.fromEntries([...airspaces, ...today].map(a => [a.key, a.on])));
+  if (selection !== savedSelection) try { localStorage.setItem('vfr3d-selection-2', savedSelection = selection); } catch {}
 }
 
 const allBox = document.getElementById('all'), classButtons = [];
@@ -696,6 +749,7 @@ for (const [cls, colour] of Object.entries(CLASS_COLOURS)) {
   classButtons.push([button, cls, colour]);
 }
 refresh();
+ready = true;
 // infobox: an "Uitzetten" button in its title bar turns the clicked airspace, NOTAM or FUA item off (outside the iframe, which runs no scripts)
 const itemOf = new Map([...airspaces, ...today].flatMap(a => a.entities.map(e => [e, a])));
 const off = Object.assign(document.createElement('button'), { type: 'button', className: 'cesium-button', textContent: 'Uitzetten', title: 'Zet dit luchtruim uit',
@@ -824,13 +878,34 @@ const drop = document.getElementById('drop'), igcInput = document.getElementById
 drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
 drop.ondragleave = () => drop.classList.remove('over');
 drop.ondrop = e => { e.preventDefault(); drop.classList.remove('over'); igcInput.files = e.dataTransfer.files; igcInput.dispatchEvent(new Event('change')); };
-igcInput.onchange = async ({ target }) => {
+// the loading screen always goes away, also when a file cannot be read
+// one flight at a time: the drop zone is gone until the flight is removed (Frank 2026-10-16)
+igcInput.onchange = ({ target }) => {
+  if (!target.files[0]) return;
+  drop.style.display = 'none';
   busy('Vlucht laden…');
+  loadFlight(target).catch(e => (console.error(e), removeFlight(), alert(`Dit vluchtbestand kan niet gelezen worden: ${e.message}`))).finally(() => busy());
+};
+function removeFlight() {
+  viewer.trackedEntity = undefined;
+  viewer.clockViewModel.shouldAnimate = false;
+  viewer.entities.removeAll();
+  for (const ds of flightDay) viewer.dataSources.remove(ds);
+  flightDay = []; fixes = []; track = trace = shadow = volumes = undefined;
+  cockpit.checked = false;
+  document.getElementById('player').hidden = true;
+  document.getElementById('fileName').textContent = 'of sleep het hierheen';
+  document.getElementById('inside').textContent = '–';
+  igcInput.value = '';
+  drop.style.display = '';
+}
+document.getElementById('removeFlight').onclick = removeFlight;
+async function loadFlight(target) {
   const file = target.files[0], ext = file.name.split('.').pop().toLowerCase();
   document.getElementById('fileName').textContent = file.name;
   const text = ext === 'kmz' ? await unzipKml(await file.arrayBuffer()) : await file.text();
   fixes = ext === 'igc' ? parseIgc(text) : (ext === 'gpx' ? parseGpx : parseKml)(new DOMParser().parseFromString(text, 'text/xml'));
-  if (!fixes.length) return busy(), alert('Geen vluchtpunten met tijd gevonden in dit bestand.');
+  if (!fixes.length) throw new Error('er staan geen vluchtpunten met tijd in.');
   usePressure = fixes.some(f => f.pressure);
   showTrack();
   Object.assign(clock, { startTime: fixes[0].time, stopTime: fixes.at(-1).time, currentTime: fixes[0].time,
@@ -858,6 +933,7 @@ igcInput.onchange = async ({ target }) => {
   const day = Cesium.JulianDate.toDate(mid.time).toLocaleDateString('sv', { timeZone: 'Europe/Amsterdam' });
   const [notams, fuaDay] = await Promise.all([NOTAMS, FUA].map(u => fetch(`${u}?datum=${day}&land=EH`).then(r => r.json()).catch(() => ({}))));
   flightDay = [notams?.opgehaald && await Cesium.GeoJsonDataSource.load(notams), fuaDay?.gebieden?.length && fuaSource(fuaDay, sources.filter(ds => ds?.name !== 'FUA'))].filter(Boolean);
+  volumes = undefined;
   flightDay.forEach((ds, i) => {
     viewer.dataSources.add(ds);
     const color = Cesium.Color.fromCssColorString(ds.name === 'FUA' ? '#15aabf' : '#e8590c');
@@ -879,8 +955,7 @@ igcInput.onchange = async ({ target }) => {
   updateHeights();
   await flown;
   await whenDrawn();
-  busy();
-};
+}
 
 const speed = document.getElementById('speed'), play = document.getElementById('play'), cockpit = document.getElementById('cockpit');
 speed.onchange = () => clock.multiplier = +speed.value;
@@ -914,7 +989,8 @@ const inRing = ([x, y], r) => {
   return inside;
 };
 // only what the map shows (selection, FL filter, flight-day NOTAMs/FUA at the flight clock), with its current class
-const containing = (pt, alt) => [...new Set([...airspaces, ...today].flatMap(a => a.entities).concat(flightDay.flatMap(ds => ds.entities.values)).filter(e => {
+let volumes; // all volumes, built once per flight
+const containing = (pt, alt) => [...new Set((volumes ??= [...airspaces, ...today].flatMap(a => a.entities).concat(flightDay.flatMap(ds => ds.entities.values))).filter(e => {
   const p = e.limits;
   return e.show && alt >= metres(p.LowerLimit, p.LowerLimitUnit, p.LowerLimitReference) &&
     alt <= metres(p.UpperLimit, p.UpperLimitUnit, p.UpperLimitReference) && inRing(pt, ring(e));

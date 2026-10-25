@@ -64,7 +64,7 @@
         { "@type": "Question", "name": "Wat zit er in de CUB-download van VFR3D?",
           "acceptedAnswer": { "@type": "Answer", "text": "Op het tabblad Luchtruim download je al het aangevinkte luchtruim, afgesneden op het FL-filter, met type en ICAO-klasse. Op het tabblad Vandaag download je de aangevinkte FUA-gebieden en NOTAMs van de hele dag, met de actieve tijden in Nederlandse tijd in de naam. Het CUB-formaat is van Naviter SeeYou en wordt ook door LXNAV-instrumenten gelezen." } },
         { "@type": "Question", "name": "Waar komen de NOTAMs en FUA-activeringen in VFR3D vandaan?",
-          "acceptedAnswer": { "@type": "Answer", "text": "De NOTAMs komen uit het NOTAM-systeem van de FAA en worden drie keer per dag opgehaald. De activeringen van TRA, TSA en andere schakelbare gebieden komen uit het Airspace Use Plan (AUP/UUP) van Eurocontrol en worden elke twee uur opgehaald. Controleer ze altijd in de officiële bronnen." } },
+          "acceptedAnswer": { "@type": "Answer", "text": "De NOTAMs komen uit het NOTAM-systeem van de FAA en worden drie keer per dag opgehaald. De activeringen van TRA, TSA en andere schakelbare gebieden komen uit het Airspace Use Plan (AUP/UUP) van Eurocontrol en worden elk uur van 06:00 tot 10:00 LT en verder elke drie uur opgehaald. Controleer ze altijd in de officiële bronnen." } },
         { "@type": "Question", "name": "Is VFR3D geschikt voor vluchtvoorbereiding?",
           "acceptedAnswer": { "@type": "Answer", "text": "Nee. VFR3D is alleen bedoeld als educatief hulpmiddel. Gebruik voor vluchtvoorbereiding altijd de actuele AIP Netherlands van LVNL, de NOTAMs, het weer en de actuele activering van militair luchtruim." } }
       ]
@@ -88,7 +88,7 @@
 <p>Hoogtes worden aangegeven in voet boven zeeniveau (ft AMSL), boven de grond (ft AGL of SFC voor de grond zelf) of als <strong>flight level</strong> (FL). Een flight level is een drukhoogte bij de standaarddruk van 1013,25 hPa: FL55 is 5500 ft bij standaarddruk. Omdat de werkelijke luchtdruk (QNH) afwijkt, ligt een FL-grens in werkelijkheid hoger of lager. De transitiehoogte in Nederland is 3000 ft AMSL.</p>
 
 <h2>ICAO-luchtruimklassen A tot en met G</h2>
-<p>ICAO kent zeven klassen. <strong>A tot en met E</strong> zijn gecontroleerd luchtruim, <strong>F en G</strong> zijn ongecontroleerd. In Nederland worden de klassen B en F niet gebruikt.</p>
+<p>ICAO kent zeven klassen. <strong>A tot en met E</strong> zijn gecontroleerd luchtruim, <strong>F en G</strong> zijn ongecontroleerd. Klasse F wordt in Nederland niet gebruikt. Klasse B komt alleen voor in enkele hoge TMA-delen van Nieuw Milligen en Maastricht, vanaf FL65 of FL95.</p>
 <table>
 <tr><th>Klasse</th><th>VFR toegestaan?</th><th>Klaring nodig (VFR)</th><th>Radio (VFR)</th><th>Scheiding door ATC</th></tr>
 <tr><td><span class="cls" style="background:#A32D2D">A</span></td><td>Nee, alleen IFR</td><td>n.v.t.</td><td>n.v.t.</td><td>Al het verkeer</td></tr>
@@ -177,7 +177,8 @@ Op dit tabblad zie je het luchtruim zoals je het bij Luchtruim hebt gekozen, sam
 <p>Met <code>#kaart</code>, <code>#luchtruim</code>, <code>#vandaag</code> of <code>#vlucht</code> achter het adres open je direct dat tabblad, bijvoorbeeld <a href="/#vlucht">vfr3d.nl/#vlucht</a>.</p>
 
 <h3>Bronnen</h3>
-<p>Luchtruim: LVNL (CC BY 4.0), elke ochtend gecontroleerd en opnieuw opgehaald zodra LVNL een nieuwe versie publiceert. Lierlocaties: AIP ENR 5.5. Klassewisselingen van TMA's: AIP SUP 03/2022. NOTAMs: FAA NOTAM-systeem, drie keer per dag opgehaald (06:00, 18:00 en 22:00 LT). FUA-activeringen: © EUROCONTROL (AUP/UUP), elke twee uur opgehaald. Vormen van gebieden in België, Luxemburg en Duitsland: © openAIP (CC BY-NC 4.0). QNH: Open-Meteo. De AIP Netherlands van LVNL is altijd leidend.</p>
+<p>Luchtruim: LVNL (CC BY 4.0), elk uur gecontroleerd en opnieuw opgehaald zodra LVNL een nieuwe versie publiceert. Lierlocaties: AIP ENR 5.5. Klassewisselingen van TMA's: AIP SUP 03/2022. NOTAMs: FAA NOTAM-systeem, drie keer per dag opgehaald (06:00, 18:00 en 22:00 LT). FUA-activeringen: © EUROCONTROL (AUP/UUP), elk uur van 06:00 tot 10:00 LT en verder elke drie uur opgehaald. Vormen van gebieden in België, Luxemburg en Duitsland: © openAIP (CC BY-NC 4.0). QNH: Open-Meteo. De AIP Netherlands van LVNL is altijd leidend.</p>
+<p>Onder <strong>Disclaimer en updates</strong> op het tabblad Kaart staat per bron de datum van de gebruikte gegevens: <span style="color:#2b8a3e">groen</span> is zeker actueel, <span style="color:#e67700">oranje</span> is (nog) niet gecontroleerd en <span style="color:#c92a2a">rood</span> is verouderd. Wijs een datum aan voor de reden.</p>
 <a class="cta" href="/">Open de 3D-kaart →</a>
 
 </main>
