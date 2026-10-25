@@ -43,10 +43,11 @@
     .cesium-viewer .cesium-infoBox { z-index: 2; top: auto; bottom: 0; left: 0; width: auto; max-width: none; border-radius: 0; background: #1b232b; transform: translate(0, 100%); }
     .cesium-viewer .cesium-infoBox-visible { transform: none; }
     .cesium-viewer .cesium-infoBox-iframe { max-height: calc(50vh - 40px) !important; } /* long NOTAM text scrolls inside the sheet */
-    .cesium-viewer .cesium-infoBox-title { border-radius: 0; height: 30px; line-height: 30px; padding-left: 90px; padding-right: 40px; }
+    .cesium-viewer .cesium-infoBox-title { border-radius: 0; height: 30px; line-height: 30px; padding-left: 175px; padding-right: 40px; }
     .cesium-viewer button.cesium-infoBox-close { top: 2px; right: 2px; width: 36px; height: 36px; font-size: 22px; }
   }
   .icons svg { width: 20px; height: 20px; vertical-align: middle; margin-right: 6px; } /* Feedback: e-mail icon, inline SVG */
+  .cesium-viewer .cesium-infoBox-title { padding-left: 175px; } /* room for Uitzetten and Vandaag uit */
   #disclaimer strong { display: block; color: #ff8787; font-size: 15px; }
   #disclaimer p { margin: 8px 0; }
   #note dl, #disclaimer dl { display: grid; grid-template-columns: auto 1fr; gap: 1px 8px; margin: 0; }
@@ -441,6 +442,11 @@ contact.href = `mailto:${mail}?subject=vfr3d.nl`;
 
 // One source of truth: the on/off state per airspace. Type and class only set those states.
 const saved = (() => { try { return JSON.parse(localStorage.getItem('vfr3d-selection-2')) ?? {}; } catch { return {}; } })();
+// "Vandaag uit" (Frank 2026-10-25): NOTAMs turned off until midnight (Amsterdam); on a later day they follow their default again
+const DAY = new Date().toLocaleDateString('sv', { timeZone: 'Europe/Amsterdam' });
+const dayOff = (() => { try { return JSON.parse(localStorage.getItem('vfr3d-vandaag-uit')) ?? {}; } catch { return {}; } })();
+const saveDayOff = () => { try { localStorage.setItem('vfr3d-vandaag-uit', JSON.stringify(dayOff)); } catch {} };
+if (dayOff.dag !== DAY) { for (const k of dayOff.keys ?? []) delete saved[k]; Object.assign(dayOff, { dag: DAY, keys: [] }); saveDayOff(); }
 const airspaces = [], groups = [];
 const box = (onchange) => Object.assign(document.createElement('input'), { type: 'checkbox', onchange });
 const badge = (cls, colour) => Object.assign(document.createElement('span'), { className: 'badge', textContent: cls || '–', style: `background:${colour}` });
@@ -615,7 +621,7 @@ byLabel.forEach((items, label) => {
       a.land = label.split('|')[1];
       a.soort = label.startsWith('NOTAMs') ? a.entities[0].limits.Soort ?? 'Overige activiteit' : 'FUA';
       a.box = box(() => setOn([a], a.box.checked));
-      a.on = saved[a.key] ?? (a.show && !NOTAMS_OFF.includes(a.soort));
+      a.on = !dayOff.keys.includes(a.key) && (saved[a.key] ?? (a.show && !NOTAMS_OFF.includes(a.soort)));
       a.today = true;
       today.push(a);
     }
@@ -752,11 +758,16 @@ refresh();
 ready = true;
 // infobox: an "Uitzetten" button in its title bar turns the clicked airspace, NOTAM or FUA item off (outside the iframe, which runs no scripts)
 const itemOf = new Map([...airspaces, ...today].flatMap(a => a.entities.map(e => [e, a])));
-const off = Object.assign(document.createElement('button'), { type: 'button', className: 'cesium-button', textContent: 'Uitzetten', title: 'Zet dit luchtruim uit',
-  style: 'position: absolute; top: 4px; left: 6px; margin: 0; padding: 2px 8px; font-size: 12px; z-index: 1' });
-viewer.infoBox.container.querySelector('.cesium-infoBox').append(off);
-viewer.selectedEntityChanged.addEventListener(e => off.hidden = !itemOf.has(e));
+// and for a NOTAM also "Vandaag uit": off until midnight
+const tool = (textContent, title) => Object.assign(document.createElement('button'), { type: 'button', className: 'cesium-button', textContent, title,
+  style: 'margin: 0; padding: 2px 8px; font-size: 12px' });
+const off = tool('Uitzetten', 'Zet dit luchtruim uit'), offToday = Object.assign(tool('Vandaag uit', 'Zet deze NOTAM uit tot middernacht'), { hidden: true });
+const tools = Object.assign(document.createElement('div'), { style: 'position: absolute; top: 4px; left: 6px; z-index: 1; display: flex; gap: 4px' });
+tools.append(off, offToday);
+viewer.infoBox.container.querySelector('.cesium-infoBox').append(tools);
+viewer.selectedEntityChanged.addEventListener(e => { off.hidden = !itemOf.has(e); offToday.hidden = !itemOf.get(e)?.today || itemOf.get(e).soort === 'FUA'; });
 off.onclick = () => { setOn([itemOf.get(viewer.selectedEntity)], false); viewer.selectedEntity = undefined; };
+offToday.onclick = () => { dayOff.keys.push(itemOf.get(viewer.selectedEntity).key); saveDayOff(); off.onclick(); };
 whenDrawn().then(() => busy());
 const openAll = open => document.querySelectorAll('#tree details').forEach(d => d.open = open);
 document.getElementById('expand').onclick = () => openAll(true);
