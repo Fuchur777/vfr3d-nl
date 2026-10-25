@@ -180,6 +180,7 @@ async function notams(env, [latitude, longitude]) {
       Designator: n.number, Name: `${n.icaoLocation ?? n.location ?? ''} ${category}`.trim(), Type: 'NOTAM', Soort: category,
       LowerLimit, LowerLimitUnit, LowerLimitReference, UpperLimit, UpperLimitUnit, UpperLimitReference,
       Van: n.effectiveStart, Tot: Number.isNaN(end) ? 'PERM' : n.effectiveEnd, Schema: n.schedule || undefined,
+      Vensters: n.schedule ? windows(n.schedule, start, end, firstPoint(geometry.coordinates), now) : undefined,
       Tekst: (f.properties.coreNOTAMData.notamTranslation?.find(t => t.type === 'ICAO')?.formattedText ?? n.text ?? '').trim(),
     } });
   }
@@ -215,3 +216,142 @@ const circle = ([lon, lat], nm) => [[...Array(65).keys()].map(i => {
   const a = i / 32 * Math.PI, d = nm / 60;
   return [lon + d * Math.sin(a) / Math.cos(lat * Math.PI / 180), lat + d * Math.cos(a)];
 })];
+
+// The D line ('Schema', UTC) as time windows in ms: "MON WED THU SR MINUS15-SS PLUS15", "MON-FRI 0500-1700",
+// "14-16 19-23 0600-1500, 26 0830-1630", "OCT 26-28 NOV 02-04 0700-2255", "SUN 2300-THU 2259", "DAILY SS PLUS30 - 0300".
+// Only from a day ago to three days ahead, which is all the app shows; undefined when the text is not understood,
+// and the app then uses Van to Tot as before.
+const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+const WEEKDAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+const DAY = 24 * 3600e3;
+function windows(schedule, start, end, [lon, lat], now) {
+  // tokens: month, weekday, day of the month, time (a function of the day's 00:00 UTC), H24, '-' and ','
+  const tokens = [], pattern = /\s*(?:([A-Z]{3})\b|(SR|SS)(?:\s*(PLUS|MINUS)\s*(\d+))?|(\d{4})|(\d{1,2})(?!\d)|(H24)|(-)|(,)|(DAILY|EVERY))/y;
+  const text = schedule.toUpperCase().trim();
+  for (let m; pattern.lastIndex < text.length;) {
+    const at = pattern.lastIndex;
+    if (!(m = pattern.exec(text)) || pattern.lastIndex === at) return;
+    if (m[1] === 'H24' || m[7]) tokens.push({ k: 'h24' });
+    else if (MONTHS.includes(m[1])) tokens.push({ k: 'mon', v: MONTHS.indexOf(m[1]) });
+    else if (WEEKDAYS.includes(m[1])) tokens.push({ k: 'wd', v: WEEKDAYS.indexOf(m[1]) });
+    else if (m[1]) return;
+    else if (m[2]) { const rise = m[2] === 'SR', shift = (m[3] === 'MINUS' ? -1 : 1) * (+m[4] || 0) * 60e3; tokens.push({ k: 't', v: d => sun(d, lat, lon, rise) + shift }); }
+    else if (m[5]) tokens.push({ k: 't', v: d => d + (+m[5].slice(0, 2) * 60 + +m[5].slice(2)) * 60e3 });
+    else if (m[6]) tokens.push({ k: 'd', v: +m[6] });
+    else if (m[8]) tokens.push({ k: '-' });
+    else if (m[9]) tokens.push({ k: ',' });
+  }
+  // groups of day tokens followed by time ranges; a range may end on another day ("MON 0000 - FRI 1700")
+  const groups = [];
+  let group = { days: [], times: [] };
+  for (let i = 0; i < tokens.length; i++) {
+    const t = tokens[i];
+    if (t.k === ',') continue;
+    if (t.k === 'h24') { group.times.push([d => d, d => d + DAY]); continue; }
+    if (t.k !== 't') {
+      if (group.times.length) { groups.push(group); group = { days: [], times: [] }; }
+      group.days.push(t);
+      continue;
+    }
+    if (tokens[i + 1]?.k !== '-') return;
+    const until = [];
+    for (i += 2; tokens[i] && tokens[i].k !== 't'; i++) until.push(tokens[i]);
+    if (!tokens[i]) return;
+    group.times.push([t.v, tokens[i].v, until.length ? until : undefined]);
+  }
+  if (!group.times.length) return;
+  groups.push(group);
+
+  const first = start - start % DAY, last = Number.isNaN(end) ? now + 3 * DAY : end, from = Math.max(start, now - DAY), to = Math.min(last, now + 3 * DAY);
+  // days of the month in the NOTAM's period, in order: "26-28" after "OCT" is 26 to 28 October
+  const dates = days => {
+    const items = [], monthFirst = days[0].k === 'mon';
+    let month;
+    for (let i = 0; i < days.length; i++) {
+      const t = days[i];
+      if (t.k === 'mon') { if (monthFirst) month = t.v; continue; }
+      if (t.k === '-') { if (!items.length) return; items.at(-1).range = true; continue; }
+      if (t.k !== 'd') return;
+      items.push({ d: t.v, m: monthFirst ? month : days[i + 1]?.k === 'mon' ? days[i + 1].v : undefined });
+    }
+    const find = (from, item) => {
+      for (let c = from; c <= last; c += DAY) {
+        const date = new Date(c);
+        if (date.getUTCDate() === item.d && (item.m === undefined || date.getUTCMonth() === item.m)) return c;
+      }
+    };
+    const out = [];
+    for (let i = 0, cursor = first; i < items.length; i++) {
+      const a = find(cursor, items[i]);
+      if (a === undefined) return;
+      if (!items[i].range) { out.push(a); cursor = a + DAY; continue; }
+      const b = find(a, items[++i] ?? {});
+      if (b === undefined) return;
+      for (let c = a; c <= b; c += DAY) out.push(c);
+      cursor = b + DAY;
+    }
+    return out;
+  };
+  const weekdays = days => {
+    const set = new Set();
+    for (let i = 0; i < days.length; i++) {
+      if (days[i].k !== 'wd') return;
+      if (days[i + 1]?.k === '-') {
+        if (days[i + 2]?.k !== 'wd') return;
+        for (let w = days[i].v; ; w = (w + 1) % 7) { set.add(w); if (w === days[i + 2].v) break; }
+        i += 2;
+      } else set.add(days[i].v);
+    }
+    const out = [];
+    for (let c = first - DAY; c <= last; c += DAY) if (set.has(new Date(c).getUTCDay())) out.push(c);
+    return out;
+  };
+  const all = () => { const out = []; for (let c = first - DAY; c <= last; c += DAY) out.push(c); return out; };
+  const pick = days => !days.length ? all() : days.every(t => t.k === 'wd' || t.k === '-') ? weekdays(days) : dates(days);
+
+  const found = [];
+  for (const { days, times } of groups) {
+    const set = pick(days);
+    if (!set) return;
+    for (const d of set) {
+      for (const [a, b, until] of times) {
+        const s = a(d);
+        let e;
+        if (!until) {
+          e = b(d) <= s ? b(d + DAY) : b(d);
+        } else if (until.length === 1 && until[0].k === 'wd' && days.length === 1 && days[0].k === 'wd') {
+          const ahead = (until[0].v - days[0].v + 7) % 7;
+          e = b(d + ahead * DAY);
+          if (e <= s) e = b(d + (ahead + 7) * DAY);
+        } else {
+          const ends = dates(until.length === 1 && until[0].k === 'd' ? [...days.filter(t => t.k === 'mon'), ...until] : until);
+          const later = ends?.find(c => c >= d);
+          if (later === undefined) return;
+          e = b(later);
+        }
+        if (e > from && s < to) found.push([Math.max(s, from), Math.min(e, to)]);
+      }
+    }
+  }
+  // sorted, and touching windows ("0000-2359" on following days) joined
+  found.sort((x, y) => x[0] - y[0]);
+  const merged = [];
+  for (const w of found) {
+    if (merged.length && w[0] - merged.at(-1)[1] <= 60e3) merged.at(-1)[1] = Math.max(merged.at(-1)[1], w[1]);
+    else merged.push(w);
+  }
+  return merged;
+}
+
+// the first [lon, lat] of a polygon or multipolygon, for the sun times
+const firstPoint = c => typeof c[0] === 'number' ? c : firstPoint(c[0]);
+
+// sunrise or sunset (ms) on the UTC day starting at d, at lat/lon (sunrise equation, about a minute accurate)
+function sun(d, lat, lon, rise) {
+  const rad = Math.PI / 180, j = d / DAY + 2440587.5 - 2451545 + 0.5 - lon / 360;
+  const m = (357.5291 + 0.98560028 * j) % 360, c = 1.9148 * Math.sin(m * rad) + 0.02 * Math.sin(2 * m * rad) + 0.0003 * Math.sin(3 * m * rad);
+  const l = (m + c + 180 + 102.9372) % 360, transit = j + 0.0053 * Math.sin(m * rad) - 0.0069 * Math.sin(2 * l * rad);
+  const decl = Math.asin(Math.sin(l * rad) * Math.sin(23.4397 * rad));
+  const w = Math.acos((Math.sin(-0.833 * rad) - Math.sin(lat * rad) * Math.sin(decl)) / (Math.cos(lat * rad) * Math.cos(decl))) / rad;
+  return (transit + (rise ? -w : w) / 360 + 2451545 - 2440587.5) * DAY;
+}
