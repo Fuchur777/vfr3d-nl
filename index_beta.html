@@ -654,6 +654,7 @@ const row = a => {
     ev.preventDefault();
     if (!a.on) setOn([a], true);
     viewer.camera.flyToBoundingSphere(Cesium.BoundingSphere.fromPoints(a.entities.flatMap(e => e.polygon.hierarchy.getValue().positions)));
+    viewer.selectedEntity = a.entities[0];
   } });
   a.status = Object.assign(document.createElement('span'), { className: 'status' });
   const bands = [...new Set(a.entities.map(({ limits: p }) => `${limit(p.LowerLimit, p.LowerLimitUnit, p.LowerLimitReference)}–${limit(p.UpperLimit, p.UpperLimitUnit, p.UpperLimitReference)}`))];
