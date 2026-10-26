@@ -153,7 +153,7 @@
 <script type="module">
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '26-10-2026d';
+const CODE_VERSION = '26-10-2026e';
 const disclaimer = document.getElementById('disclaimer'), codeDate = CODE_VERSION;
 let accepted = (() => { try { return localStorage.getItem('vfr3d-disclaimer') === codeDate; } catch {} })();
 document.getElementById('accept').onclick = () => {
@@ -358,8 +358,13 @@ showFout('FUA', fua?.fout);
 // footer: when the Workers last fetched NOTAMs and the FUA plan (EAUP or EUUP)
 document.getElementById('vNotams').textContent = notamsFetched ? when(notamsFetched) : 'onbekend';
 document.getElementById('vFua').textContent = fua?.opgehaald ? `${fua.type} ${when(fua.opgehaald)}` : 'onbekend';
-// NOTAMs that give airspace free (Q-code QA…/QR… closed LC, deactivated CD, not available AU, withdrawn AW, e.g. DE PEEL CTR CLOSED) are green, the rest stays orange-red
-const relaxing = p => /\bQ\)\s*[^/]+\/Q[AR][A-Z](LC|CD|AU|AW)\//.test(String(p.Tekst ?? '').toUpperCase());
+// NOTAMs that give airspace free are green, the rest stays orange-red. Green only when the Q-code (QA…/QR… closed LC, deactivated CD,
+// not available AU, withdrawn AW) and the E line (CLOSED, DEACTIVATED, …) agree, e.g. DE PEEL CTR CLOSED; in doubt red.
+// .github/notam-vorm.mjs mails the doubtful ones every morning; keep both the same
+const relaxing = p => {
+  const t = String(p.Tekst ?? '').toUpperCase(), e = t.split(/\bE\)/)[1]?.split(/\b[FG]\)/)[0] ?? '';
+  return /\bQ\)\s*[^/]+\/Q[AR][A-Z](LC|CD|AU|AW)\//.test(t) && /\b(CLOSED|CLSD|DEACTIVATED|NOT ACTIVE|WITHDRAWN|NOT AVBL|NOT AVAILABLE)\b/.test(e);
+};
 const NOTAM_GREEN = '#40c057';
 // airspace polygons by fuaKey of their designator
 const shapeMap = sources => {

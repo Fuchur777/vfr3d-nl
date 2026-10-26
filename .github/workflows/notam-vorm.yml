@@ -1,6 +1,6 @@
 name: NOTAM-vorm
-# Every morning after the 06:00 LT NOTAM fetch: NOTAMs about airspace without an LVNL shape go into an issue; GitHub mails it to the repo owner.
-# A changed list is posted as a comment (mails again); the issue closes once every such NOTAM has a shape.
+# Every morning after the 06:00 LT NOTAM fetch: NOTAMs about airspace without an LVNL shape, or in doubt about red or green, go into an issue; GitHub mails it to the repo owner.
+# A changed list is posted as a comment (mails again); the issue closes once nothing is left to check.
 on:
   schedule:
     - cron: '30 5 * * *'
@@ -15,14 +15,14 @@ jobs:
       - uses: actions/checkout@v5
       - run: |
           node .github/notam-vorm.mjs > vorm.md
-          open=$(gh issue list --state open --search 'in:title "NOTAMs zonder vorm"' --json number --jq '.[0].number')
+          open=$(gh issue list --state open --search 'in:title "NOTAMs om na te kijken"' --json number --jq '.[0].number')
           if [ -s vorm.md ] && [ -z "$open" ]; then
-            gh issue create --title "NOTAMs zonder vorm" --body-file vorm.md
+            gh issue create --title "NOTAMs om na te kijken" --body-file vorm.md
           elif [ -s vorm.md ] && [ "$(gh issue view "$open" --json body --jq .body)" != "$(cat vorm.md)" ]; then
             gh issue edit "$open" --body-file vorm.md
             gh issue comment "$open" --body-file vorm.md
           elif [ ! -s vorm.md ] && [ -n "$open" ]; then
-            gh issue close "$open" --comment "Alle NOTAMs over luchtruim hebben weer een vorm."
+            gh issue close "$open" --comment "Niets meer na te kijken."
           fi
         env:
           GH_TOKEN: ${{ github.token }}
