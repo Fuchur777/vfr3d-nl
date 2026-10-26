@@ -12,8 +12,9 @@ const escape = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const notams = (await fetch('https://vfr3d-notams.frank-e97.workers.dev/').then(r => r.json())).features
   .map(({ properties: p }) => ({ p, t: String(p.Tekst ?? '').toUpperCase() })).filter(({ t }) => /\bQ\)\s*\w+\/Q[AR]/.test(t));
-const noShape = notams.filter(({ t }) =>
-  ![...t.matchAll(/\b(?:EH\s?)?(TRA|TSA)\s?(\d+[A-Z]?)\b|\bEH\s?([DRP])\s?(\d+[A-Z]?)\b/g)].some(m => keys.has(fuaKey(`EH${m[1] ?? m[3]}${m[2] ?? m[4]}`)))
+// a circle in the E line ("PSN 513102N 0055120E RADIUS 2NM", "WI 45M RADIUS CENTRED ON …") is the area's own shape
+const noShape = notams.filter(({ t }) => !/\bRADIUS\s+\d+(\.\d+)?\s*(NM|M|KM)\b|\b\d+(\.\d+)?\s*(NM|M|KM)\s+RADIUS\b/.test(t)
+  && ![...t.matchAll(/\b(?:EH\s?)?(TRA|TSA)\s?(\d+[A-Z]?)\b|\bEH\s?([DRP])\s?(\d+[A-Z]?)\b/g)].some(m => keys.has(fuaKey(`EH${m[1] ?? m[3]}${m[2] ?? m[4]}`)))
   && ![...names].some(n => new RegExp(`\\b${escape(n)}\\b`).test(t)));
 const doubt = notams.filter(({ t }) => {
   const e = t.split(/\bE\)/)[1]?.split(/\b[FG]\)/)[0] ?? '';
