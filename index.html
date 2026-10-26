@@ -154,7 +154,7 @@
 <script type="module">
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '26-10-2026b';
+const CODE_VERSION = '26-10-2026c';
 const disclaimer = document.getElementById('disclaimer'), codeDate = CODE_VERSION;
 let accepted = (() => { try { return localStorage.getItem('vfr3d-disclaimer') === codeDate; } catch {} })();
 document.getElementById('accept').onclick = () => {
@@ -378,6 +378,9 @@ function notamShapes(ds, shapes) {
   }
   for (const e of [...ds.entities.values]) {
     const tekst = String(e.properties?.Tekst?.getValue() ?? '').toUpperCase();
+    // the FAA gives FL999 when it has no upper limit; the Q line's upper limit (Q) EHAA/QACLC/IV/NBO/AE/000/030/…) is then better
+    const q = tekst.match(/\bQ\)\s*[^/]+\/[^/]+\/[^/]*\/[^/]*\/[^/]*\/\d{3}\/(\d{3})/);
+    if (q && +q[1] < 999 && e.properties.UpperLimit?.getValue() === 999) e.properties.UpperLimit = +q[1];
     const keys = [...tekst.matchAll(/\b(?:EH\s?)?(TRA|TSA)\s?(\d+[A-Z]?)\b|\bEH\s?([DRP])\s?(\d+[A-Z]?)\b/g)].map(m => fuaKey(`EH${m[1] ?? m[3]}${m[2] ?? m[4]}`));
     const named = /\bQ\)\s*\w+\/Q[AR]/.test(tekst) ? [...byName].filter(([n]) => new RegExp(`\\b${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(tekst)).flatMap(([, l]) => l) : [];
     const lvnl = [...new Set([...[...new Set(keys)].flatMap(k => shapes.get(k) ?? []), ...named])];
