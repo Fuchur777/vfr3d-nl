@@ -154,7 +154,7 @@
 <script type="module">
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '26-10-2026';
+const CODE_VERSION = '26-10-2026b';
 const disclaimer = document.getElementById('disclaimer'), codeDate = CODE_VERSION;
 let accepted = (() => { try { return localStorage.getItem('vfr3d-disclaimer') === codeDate; } catch {} })();
 document.getElementById('accept').onclick = () => {
@@ -368,12 +368,19 @@ const shapeMap = sources => {
   }
   return shapes;
 };
-// a NOTAM that names an airspace (EHTRA81, TSA 50, EHD09) gets that airspace's own shape instead of the FAA circle; its limits stay
+// a NOTAM that names an airspace (EHTRA81, TSA 50, EHD09) gets that airspace's own shape instead of the FAA circle; its limits stay.
+// An airspace named in full (DE PEEL CTR) only counts when the NOTAM is about airspace (Q-code QA… or QR…), not e.g. a crane in a CTR
 function notamShapes(ds, shapes) {
+  const byName = new Map();
+  for (const list of shapes.values()) for (const s of list) {
+    const n = String(s.properties.Name?.getValue() ?? '').toUpperCase();
+    if (n) byName.set(n, [...(byName.get(n) ?? []), s]);
+  }
   for (const e of [...ds.entities.values]) {
-    const tekst = String(e.properties?.Tekst?.getValue() ?? '');
+    const tekst = String(e.properties?.Tekst?.getValue() ?? '').toUpperCase();
     const keys = [...tekst.matchAll(/\b(?:EH\s?)?(TRA|TSA)\s?(\d+[A-Z]?)\b|\bEH\s?([DRP])\s?(\d+[A-Z]?)\b/g)].map(m => fuaKey(`EH${m[1] ?? m[3]}${m[2] ?? m[4]}`));
-    const lvnl = [...new Set(keys)].flatMap(k => shapes.get(k) ?? []);
+    const named = /\bQ\)\s*\w+\/Q[AR]/.test(tekst) ? [...byName].filter(([n]) => new RegExp(`\\b${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(tekst)).flatMap(([, l]) => l) : [];
+    const lvnl = [...new Set([...[...new Set(keys)].flatMap(k => shapes.get(k) ?? []), ...named])];
     if (!e.polygon || !lvnl.length) continue;
     e.polygon.hierarchy = lvnl[0].polygon.hierarchy.getValue();
     for (const s of lvnl.slice(1)) ds.entities.add({ polygon: { hierarchy: s.polygon.hierarchy.getValue() }, properties: e.properties.getValue() });
