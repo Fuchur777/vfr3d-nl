@@ -154,7 +154,7 @@
 <script type="module">
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '16-10-2026';
+const CODE_VERSION = '26-10-2026';
 const disclaimer = document.getElementById('disclaimer'), codeDate = CODE_VERSION;
 let accepted = (() => { try { return localStorage.getItem('vfr3d-disclaimer') === codeDate; } catch {} })();
 document.getElementById('accept').onclick = () => {
@@ -359,12 +359,29 @@ showFout('FUA', fua?.fout);
 // footer: when the Workers last fetched NOTAMs and the FUA plan (EAUP or EUUP)
 document.getElementById('vNotams').textContent = notamsFetched ? when(notamsFetched) : 'onbekend';
 document.getElementById('vFua').textContent = fua?.opgehaald ? `${fua.type} ${when(fua.opgehaald)}` : 'onbekend';
-function fuaSource(fua, shapeSources) {
-  const shapes = new Map(), byName = new Map(), ds = new Cesium.CustomDataSource('FUA');
-  for (const source of shapeSources.filter(Boolean)) for (const e of source.entities.values) {
+// airspace polygons by fuaKey of their designator
+const shapeMap = sources => {
+  const shapes = new Map();
+  for (const source of sources.filter(Boolean)) for (const e of source.entities.values) {
     const k = fuaKey(e.properties.Designator?.getValue());
     if (e.polygon) shapes.set(k, [...(shapes.get(k) ?? []), e]);
   }
+  return shapes;
+};
+// a NOTAM that names an airspace (EHTRA81, TSA 50, EHD09) gets that airspace's own shape instead of the FAA circle; its limits stay
+function notamShapes(ds, shapes) {
+  for (const e of [...ds.entities.values]) {
+    const tekst = String(e.properties?.Tekst?.getValue() ?? '');
+    const keys = [...tekst.matchAll(/\b(?:EH\s?)?(TRA|TSA)\s?(\d+[A-Z]?)\b|\bEH\s?([DRP])\s?(\d+[A-Z]?)\b/g)].map(m => fuaKey(`EH${m[1] ?? m[3]}${m[2] ?? m[4]}`));
+    const lvnl = [...new Set(keys)].flatMap(k => shapes.get(k) ?? []);
+    if (!e.polygon || !lvnl.length) continue;
+    e.polygon.hierarchy = lvnl[0].polygon.hierarchy.getValue();
+    for (const s of lvnl.slice(1)) ds.entities.add({ polygon: { hierarchy: s.polygon.hierarchy.getValue() }, properties: e.properties.getValue() });
+  }
+  return ds;
+}
+function fuaSource(fua, shapeSources) {
+  const shapes = shapeMap(shapeSources), byName = new Map(), ds = new Cesium.CustomDataSource('FUA');
   for (const g of fua.gebieden) byName.set(g.naam, [...(byName.get(g.naam) ?? []), g]);
   for (const [naam, windows] of byName) {
     const k = fuaKey(naam), lvnl = shapes.get(k) ?? shapes.get(k.replace(/Z$/, ''));
@@ -380,6 +397,8 @@ function fuaSource(fua, shapeSources) {
   }
   return ds;
 }
+const notamIndex = LAYERS.findIndex(([id]) => id === NOTAMS);
+if (sources[notamIndex]) notamShapes(sources[notamIndex], shapeMap(sources.filter((_, i) => i !== notamIndex)));
 if (fua?.gebieden) {
   LAYERS.push(['fua', 'Vandaag actief (FUA)', '#15aabf', true]);
   sources.push(fuaSource(fua, sources));
@@ -945,7 +964,7 @@ async function loadFlight(target) {
   for (const ds of flightDay) viewer.dataSources.remove(ds);
   const day = Cesium.JulianDate.toDate(mid.time).toLocaleDateString('sv', { timeZone: 'Europe/Amsterdam' });
   const [notams, fuaDay] = await Promise.all([NOTAMS, FUA].map(u => fetch(`${u}?datum=${day}&land=EH`).then(r => r.json()).catch(() => ({}))));
-  flightDay = [notams?.opgehaald && await Cesium.GeoJsonDataSource.load(notams), fuaDay?.gebieden?.length && fuaSource(fuaDay, sources.filter(ds => ds?.name !== 'FUA'))].filter(Boolean);
+  flightDay = [notams?.opgehaald && notamShapes(await Cesium.GeoJsonDataSource.load(notams), shapeMap(sources.filter((ds, i) => i !== notamIndex && ds?.name !== 'FUA'))), fuaDay?.gebieden?.length && fuaSource(fuaDay, sources.filter(ds => ds?.name !== 'FUA'))].filter(Boolean);
   volumes = undefined;
   flightDay.forEach((ds, i) => {
     viewer.dataSources.add(ds);
