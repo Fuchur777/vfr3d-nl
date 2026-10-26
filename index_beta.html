@@ -153,7 +153,7 @@
 <script type="module">
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '26-10-2026c';
+const CODE_VERSION = '26-10-2026d';
 const disclaimer = document.getElementById('disclaimer'), codeDate = CODE_VERSION;
 let accepted = (() => { try { return localStorage.getItem('vfr3d-disclaimer') === codeDate; } catch {} })();
 document.getElementById('accept').onclick = () => {
@@ -358,6 +358,9 @@ showFout('FUA', fua?.fout);
 // footer: when the Workers last fetched NOTAMs and the FUA plan (EAUP or EUUP)
 document.getElementById('vNotams').textContent = notamsFetched ? when(notamsFetched) : 'onbekend';
 document.getElementById('vFua').textContent = fua?.opgehaald ? `${fua.type} ${when(fua.opgehaald)}` : 'onbekend';
+// NOTAMs that give airspace free (Q-code QA…/QR… closed LC, deactivated CD, not available AU, withdrawn AW, e.g. DE PEEL CTR CLOSED) are green, the rest stays orange-red
+const relaxing = p => /\bQ\)\s*[^/]+\/Q[AR][A-Z](LC|CD|AU|AW)\//.test(String(p.Tekst ?? '').toUpperCase());
+const NOTAM_GREEN = '#40c057';
 // airspace polygons by fuaKey of their designator
 const shapeMap = sources => {
   const shapes = new Map();
@@ -627,7 +630,8 @@ LAYERS.forEach(([, label, colour, show], i) => {
     e.windows = p.Vensters ?? (p.Van && [[Date.parse(p.Van), p.Tot === 'PERM' ? Infinity : Date.parse(p.Tot)]]);
     const cls = /^[A-G]$/.test(p.Class) ? p.Class : '';
     const key = `${label}|${p.Designator}|${p.Name}`;
-    const color = Cesium.Color.fromCssColorString(CLASS_COLOURS[cls] ?? colour);
+    const own = label.startsWith('NOTAMs') && relaxing(p) ? NOTAM_GREEN : colour;
+    const color = Cesium.Color.fromCssColorString(CLASS_COLOURS[cls] ?? own);
     e.name = `${cls ? `[${cls}] ` : ''}${[p.Designator, p.Name].filter(Boolean).join(' ')}`;
     e.limits = p;
     e.description = describe(p);
@@ -635,7 +639,7 @@ LAYERS.forEach(([, label, colour, show], i) => {
     e.polygon.outlineColor = color;
     // a MultiPolygon becomes several entities; list it once
     e.baseDescription = e.description.getValue();
-    if (!items.has(key)) items.set(key, { key, cls, show, name: e.name, colour: CLASS_COLOURS[cls] ?? colour, entities: [],
+    if (!items.has(key)) items.set(key, { key, cls, show, name: e.name, colour: CLASS_COLOURS[cls] ?? own, entities: [],
       // SUP 03/2022 covers up to FL095; volumes from FL095 up (e.g. EHMCC2B, class B) keep their LVNL class
       rule: !(p.LowerLimitUnit === 'FL' && p.LowerLimit >= 95) && SUP.find(([re]) => re.test(`${p.Designator} ${p.Name}`.toUpperCase()))?.[1] });
     items.get(key).entities.push(e);
@@ -977,9 +981,9 @@ async function loadFlight(target) {
   volumes = undefined;
   flightDay.forEach((ds, i) => {
     viewer.dataSources.add(ds);
-    const color = Cesium.Color.fromCssColorString(ds.name === 'FUA' ? '#15aabf' : '#e8590c');
     for (const e of [...ds.entities.values]) {
       const p = e.limits = e.properties.getValue();
+      const color = Cesium.Color.fromCssColorString(ds.name === 'FUA' ? '#15aabf' : relaxing(p) ? NOTAM_GREEN : '#e8590c');
       if (!e.polygon) { ds.entities.remove(e); continue; }
       // on/off follows the Vandaag choices: the same NOTAM or area, else its kind
       e.soort = ds.name === 'FUA' ? 'FUA' : p.Soort ?? 'Overige activiteit';
