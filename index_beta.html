@@ -159,7 +159,7 @@
 import { fuaKey, designators, aboutAirspace, namedIn, frees } from './notam-regels.js';
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '27-10-2026f';
+const CODE_VERSION = '27-10-2026g';
 const disclaimer = document.getElementById('disclaimer'), codeDate = CODE_VERSION;
 let accepted = (() => { try { return localStorage.getItem('vfr3d-disclaimer') === codeDate; } catch {} })();
 document.getElementById('accept').onclick = () => {
@@ -393,11 +393,10 @@ function notamShapes(ds, shapes) {
     const byKey = designators(tekst).flatMap(k => shapes.get(k) ?? []);
     const lvnl = byKey.length ? byKey : aboutAirspace(tekst) ? [...new Set(namedIn([...byName.keys()], tekst).flatMap(n => byName.get(n)))] : [];
     if (!e.polygon || !lvnl.length) continue;
-    // which airspaces the NOTAM is about, so a NOTAM for an area that is also active as FUA can start off
-    const gebieden = lvnl.map(s => fuaKey(s.properties.Designator?.getValue()));
+    // each volume knows its own airspace, so a FUA for that area can stand in for it (and only for it)
     e.polygon.hierarchy = lvnl[0].polygon.hierarchy.getValue();
-    e.gebieden = gebieden;
-    for (const s of lvnl.slice(1)) ds.entities.add({ polygon: { hierarchy: s.polygon.hierarchy.getValue() }, properties: e.properties.getValue() }).gebieden = gebieden;
+    e.gebied = fuaKey(lvnl[0].properties.Designator?.getValue());
+    for (const s of lvnl.slice(1)) ds.entities.add({ polygon: { hierarchy: s.polygon.hierarchy.getValue() }, properties: e.properties.getValue() }).gebied = fuaKey(s.properties.Designator?.getValue());
   }
   return ds;
 }
@@ -538,7 +537,7 @@ const cubItem = (a, e, name, remarks, max, cls = e.cls ?? a.cls, w = e.windows ?
 };
 document.getElementById('lxnav').onclick = () => writeCub(today.filter(inDownload).flatMap(a => a.entities
   // one item per active window, so the logger shows each one only while it is active
-  .filter(e => !(e.limits.Type === 'NOTAM' && notamFl.value && flOf(e.limits) < +notamFl.value)).flatMap(e => (e.windows?.length ? e.windows.map(x => [x]) : [[]]).map(w => {
+  .filter(e => !belowNotamFl(e)).flatMap(e => (e.windows?.length ? e.windows.map(x => [x]) : [[]]).map(w => {
     const p = e.limits;
     const name = `${[p.Designator, a.soort === 'FUA' ? '' : p.Name].filter(Boolean).join(' ')} ${w.length ? `${w.map(([s, u]) => `${hhmm(s)}-${u === Infinity ? 'PERM' : hhmm(u)}`).join(', ')} LT` : ''}`.trim();
     const remarks = `${a.soort}\n${w.map(([s, u]) => `${when(s)} - ${u === Infinity ? 'PERM' : when(u)}`).join('\n')}\n${p.Tekst ?? p.Actief ?? ''}`.trim();
@@ -695,13 +694,16 @@ for (const a of today) { a.windows = a.entities.flatMap(e => e.windows ?? []); a
 // an area that is both FUA and a Dutch NOTAM today, with "Ontdubbel FUA/NOTAM" on (Frank 2026-10-27): the map shows the FUA while it is on
 // and active, else the NOTAM; the .cub download has the NOTAM whenever the FUA or the NOTAM is on, never the FUA (the NOTAM's remarks carry the times)
 const dedup = document.getElementById('dedup');
+// FUA items per area; an area and its Z variant (EHTRA10A, EHTRA10AZ) are both kept
 const fuaKeyOf = a => fuaKey(a.entities[0].limits.Designator).replace(/Z$/, '');
-const fuaByKey = new Map(today.filter(a => a.soort === 'FUA' && !a.land).map(a => [fuaKeyOf(a), a]));
-const coveredByFua = (e, t) => dedup.checked && e.gebieden?.some(k => { const f = fuaByKey.get(k); return f?.on && f.windows.some(([s, u]) => s <= t && t < u); });
-const dutchNotams = today.filter(a => a.soort !== 'FUA' && !a.land);
-const fuaNotams = a => dutchNotams.filter(n => n.entities.some(e => e.gebieden?.includes(fuaKeyOf(a))));
-const inDownload = a => !dedup.checked ? a.on : a.soort === 'FUA' && !a.land ? a.on && !fuaNotams(a).length
-  : a.on || dutchNotams.includes(a) && [...fuaByKey.values()].some(f => f.on && fuaNotams(f).includes(a));
+const dutchFuas = today.filter(a => a.soort === 'FUA' && !a.land), dutchNotams = today.filter(a => a.soort !== 'FUA' && !a.land);
+const coveredByFua = (e, t) => dedup.checked && !!e.gebied && dutchFuas.some(f => f.on && fuaKeyOf(f) === e.gebied && f.windows.some(([s, u]) => s <= t && t < u));
+// the NOTAMs that stand in for a FUA in the .cub: a volume of the same area, not green, not hidden by "Verberg NOTAMs onder",
+// and active at some time the FUA is; so the FUA is only left out when its NOTAM really goes into the file
+const overlaps = (x, y) => x.some(([s, u]) => y.some(([s2, u2]) => s < u2 && s2 < u));
+const fuaNotams = f => dutchNotams.filter(n => n.entities.some(e => e.gebied === fuaKeyOf(f) && !relaxing(e.limits) && !belowNotamFl(e) && overlaps(e.windows ?? [], f.windows)));
+const inDownload = a => !dedup.checked ? a.on : dutchFuas.includes(a) ? a.on && !fuaNotams(a).length
+  : a.on || dutchNotams.includes(a) && dutchFuas.some(f => f.on && fuaNotams(f).includes(a));
 today.sort((x, y) => x.start - y.start);
 const row = a => {
   const name = Object.assign(document.createElement('a'), { href: '#', textContent: a.name, onclick: ev => {
@@ -753,6 +755,7 @@ maxFl.onchange = () => { busy('Luchtruim tekenen…'); updateHeights(); whenDraw
 const notamFl = document.getElementById('notamFl');
 notamFl.onchange = dedup.onchange = () => refresh();
 const flOf = p => p.UpperLimitReference === 'SFC' ? 0 : p.UpperLimitUnit === 'FL' ? p.UpperLimit : p.UpperLimit * (p.UpperLimitUnit === 'M' ? 3.28 : 1) / 100;
+const belowNotamFl = e => e.limits.Type === 'NOTAM' && notamFl.value && flOf(e.limits) < +notamFl.value;
 let savedSelection; // written to localStorage only when it changes
 function refresh() {
   const t = showAt(), live = liveAt();
@@ -780,7 +783,7 @@ function refresh() {
     a.box.checked = a.on;
     for (const e of a.entities) e.show = a.on && !!a.today === (openTab === 'vandaag') && metres(e.limits.LowerLimit, e.limits.LowerLimitUnit, e.limits.LowerLimitReference) <= metres(maxFl.value, 'FL')
       && (!e.windows || e.windows.some(([s, u]) => s <= live && live < u)) && !coveredByFua(e, live)
-      && !(e.limits.Type === 'NOTAM' && notamFl.value && flOf(e.limits) < +notamFl.value);
+      && !belowNotamFl(e);
   }
   showFlightDay();
   for (const a of today) { const [c, text] = status(a); a.status.className = 'status ' + c; a.status.textContent = text; }
@@ -1076,7 +1079,7 @@ function showFlightDay() {
   const kindOn = k => nl.some(a => a.soort === k) ? nl.some(a => a.soort === k && a.on) : !NOTAMS_OFF.includes(k);
   for (const ds of flightDay) for (const e of ds.entities.values) e.show = v && (byKey.get(e.key) ?? kindOn(e.soort)) && e.windows.some(([s, u]) => s <= t && t < u)
     && metres(e.limits.LowerLimit, e.limits.LowerLimitUnit, e.limits.LowerLimitReference) <= top
-    && !(e.limits.Type === 'NOTAM' && notamFl.value && flOf(e.limits) < +notamFl.value);
+    && !belowNotamFl(e);
 }
 clock.onTick.addEventListener(() => {
   if (!track) return;
