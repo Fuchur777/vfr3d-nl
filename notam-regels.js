@@ -21,3 +21,10 @@ export const frees = t => {
   const e = t.split(/\bE\)/)[1]?.split(/\b[FG]\)/)[0] ?? '';
   return [/\bQ\)\s*[^/]+\/Q[AR][A-Z](LC|CD|AU|AW)\//.test(t), /\b(CLOSED|CLSD|DEACTIVATED|NOT ACTIVE|WITHDRAWN|NOT AVBL|NOT AVAILABLE)\b/.test(e)];
 };
+
+// the E line gives the area itself as one circle ("WI 45M RADIUS CENTRED ON 514842N 0043132E"), which the NOTAM Worker draws;
+// the same test as textCircle() in worker/notams.js (not after EXC, not when there are several)
+export const ownCircle = t => {
+  const all = [...t.matchAll(/\bWI\s+(\d+(?:\.\d+)?)\s*(M|KM|NM)\s+RADIUS\s+(?:CENTRED|CENTERED)\s+(?:ON|AT)\s+(\d{2})(\d{2})(\d{2}(?:\.\d+)?)([NS])\s*(\d{3})(\d{2})(\d{2}(?:\.\d+)?)([EW])/g)];
+  return all.length === 1 && !/\bEXC(EPT)?\s*$/.test(t.slice(0, all[0].index));
+};
