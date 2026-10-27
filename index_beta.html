@@ -159,7 +159,7 @@
 import { fuaKey, designators, aboutAirspace, namedIn, frees, ownCircle } from './notam-regels.js';
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '27-10-2026i';
+const CODE_VERSION = '27-10-2026j';
 const disclaimer = document.getElementById('disclaimer'), codeDate = CODE_VERSION;
 let accepted = (() => { try { return localStorage.getItem('vfr3d-disclaimer') === codeDate; } catch {} })();
 document.getElementById('accept').onclick = () => {
@@ -384,6 +384,7 @@ function notamShapes(ds, shapes) {
     const n = String(s.properties.Name?.getValue() ?? '').toUpperCase();
     if (n) byName.set(n, [...(byName.get(n) ?? []), s]);
   }
+  const done = new Set();
   for (const e of [...ds.entities.values]) {
     const tekst = String(e.properties?.Tekst?.getValue() ?? '').toUpperCase();
     // the FAA gives FL999 when it has no upper limit; the Q line's upper limit (Q) EHAA/QACLC/IV/NBO/AE/000/030/…) is then better
@@ -394,6 +395,10 @@ function notamShapes(ds, shapes) {
     const lvnl = byKey.length ? byKey : aboutAirspace(tekst) ? [...new Set(namedIn([...byName.keys()], tekst).flatMap(n => byName.get(n)))] : [];
     // a circle given in the E line is the NOTAM's own shape (e.g. 500 m within EHTSA56), not the whole airspace
     if (!e.polygon || !lvnl.length || ownCircle(tekst)) continue;
+    // a NOTAM the FAA gives as several areas gets its LVNL shapes once, not once per FAA area
+    const nr = e.properties.Designator?.getValue();
+    if (done.has(nr)) { ds.entities.remove(e); continue; }
+    done.add(nr);
     // each volume knows its own airspace, so a FUA for that area can stand in for it (and only for it)
     e.polygon.hierarchy = lvnl[0].polygon.hierarchy.getValue();
     e.gebied = fuaKey(lvnl[0].properties.Designator?.getValue());
