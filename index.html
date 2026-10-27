@@ -160,7 +160,7 @@
 import { fuaKey, designators, aboutAirspace, namedIn, frees, ownCircle } from './notam-regels.js';
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '27-10-2026j';
+const CODE_VERSION = '27-10-2026k';
 const disclaimer = document.getElementById('disclaimer'), codeDate = CODE_VERSION;
 let accepted = (() => { try { return localStorage.getItem('vfr3d-disclaimer') === codeDate; } catch {} })();
 document.getElementById('accept').onclick = () => {
@@ -705,7 +705,8 @@ const dedup = document.getElementById('dedup');
 // FUA items per area; an area and its Z variant (EHTRA10A, EHTRA10AZ) are both kept
 const fuaKeyOf = a => fuaKey(a.entities[0].limits.Designator).replace(/Z$/, '');
 const dutchFuas = today.filter(a => a.soort === 'FUA' && !a.land), dutchNotams = today.filter(a => a.soort !== 'FUA' && !a.land);
-const coveredByFua = (e, t) => dedup.checked && !!e.gebied && dutchFuas.some(f => f.on && fuaKeyOf(f) === e.gebied && f.windows.some(([s, u]) => s <= t && t < u));
+// only a FUA that is drawn (on, active, and not above "Verberg luchtruim boven") hides its NOTAM
+const coveredByFua = (e, t) => dedup.checked && !!e.gebied && dutchFuas.some(f => f.on && fuaKeyOf(f) === e.gebied && f.windows.some(([s, u]) => s <= t && t < u) && f.entities.some(belowMaxFl));
 // the NOTAMs that stand in for a FUA in the .cub: a volume of the same area, not green, not hidden by "Verberg NOTAMs onder",
 // and active at some time the FUA is; so the FUA is only left out when its NOTAM really goes into the file
 const overlaps = (x, y) => x.some(([s, u]) => y.some(([s2, u2]) => s < u2 && s2 < u));
@@ -758,6 +759,7 @@ function setOn(items, on) {
   refresh();
 }
 const maxFl = document.getElementById('maxFl');
+const belowMaxFl = e => metres(e.limits.LowerLimit, e.limits.LowerLimitUnit, e.limits.LowerLimitReference) <= metres(maxFl.value, 'FL');
 maxFl.onchange = () => { busy('Luchtruim tekenen…'); updateHeights(); whenDrawn().then(() => busy()); };
 // NOTAM filter: hide NOTAMs whose upper limit is below the chosen FL (ft roughly /100, SFC = 0)
 const notamFl = document.getElementById('notamFl');
@@ -789,7 +791,7 @@ function refresh() {
   // the map follows the tab: Vandaag draws only NOTAMs and FUA, the other tabs only airspace; each keeps its own selection
   for (const a of [...airspaces, ...today]) {
     a.box.checked = a.on;
-    for (const e of a.entities) e.show = a.on && !!a.today === (openTab === 'vandaag') && metres(e.limits.LowerLimit, e.limits.LowerLimitUnit, e.limits.LowerLimitReference) <= metres(maxFl.value, 'FL')
+    for (const e of a.entities) e.show = a.on && !!a.today === (openTab === 'vandaag') && belowMaxFl(e)
       && (!e.windows || e.windows.some(([s, u]) => s <= live && live < u)) && !coveredByFua(e, live)
       && !belowNotamFl(e);
   }
