@@ -56,8 +56,11 @@ export default {
     const circles = [...new Set(prefixes.flatMap(p => COUNTRIES[p] ?? []))];
     const date = url.searchParams.get('datum');
     // POST (the app's refresh button when the date is orange or red): fetch one of these circles now if it is
-    // behind and the FAA's limit allows; otherwise nothing happens and the answer is the same as a GET
-    if (request.method === 'POST') await step(env, circles);
+    // behind and the FAA's limit allows; otherwise 429 with the reason, like the FUA Worker
+    if (request.method === 'POST') {
+      const reden = await step(env, circles);
+      if (reden) return Response.json({ fout: reden }, { status: 429, headers: HEADERS });
+    }
     const stored = await Promise.all(circles.map(i => env.NOTAMS.get(date ? `dag:${date}:${i}` : `cirkel:${i}`, 'json')));
     // never fetched yet (a fresh deploy): fetch one circle now instead of waiting for the next slot
     if (!date && stored.some(c => !c)) ctx.waitUntil(step(env));
@@ -102,20 +105,24 @@ function lt(t) {
   return `${d.toLocaleString('nl-NL', { timeZone: 'Europe/Amsterdam', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} LT (${d.toISOString().slice(11, 16).replace(':', '')}Z)`;
 }
 
-// the latest 06:00, 18:00 or 22:00 Amsterdam time before now
+// the latest 06:00, 18:00 or 22:00 Amsterdam time before now: step back whole hours until the Amsterdam hour is a slot,
+// so the clock change nights come out right too
 function lastSlot(now) {
-  const t = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Amsterdam', hour: 'numeric', minute: 'numeric', hourCycle: 'h23' }).formatToParts(now).map(x => [x.type, +x.value]));
-  const slot = SLOTS.findLast(h => h <= t.hour) ?? SLOTS.at(-1) - 24;
-  return now - ((t.hour - slot) * 60 + t.minute) * 60e3 - now % 60e3;
+  const hourLT = t => +new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Amsterdam', hour: 'numeric', hourCycle: 'h23' }).format(t);
+  let t = now - now % 3600e3;
+  while (!SLOTS.includes(hourLT(t))) t -= 3600e3;
+  return t;
 }
 
-// fetch the first circle (of 'only', default all) not yet fetched since the latest slot, if the FAA's limit allows
+// fetch the first circle (of 'only', default all) not yet fetched since the latest slot, if the FAA's limit allows;
+// returns why nothing was fetched, if so (shown by the app's refresh button)
 async function step(env, only = CIRCLES.map((_, i) => i)) {
   const now = Date.now(), state = await env.NOTAMS.get('staat', 'json') ?? { klaar: {}, fout: {} };
   // of the circles not yet fetched since the slot, the one tried longest ago, so one failing circle can't block the rest
   state.poging ??= {};
   const due = only.filter(i => !(state.klaar[i] >= lastSlot(now))).sort((a, b) => (state.poging[a] ?? 0) - (state.poging[b] ?? 0))[0];
-  if (due === undefined || now - (state.laatste ?? 0) < 200e3) return;
+  if (due === undefined) return 'Alles is al opgehaald sinds het laatste ophaalmoment.';
+  if (now - (state.laatste ?? 0) < 200e3) return `De FAA staat één verzoek per 3 minuten toe; probeer het over ${Math.ceil((200e3 - (now - state.laatste)) / 60e3)} min opnieuw.`;
   state.laatste = state.poging[due] = now;
   await env.NOTAMS.put('staat', JSON.stringify(state));
   try {
@@ -132,6 +139,7 @@ async function step(env, only = CIRCLES.map((_, i) => i)) {
     state.fout[due] = `${new Date(now).toISOString()} ${error}`;
   }
   await env.NOTAMS.put('staat', JSON.stringify(state));
+  if (state.fout[due]) return `Ophalen mislukt: ${state.fout[due]}`;
 }
 
 // one token for all circles while it is valid, so the FAA sees few token requests
@@ -167,8 +175,10 @@ async function notams(env, [latitude, longitude]) {
     const category = heading && (KINDS.find(([, pattern]) => pattern.test(text))?.[0] ?? heading);
     const start = Date.parse(n?.effectiveStart), end = Date.parse(n?.effectiveEnd);
     // only what is active now or starts within a day; no cancellations (type C), and no
-    // country-wide notices drawn as a circle over half the map (radius in NM)
-    if (!category || n.type === 'C' || +n.radius > 50 || !(start < day) || end < now) continue;
+    // country-wide notices drawn as a circle over half the map (radius in NM), unless it is about airspace (QA/QR) and
+    // names a TRA, TSA or EHD/R/P: the app draws those with their own shape (same pattern as designators() in notam-regels.js)
+    const named = /^Q[AR]/.test(n?.selectionCode ?? '') && /\b(?:EH\s?)?(TRA|TSA)\s?\d+[A-Z]?\b|\bEH\s?[DRP]\s?\d+[A-Z]?\b/.test(text);
+    if (!category || n.type === 'C' || (+n.radius > 50 && !named) || !(start < day) || end < now) continue;
     const geometries = f.geometry?.type === 'GeometryCollection' ? f.geometry.geometries : [f.geometry].filter(Boolean);
     const areas = geometries.filter(g => ['Polygon', 'MultiPolygon'].includes(g.type));
     const point = geometries.find(g => g.type === 'Point');
@@ -203,15 +213,19 @@ function limit(text, fl, top) {
   return [0, 'FT', 'SFC'];
 }
 
-// [[lon, lat], radius in NM] from "WI 45M RADIUS CENTRED ON 514842N 0043132E", or null when there is none, several, or an exception
+// [[lon, lat], radius in NM] from the E line's one circle: "WI 45M RADIUS CENTRED ON 514842N 0043132E", "WI 0,25NM RADIUS CENTRED AT …"
+// or "PSN 513102N 0055120E RADIUS 300M" (seconds optional); null when there is none, several, or it follows EXC (cut out of the area).
+// The same function is in worker/notams.js and notam-regels.js; keep both the same
 function textCircle(text) {
-  const all = [...text.matchAll(/\bWI\s+(\d+(?:\.\d+)?)\s*(M|KM|NM)\s+RADIUS\s+(?:CENTRED|CENTERED)\s+(?:ON|AT)\s+(\d{2})(\d{2})(\d{2}(?:\.\d+)?)([NS])\s*(\d{3})(\d{2})(\d{2}(?:\.\d+)?)([EW])/g)];
-  // only a single circle that is the area itself, not one cut out of it ("... EXC WI 500M RADIUS ...")
-  const m = all.length === 1 && !/\bEXC(EPT)?\s*$/.test(text.slice(0, all[0].index)) ? all[0] : null;
-  if (!m) return null;
-  const nm = +m[1] / { M: 1852, KM: 1.852, NM: 1 }[m[2]];
-  const lat = (+m[3] + m[4] / 60 + m[5] / 3600) * (m[6] === 'S' ? -1 : 1), lon = (+m[7] + m[8] / 60 + m[9] / 3600) * (m[10] === 'W' ? -1 : 1);
-  return [[lon, lat], nm];
+  const COORD = '(\\d{2})(\\d{2})(\\d{2}(?:[.,]\\d+)?)?([NS])\\s*(\\d{3})(\\d{2})(\\d{2}(?:[.,]\\d+)?)?([EW])', R = '(\\d+(?:[.,]\\d+)?)\\s*(M|KM|NM)';
+  const all = [
+    ...[...text.matchAll(new RegExp(`\\bWI\\s+${R}\\s+RADIUS\\s+(?:CENTRED|CENTERED)\\s+(?:ON|AT)\\s+${COORD}`, 'g'))].map(m => [m.index, m[1], m[2], m.slice(3, 11)]),
+    ...[...text.matchAll(new RegExp(`\\bPSN\\s+${COORD}\\s+RADIUS\\s+${R}\\b`, 'g'))].map(m => [m.index, m[9], m[10], m.slice(1, 9)]),
+  ];
+  if (all.length !== 1 || /\bEXC(EPT)?\s*$/.test(text.slice(0, all[0][0]))) return null;
+  const num = s => s ? +s.replace(',', '.') : 0, [, r, unit, [a, b, c, ns, d, e, f, ew]] = all[0];
+  const lat = (+a + b / 60 + num(c) / 3600) * (ns === 'S' ? -1 : 1), lon = (+d + e / 60 + num(f) / 3600) * (ew === 'W' ? -1 : 1);
+  return [[lon, lat], num(r) / { M: 1852, KM: 1.852, NM: 1 }[unit]];
 }
 
 // a circle as a polygon, for NOTAMs that only give a centre and a radius in NM

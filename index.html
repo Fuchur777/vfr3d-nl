@@ -157,10 +157,10 @@
 </dialog>
 <script src="https://cdn.jsdelivr.net/npm/cesium@1.145.0/Build/Cesium/Cesium.js"></script>
 <script type="module">
-import { fuaKey, designators, aboutAirspace, namedIn, frees } from './notam-regels.js';
+import { fuaKey, designators, aboutAirspace, namedIn, frees, ownCircle } from './notam-regels.js';
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '27-10-2026g';
+const CODE_VERSION = '27-10-2026q';
 const disclaimer = document.getElementById('disclaimer'), codeDate = CODE_VERSION;
 let accepted = (() => { try { return localStorage.getItem('vfr3d-disclaimer') === codeDate; } catch {} })();
 document.getElementById('accept').onclick = () => {
@@ -385,6 +385,7 @@ function notamShapes(ds, shapes) {
     const n = String(s.properties.Name?.getValue() ?? '').toUpperCase();
     if (n) byName.set(n, [...(byName.get(n) ?? []), s]);
   }
+  const done = new Set();
   for (const e of [...ds.entities.values]) {
     const tekst = String(e.properties?.Tekst?.getValue() ?? '').toUpperCase();
     // the FAA gives FL999 when it has no upper limit; the Q line's upper limit (Q) EHAA/QACLC/IV/NBO/AE/000/030/…) is then better
@@ -393,7 +394,12 @@ function notamShapes(ds, shapes) {
     // a designator with an LVNL shape wins; the name only when there is none (EHR4A VLIEHORS is R4A, not all R4 areas named VLIEHORS)
     const byKey = designators(tekst).flatMap(k => shapes.get(k) ?? []);
     const lvnl = byKey.length ? byKey : aboutAirspace(tekst) ? [...new Set(namedIn([...byName.keys()], tekst).flatMap(n => byName.get(n)))] : [];
-    if (!e.polygon || !lvnl.length) continue;
+    // a circle given in the E line is the NOTAM's own shape (e.g. 500 m within EHTSA56), not the whole airspace
+    if (!e.polygon || !lvnl.length || ownCircle(tekst)) continue;
+    // a NOTAM the FAA gives as several areas gets its LVNL shapes once, not once per FAA area
+    const nr = e.properties.Designator?.getValue();
+    if (done.has(nr)) { ds.entities.remove(e); continue; }
+    done.add(nr);
     // each volume knows its own airspace, so a FUA for that area can stand in for it (and only for it)
     e.polygon.hierarchy = lvnl[0].polygon.hierarchy.getValue();
     e.gebied = fuaKey(lvnl[0].properties.Designator?.getValue());
@@ -647,6 +653,8 @@ LAYERS.forEach(([, label, colour, show], i) => {
     e.limits = p;
     e.description = describe(p);
     e.polygon.material = color.withAlpha(0.25);
+    // also on volumes built here (FUA, extra NOTAM shapes), which lack the GeoJSON loader's outline
+    e.polygon.outline = true;
     e.polygon.outlineColor = color;
     // a MultiPolygon becomes several entities; list it once
     e.baseDescription = e.description.getValue();
@@ -690,15 +698,17 @@ byLabel.forEach((items, label) => {
 });
 
 // Vandaag tab: foldable FUA and NOTAMs sections (NOTAMs per kind), rows sorted by start time; each row on/off, the name flies the map there
-const status = a => { const t = Date.now(); return a.windows.some(([s, u]) => s <= t && t < u) ? ['now', 'nu actief'] : a.start > t ? ['later', `vanaf ${hhmm(a.start)} LT`] : ['past', 'voorbij']; };
+// not active now: the next window that starts today, else 'voorbij'
+const status = a => { const t = Date.now(), next = Math.min(...a.windows.map(([s]) => s).filter(s => s > t)); return a.windows.some(([s, u]) => s <= t && t < u) ? ['now', 'nu actief'] : next < Infinity ? ['later', `vanaf ${hhmm(next)} LT`] : ['past', 'voorbij']; };
 for (const a of today) { a.windows = a.entities.flatMap(e => e.windows ?? []); a.start = Math.min(...a.windows.map(w => w[0])); }
 // an area that is both FUA and a Dutch NOTAM today, with "Ontdubbel FUA/NOTAM" on (Frank 2026-10-27): the map shows the FUA while it is on
-// and active, else the NOTAM; the .cub download has the NOTAM whenever the FUA or the NOTAM is on, never the FUA (the NOTAM's remarks carry the times)
+// and active, else the NOTAM; the .cub download has the NOTAM instead of the FUA when that NOTAM stands in for it (fuaNotams below)
 const dedup = document.getElementById('dedup');
 // FUA items per area; an area and its Z variant (EHTRA10A, EHTRA10AZ) are both kept
 const fuaKeyOf = a => fuaKey(a.entities[0].limits.Designator).replace(/Z$/, '');
 const dutchFuas = today.filter(a => a.soort === 'FUA' && !a.land), dutchNotams = today.filter(a => a.soort !== 'FUA' && !a.land);
-const coveredByFua = (e, t) => dedup.checked && !!e.gebied && dutchFuas.some(f => f.on && fuaKeyOf(f) === e.gebied && f.windows.some(([s, u]) => s <= t && t < u));
+// only a FUA that is drawn (on, active, and not above "Verberg luchtruim boven") hides its NOTAM
+const coveredByFua = (e, t) => dedup.checked && !!e.gebied && dutchFuas.some(f => f.on && fuaKeyOf(f) === e.gebied && f.windows.some(([s, u]) => s <= t && t < u) && f.entities.some(belowMaxFl));
 // the NOTAMs that stand in for a FUA in the .cub: a volume of the same area, not green, not hidden by "Verberg NOTAMs onder",
 // and active at some time the FUA is; so the FUA is only left out when its NOTAM really goes into the file
 const overlaps = (x, y) => x.some(([s, u]) => y.some(([s2, u2]) => s < u2 && s2 < u));
@@ -751,6 +761,7 @@ function setOn(items, on) {
   refresh();
 }
 const maxFl = document.getElementById('maxFl');
+const belowMaxFl = e => metres(e.limits.LowerLimit, e.limits.LowerLimitUnit, e.limits.LowerLimitReference) <= metres(maxFl.value, 'FL');
 maxFl.onchange = () => { busy('Luchtruim tekenen…'); updateHeights(); whenDrawn().then(() => busy()); };
 // NOTAM filter: hide NOTAMs whose upper limit is below the chosen FL (ft roughly /100, SFC = 0)
 const notamFl = document.getElementById('notamFl');
@@ -782,7 +793,7 @@ function refresh() {
   // the map follows the tab: Vandaag draws only NOTAMs and FUA, the other tabs only airspace; each keeps its own selection
   for (const a of [...airspaces, ...today]) {
     a.box.checked = a.on;
-    for (const e of a.entities) e.show = a.on && !!a.today === (openTab === 'vandaag') && metres(e.limits.LowerLimit, e.limits.LowerLimitUnit, e.limits.LowerLimitReference) <= metres(maxFl.value, 'FL')
+    for (const e of a.entities) e.show = a.on && !!a.today === (openTab === 'vandaag') && belowMaxFl(e)
       && (!e.windows || e.windows.some(([s, u]) => s <= live && live < u)) && !coveredByFua(e, live)
       && !belowNotamFl(e);
   }
@@ -1017,6 +1028,7 @@ async function loadFlight(target) {
       e.name = [p.Designator, p.Name].filter(Boolean).join(' ');
       e.description = describe(p);
       e.polygon.material = color.withAlpha(0.25);
+      e.polygon.outline = true;
       e.polygon.outlineColor = color;
     }
   });
@@ -1081,6 +1093,9 @@ function showFlightDay() {
   for (const ds of flightDay) for (const e of ds.entities.values) e.show = v && (byKey.get(e.key) ?? kindOn(e.soort)) && e.windows.some(([s, u]) => s <= t && t < u)
     && metres(e.limits.LowerLimit, e.limits.LowerLimitUnit, e.limits.LowerLimitReference) <= top
     && !belowNotamFl(e);
+  // always one of the two on a flight (Frank 2026-10-27): a drawn FUA hides the NOTAM volume of the same area
+  const drawnFua = new Set(flightDay.flatMap(ds => ds.entities.values).filter(e => e.show && e.limits.Type === 'FUA').map(e => fuaKey(e.limits.Designator).replace(/Z$/, '')));
+  for (const ds of flightDay) for (const e of ds.entities.values) if (e.gebied && drawnFua.has(e.gebied)) e.show = false;
 }
 clock.onTick.addEventListener(() => {
   if (!track) return;

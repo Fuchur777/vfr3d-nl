@@ -2,7 +2,7 @@
 // - no LVNL shape, so the app draws the FAA circle (notamShapes(): a designator such as EHTRA81, TSA 50, EHD09, or a full LVNL name such as DE PEEL CTR)
 // - in doubt about red or green (relaxing()): the Q-code and the E line disagree on whether the airspace is given free, so the app shows it red
 import { readFileSync, readdirSync } from 'node:fs';
-import { fuaKey, designators, aboutAirspace, namedIn, frees } from '../notam-regels.js';
+import { fuaKey, designators, aboutAirspace, namedIn, frees, ownCircle } from '../notam-regels.js';
 
 const keys = new Set(), names = new Set();
 for (const f of readdirSync('data/lvnl').filter(f => f.endsWith('.geojson')))
@@ -11,8 +11,8 @@ for (const f of readdirSync('data/lvnl').filter(f => f.endsWith('.geojson')))
 
 const notams = (await fetch('https://vfr3d-notams.frank-e97.workers.dev/').then(r => r.json())).features
   .map(({ properties: p }) => ({ p, t: String(p.Tekst ?? '').toUpperCase() })).filter(({ t }) => aboutAirspace(t));
-// a circle in the E line ("PSN 513102N 0055120E RADIUS 2NM", "WI 45M RADIUS CENTRED ON …") is the area's own shape
-const noShape = notams.filter(({ t }) => !/\bRADIUS\s+\d+([.,]\d+)?\s*(NM|M|KM)\b|\b\d+([.,]\d+)?\s*(NM|M|KM)\s+RADIUS\b/.test(t)
+// a circle in the E line that the Worker draws ("PSN 513102N 0055120E RADIUS 2NM", "WI 45M RADIUS CENTRED ON …") is the area's own shape
+const noShape = notams.filter(({ t }) => !ownCircle(t)
   && !designators(t).some(k => keys.has(k)) && !namedIn([...names], t).length);
 const doubt = notams.filter(({ t }) => { const [q, e] = frees(t); return q !== e; });
 
