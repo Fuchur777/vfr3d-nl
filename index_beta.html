@@ -159,7 +159,7 @@
 import { fuaKey, designators, aboutAirspace, namedIn, frees, ownCircle } from './notam-regels.js';
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '27-10-2026n';
+const CODE_VERSION = '27-10-2026o';
 const disclaimer = document.getElementById('disclaimer'), codeDate = CODE_VERSION;
 let accepted = (() => { try { return localStorage.getItem('vfr3d-disclaimer') === codeDate; } catch {} })();
 document.getElementById('accept').onclick = () => {
@@ -1097,6 +1097,9 @@ function showFlightDay() {
   for (const ds of flightDay) for (const e of ds.entities.values) e.show = v && (byKey.get(e.key) ?? kindOn(e.soort)) && e.windows.some(([s, u]) => s <= t && t < u)
     && metres(e.limits.LowerLimit, e.limits.LowerLimitUnit, e.limits.LowerLimitReference) <= top
     && !belowNotamFl(e);
+  // always one of the two on a flight (Frank 2026-10-27): a drawn FUA hides the NOTAM volume of the same area
+  const drawnFua = new Set(flightDay.flatMap(ds => ds.entities.values).filter(e => e.show && e.limits.Type === 'FUA').map(e => fuaKey(e.limits.Designator).replace(/Z$/, '')));
+  for (const ds of flightDay) for (const e of ds.entities.values) if (e.gebied && drawnFua.has(e.gebied)) e.show = false;
 }
 clock.onTick.addEventListener(() => {
   if (!track) return;
