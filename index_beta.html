@@ -117,7 +117,7 @@
 <div id="tabs" role="tablist"><button type="button" role="tab" data-tab="kaart">Kaart</button><button type="button" role="tab" data-tab="luchtruim">Luchtruim</button><button type="button" role="tab" data-tab="vandaag">Vandaag</button><button type="button" role="tab" data-tab="vlucht">Vlucht</button></div>
 <section id="kaart" role="tabpanel"><label>Onderlaag <select id="base"><option>Satelliet</option><option>Kaart</option><option selected>ICAO-kaart</option></select></label><div id="tileError" style="color: #ff8787"></div><h3>Hoogte</h3><label>Verticale schaal <output id="scaleOut">10</output>×<br><input id="scale" type="range" min="1" max="20" step="0.5" value="10"></label><label>Verberg luchtruim boven <select id="maxFl"><option value="10">FL 10</option><option value="15">FL 15</option><option value="20">FL 20</option><option value="25">FL 25</option><option value="30">FL 30</option><option value="35">FL 35</option><option value="40">FL 40</option><option value="45">FL 45</option><option value="50">FL 50</option><option value="55">FL 55</option><option value="60">FL 60</option><option value="65">FL 65</option><option value="70">FL 70</option><option value="75">FL 75</option><option value="80">FL 80</option><option value="85">FL 85</option><option value="90">FL 90</option><option value="95" selected>FL 95</option><option value="100">FL 100</option><option value="105">FL 105</option><option value="110">FL 110</option><option value="115">FL 115</option><option value="120">FL 120</option><option value="125">FL 125</option><option value="130">FL 130</option><option value="135">FL 135</option><option value="140">FL 140</option><option value="145">FL 145</option><option value="150">FL 150</option></select></label><p class="credits">Luchtruim © LVNL (CC BY 4.0). Activeringen (FUA) © EUROCONTROL. Vormen België/Luxemburg en Duitsland © openAIP (CC BY-NC 4.0). De AIP Netherlands van LVNL is leidend.</p><p><a href="luchtruim.html">Luchtruim in Nederland uitgelegd</a></p><button type="button" id="showDisclaimer" style="width: 100%">Disclaimer en updates</button></section>
 <section id="luchtruim" role="tabpanel"><label><input id="all" type="checkbox"> <b>Alle luchtruimen</b></label><div id="classes"></div><div style="display:flex;gap:6px;flex-wrap:wrap"><button type="button" id="expand">Alles uitklappen</button><button type="button" id="collapse">Alles inklappen</button></div><input id="search" type="search" placeholder="Zoek luchtruim op naam" style="width:100%;box-sizing:border-box"><div id="tree"></div><button type="button" id="lxnavAirspace" title="SeeYou CUB-bestand met het aangevinkte luchtruim, voor LXNAV en SeeYou" style="width: 100%; margin-top: 8px">Download als .cub</button></section>
-<section id="vandaag" role="tabpanel"><div class="hint">FUA-activaties en NOTAMs van vandaag 00:00 tot 06:00 LT morgen. NOTAMs worden om 06:00, 18:00 en 22:00 LT opgehaald. Klik op een naam om erheen te vliegen.</div><div id="fout" style="color: #ff8787; white-space: pre-line"></div><label>Verberg NOTAMs onder <select id="notamFl"><option value="">uit</option><option value="10">FL 10</option><option value="15">FL 15</option><option value="20">FL 20</option><option value="25">FL 25</option><option value="30">FL 30</option><option value="35">FL 35</option><option value="40">FL 40</option><option value="45">FL 45</option><option value="50">FL 50</option><option value="55">FL 55</option><option value="60">FL 60</option><option value="65">FL 65</option><option value="70">FL 70</option><option value="75">FL 75</option><option value="80">FL 80</option><option value="85">FL 85</option><option value="90">FL 90</option><option value="95">FL 95</option><option value="100">FL 100</option><option value="105">FL 105</option><option value="110">FL 110</option><option value="115">FL 115</option><option value="120">FL 120</option><option value="125">FL 125</option><option value="130">FL 130</option><option value="135">FL 135</option><option value="140">FL 140</option><option value="145">FL 145</option><option value="150">FL 150</option></select></label><label title="Is een gebied vandaag zowel FUA als NOTAM: de kaart toont de FUA zolang die actief is, anders de NOTAM; de download bevat dan alleen de NOTAM, met de tijden in de omschrijving"><input type="checkbox" class="toggle" id="dedup" checked> Ontdubbel FUA/NOTAM</label><div id="today"></div><button type="button" id="lxnav" title="SeeYou CUB-bestand met de aangevinkte FUA en NOTAMs, voor LXNAV en SeeYou">Download als .cub</button></section>
+<section id="vandaag" role="tabpanel"><div class="hint">FUA-activaties en NOTAMs van vandaag 00:00 tot 06:00 LT morgen. NOTAMs worden om 06:00, 18:00 en 22:00 LT opgehaald. Klik op een naam om erheen te vliegen.</div><div id="fout" style="color: #ff8787; white-space: pre-line"></div><label>Verberg NOTAMs onder <select id="notamFl"><option value="">uit</option><option value="10">FL 10</option><option value="15">FL 15</option><option value="20">FL 20</option><option value="25">FL 25</option><option value="30">FL 30</option><option value="35">FL 35</option><option value="40">FL 40</option><option value="45">FL 45</option><option value="50">FL 50</option><option value="55">FL 55</option><option value="60">FL 60</option><option value="65">FL 65</option><option value="70">FL 70</option><option value="75">FL 75</option><option value="80">FL 80</option><option value="85">FL 85</option><option value="90">FL 90</option><option value="95">FL 95</option><option value="100">FL 100</option><option value="105">FL 105</option><option value="110">FL 110</option><option value="115">FL 115</option><option value="120">FL 120</option><option value="125">FL 125</option><option value="130">FL 130</option><option value="135">FL 135</option><option value="140">FL 140</option><option value="145">FL 145</option><option value="150">FL 150</option></select></label><label title="Is een gebied vandaag zowel FUA als NOTAM: de kaart toont de FUA zolang die actief is, anders de NOTAM. De download bevat alles wat aangevinkt is"><input type="checkbox" class="toggle" id="dedup" checked> Ontdubbel FUA/NOTAM</label><div id="today"></div><button type="button" id="lxnav" title="SeeYou CUB-bestand met de aangevinkte FUA en NOTAMs, voor LXNAV en SeeYou">Download als .cub</button></section>
 <section id="vlucht" role="tabpanel">
 <label id="drop"><input id="igc" type="file" accept=".igc,.gpx,.kml,.kmz">
   <span class="pick">✈ Kies een vluchtbestand</span>
@@ -156,9 +156,10 @@
 </dialog>
 <script src="https://cdn.jsdelivr.net/npm/cesium@1.145.0/Build/Cesium/Cesium.js"></script>
 <script type="module">
+import { fuaKey, designators, aboutAirspace, namedIn, frees } from './notam-regels.js';
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '27-10-2026c';
+const CODE_VERSION = '27-10-2026d';
 const disclaimer = document.getElementById('disclaimer'), codeDate = CODE_VERSION;
 let accepted = (() => { try { return localStorage.getItem('vfr3d-disclaimer') === codeDate; } catch {} })();
 document.getElementById('accept').onclick = () => {
@@ -357,19 +358,14 @@ const when = (t, withDay = true) => {
 // FUA: areas activated today (Eurocontrol EAUP/EUUP via Frank's Worker, worker/fua/) as their own type, drawn with the LVNL shape
 // of the TRA/TSA/D/R with that designator and the activated FL band. Names match without spaces or leading zeros (EHD09 = EHD9);
 // a trailing Z marks a variant, so it also matches the designator without Z.
-const fuaKey = s => String(s ?? '').toUpperCase().replace(/\s/g, '').replace(/(\D)0+(\d)/g, '$1$2');
 const fua = await fuaFetch;
 showFout('FUA', fua?.fout);
 // footer: when the Workers last fetched NOTAMs and the FUA plan (EAUP or EUUP)
 document.getElementById('vNotams').textContent = notamsFetched ? when(notamsFetched) : 'onbekend';
 document.getElementById('vFua').textContent = fua?.opgehaald ? `${fua.type} ${when(fua.opgehaald)}` : 'onbekend';
-// NOTAMs that give airspace free are green, the rest stays orange-red. Green only when the Q-code (QA…/QR… closed LC, deactivated CD,
-// not available AU, withdrawn AW) and the E line (CLOSED, DEACTIVATED, …) agree, e.g. DE PEEL CTR CLOSED; in doubt red.
-// .github/notam-vorm.mjs mails the doubtful ones every morning; keep both the same
-const relaxing = p => {
-  const t = String(p.Tekst ?? '').toUpperCase(), e = t.split(/\bE\)/)[1]?.split(/\b[FG]\)/)[0] ?? '';
-  return /\bQ\)\s*[^/]+\/Q[AR][A-Z](LC|CD|AU|AW)\//.test(t) && /\b(CLOSED|CLSD|DEACTIVATED|NOT ACTIVE|WITHDRAWN|NOT AVBL|NOT AVAILABLE)\b/.test(e);
-};
+// NOTAMs that give airspace free are green, the rest stays orange-red; in doubt (Q-code and E line disagree) red.
+// The rules are in notam-regels.js; .github/notam-vorm.mjs mails the doubtful ones every morning
+const relaxing = p => frees(String(p.Tekst ?? '').toUpperCase()).every(Boolean);
 const NOTAM_GREEN = '#40c057';
 // airspace polygons by fuaKey of their designator
 const shapeMap = sources => {
@@ -393,9 +389,8 @@ function notamShapes(ds, shapes) {
     // the FAA gives FL999 when it has no upper limit; the Q line's upper limit (Q) EHAA/QACLC/IV/NBO/AE/000/030/…) is then better
     const q = tekst.match(/\bQ\)\s*[^/]+\/[^/]+\/[^/]*\/[^/]*\/[^/]*\/\d{3}\/(\d{3})/);
     if (q && +q[1] < 999 && e.properties.UpperLimit?.getValue() === 999) e.properties.UpperLimit = +q[1];
-    const keys = [...tekst.matchAll(/\b(?:EH\s?)?(TRA|TSA)\s?(\d+[A-Z]?)\b|\bEH\s?([DRP])\s?(\d+[A-Z]?)\b/g)].map(m => fuaKey(`EH${m[1] ?? m[3]}${m[2] ?? m[4]}`));
-    const named = /\bQ\)\s*\w+\/Q[AR]/.test(tekst) ? [...byName].filter(([n]) => new RegExp(`\\b${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(tekst)).flatMap(([, l]) => l) : [];
-    const lvnl = [...new Set([...[...new Set(keys)].flatMap(k => shapes.get(k) ?? []), ...named])];
+    const named = aboutAirspace(tekst) ? namedIn([...byName.keys()], tekst).flatMap(n => byName.get(n)) : [];
+    const lvnl = [...new Set([...designators(tekst).flatMap(k => shapes.get(k) ?? []), ...named])];
     if (!e.polygon || !lvnl.length) continue;
     // which airspaces the NOTAM is about, so a NOTAM for an area that is also active as FUA can start off
     const gebieden = lvnl.map(s => fuaKey(s.properties.Designator?.getValue()));
@@ -540,7 +535,7 @@ const cubItem = (a, e, name, remarks, max, cls = e.cls ?? a.cls, w = e.windows ?
     from: w.length ? Math.min(...w.map(x => x[0])) : 0, to: w.length ? Math.max(...w.map(x => x[1])) : Infinity,
     left: f32(Math.min(...lo)), right: f32(Math.max(...lo)), bottom: f32(Math.min(...la)), top: f32(Math.max(...la)) };
 };
-document.getElementById('lxnav').onclick = () => writeCub(today.filter(inDownload).flatMap(a => a.entities
+document.getElementById('lxnav').onclick = () => writeCub(today.filter(a => a.on).flatMap(a => a.entities
   // one item per active window, so the logger shows each one only while it is active
   .filter(e => !(e.limits.Type === 'NOTAM' && notamFl.value && flOf(e.limits) < +notamFl.value)).flatMap(e => (e.windows?.length ? e.windows.map(x => [x]) : [[]]).map(w => {
     const p = e.limits;
@@ -695,15 +690,10 @@ byLabel.forEach((items, label) => {
 const status = a => { const t = Date.now(); return a.windows.some(([s, u]) => s <= t && t < u) ? ['now', 'nu actief'] : a.start > t ? ['later', `vanaf ${hhmm(a.start)} LT`] : ['past', 'voorbij']; };
 for (const a of today) { a.windows = a.entities.flatMap(e => e.windows ?? []); a.start = Math.min(...a.windows.map(w => w[0])); }
 // an area that is both FUA and a Dutch NOTAM today, with "Ontdubbel FUA/NOTAM" on (Frank 2026-10-27): the map shows the FUA while it is on
-// and active, else the NOTAM; the .cub download has the NOTAM whenever the FUA or the NOTAM is on, never the FUA (the NOTAM's remarks carry the times)
+// and active, else the NOTAM. Only the map; the .cub download has whatever is checked (Frank 2026-10-27)
 const dedup = document.getElementById('dedup');
-const fuaKeyOf = a => fuaKey(a.entities[0].limits.Designator).replace(/Z$/, '');
-const fuaByKey = new Map(today.filter(a => a.soort === 'FUA' && !a.land).map(a => [fuaKeyOf(a), a]));
+const fuaByKey = new Map(today.filter(a => a.soort === 'FUA' && !a.land).map(a => [fuaKey(a.entities[0].limits.Designator).replace(/Z$/, ''), a]));
 const coveredByFua = (e, t) => dedup.checked && e.gebieden?.some(k => { const f = fuaByKey.get(k); return f?.on && f.windows.some(([s, u]) => s <= t && t < u); });
-const dutchNotams = today.filter(a => a.soort !== 'FUA' && !a.land);
-const fuaNotams = a => dutchNotams.filter(n => n.entities.some(e => e.gebieden?.includes(fuaKeyOf(a))));
-const inDownload = a => !dedup.checked ? a.on : a.soort === 'FUA' && !a.land ? a.on && !fuaNotams(a).length
-  : a.on || dutchNotams.includes(a) && [...fuaByKey.values()].some(f => f.on && fuaNotams(f).includes(a));
 today.sort((x, y) => x.start - y.start);
 const row = a => {
   const name = Object.assign(document.createElement('a'), { href: '#', textContent: a.name, onclick: ev => {

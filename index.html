@@ -152,9 +152,10 @@
 </dialog>
 <script src="https://cdn.jsdelivr.net/npm/cesium@1.145.0/Build/Cesium/Cesium.js"></script>
 <script type="module">
+import { fuaKey, designators, aboutAirspace, namedIn, frees } from './notam-regels.js';
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '26-10-2026e';
+const CODE_VERSION = '27-10-2026a';
 const disclaimer = document.getElementById('disclaimer'), codeDate = CODE_VERSION;
 let accepted = (() => { try { return localStorage.getItem('vfr3d-disclaimer') === codeDate; } catch {} })();
 document.getElementById('accept').onclick = () => {
@@ -353,19 +354,14 @@ const when = (t, withDay = true) => {
 // FUA: areas activated today (Eurocontrol EAUP/EUUP via Frank's Worker, worker/fua/) as their own type, drawn with the LVNL shape
 // of the TRA/TSA/D/R with that designator and the activated FL band. Names match without spaces or leading zeros (EHD09 = EHD9);
 // a trailing Z marks a variant, so it also matches the designator without Z.
-const fuaKey = s => String(s ?? '').toUpperCase().replace(/\s/g, '').replace(/(\D)0+(\d)/g, '$1$2');
 const fua = await fuaFetch;
 showFout('FUA', fua?.fout);
 // footer: when the Workers last fetched NOTAMs and the FUA plan (EAUP or EUUP)
 document.getElementById('vNotams').textContent = notamsFetched ? when(notamsFetched) : 'onbekend';
 document.getElementById('vFua').textContent = fua?.opgehaald ? `${fua.type} ${when(fua.opgehaald)}` : 'onbekend';
-// NOTAMs that give airspace free are green, the rest stays orange-red. Green only when the Q-code (QA…/QR… closed LC, deactivated CD,
-// not available AU, withdrawn AW) and the E line (CLOSED, DEACTIVATED, …) agree, e.g. DE PEEL CTR CLOSED; in doubt red.
-// .github/notam-vorm.mjs mails the doubtful ones every morning; keep both the same
-const relaxing = p => {
-  const t = String(p.Tekst ?? '').toUpperCase(), e = t.split(/\bE\)/)[1]?.split(/\b[FG]\)/)[0] ?? '';
-  return /\bQ\)\s*[^/]+\/Q[AR][A-Z](LC|CD|AU|AW)\//.test(t) && /\b(CLOSED|CLSD|DEACTIVATED|NOT ACTIVE|WITHDRAWN|NOT AVBL|NOT AVAILABLE)\b/.test(e);
-};
+// NOTAMs that give airspace free are green, the rest stays orange-red; in doubt (Q-code and E line disagree) red.
+// The rules are in notam-regels.js; .github/notam-vorm.mjs mails the doubtful ones every morning
+const relaxing = p => frees(String(p.Tekst ?? '').toUpperCase()).every(Boolean);
 const NOTAM_GREEN = '#40c057';
 // airspace polygons by fuaKey of their designator
 const shapeMap = sources => {
@@ -389,9 +385,8 @@ function notamShapes(ds, shapes) {
     // the FAA gives FL999 when it has no upper limit; the Q line's upper limit (Q) EHAA/QACLC/IV/NBO/AE/000/030/…) is then better
     const q = tekst.match(/\bQ\)\s*[^/]+\/[^/]+\/[^/]*\/[^/]*\/[^/]*\/\d{3}\/(\d{3})/);
     if (q && +q[1] < 999 && e.properties.UpperLimit?.getValue() === 999) e.properties.UpperLimit = +q[1];
-    const keys = [...tekst.matchAll(/\b(?:EH\s?)?(TRA|TSA)\s?(\d+[A-Z]?)\b|\bEH\s?([DRP])\s?(\d+[A-Z]?)\b/g)].map(m => fuaKey(`EH${m[1] ?? m[3]}${m[2] ?? m[4]}`));
-    const named = /\bQ\)\s*\w+\/Q[AR]/.test(tekst) ? [...byName].filter(([n]) => new RegExp(`\\b${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(tekst)).flatMap(([, l]) => l) : [];
-    const lvnl = [...new Set([...[...new Set(keys)].flatMap(k => shapes.get(k) ?? []), ...named])];
+    const named = aboutAirspace(tekst) ? namedIn([...byName.keys()], tekst).flatMap(n => byName.get(n)) : [];
+    const lvnl = [...new Set([...designators(tekst).flatMap(k => shapes.get(k) ?? []), ...named])];
     if (!e.polygon || !lvnl.length) continue;
     e.polygon.hierarchy = lvnl[0].polygon.hierarchy.getValue();
     for (const s of lvnl.slice(1)) ds.entities.add({ polygon: { hierarchy: s.polygon.hierarchy.getValue() }, properties: e.properties.getValue() });
