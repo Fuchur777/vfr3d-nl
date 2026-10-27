@@ -159,7 +159,7 @@
 import { fuaKey, designators, aboutAirspace, namedIn, frees } from './notam-regels.js';
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '27-10-2026e';
+const CODE_VERSION = '27-10-2026f';
 const disclaimer = document.getElementById('disclaimer'), codeDate = CODE_VERSION;
 let accepted = (() => { try { return localStorage.getItem('vfr3d-disclaimer') === codeDate; } catch {} })();
 document.getElementById('accept').onclick = () => {
@@ -389,8 +389,9 @@ function notamShapes(ds, shapes) {
     // the FAA gives FL999 when it has no upper limit; the Q line's upper limit (Q) EHAA/QACLC/IV/NBO/AE/000/030/…) is then better
     const q = tekst.match(/\bQ\)\s*[^/]+\/[^/]+\/[^/]*\/[^/]*\/[^/]*\/\d{3}\/(\d{3})/);
     if (q && +q[1] < 999 && e.properties.UpperLimit?.getValue() === 999) e.properties.UpperLimit = +q[1];
-    const named = aboutAirspace(tekst) ? namedIn([...byName.keys()], tekst).flatMap(n => byName.get(n)) : [];
-    const lvnl = [...new Set([...designators(tekst).flatMap(k => shapes.get(k) ?? []), ...named])];
+    // a designator with an LVNL shape wins; the name only when there is none (EHR4A VLIEHORS is R4A, not all R4 areas named VLIEHORS)
+    const byKey = designators(tekst).flatMap(k => shapes.get(k) ?? []);
+    const lvnl = byKey.length ? byKey : aboutAirspace(tekst) ? [...new Set(namedIn([...byName.keys()], tekst).flatMap(n => byName.get(n)))] : [];
     if (!e.polygon || !lvnl.length) continue;
     // which airspaces the NOTAM is about, so a NOTAM for an area that is also active as FUA can start off
     const gebieden = lvnl.map(s => fuaKey(s.properties.Designator?.getValue()));
