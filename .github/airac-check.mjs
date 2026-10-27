@@ -37,7 +37,7 @@ for (const id of ours.keys()) {
   if (!failed && id.startsWith('EHAA') && !lvnl.has(id)) lines.push(`- Niet meer bij LVNL: **${id}** (${ours.get(id).file})`);
 }
 const since = Math.max(...[...lvnl.values()].map(s => s.since));
-console.log(`Nieuwe AIRAC-editie. ${failed ? 'LVNL-lierpunten niet gelezen.' : `LVNL-lierpunten bijgewerkt per ${new Date(since).toISOString().slice(0, 10)}.`}
+console.log(`Nieuwe AIRAC-editie. ${failed ? 'LVNL-lierpunten niet gelezen.' : `LVNL-lierpunten bijgewerkt per ${Number.isFinite(since) ? new Date(since).toISOString().slice(0, 10) : 'datum onbekend (geen lierpunten ontvangen)'}.`}
 
 ## Lierlocaties (LVNL open data vs. vfr3d)
 ${failed ? `LVNL niet bereikbaar (${failed}); lierlocaties handmatig in ENR 5.5 nakijken.` : lines.length ? lines.join('\n') : 'Geen verschillen gevonden.'}
