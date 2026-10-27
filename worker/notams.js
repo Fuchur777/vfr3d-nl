@@ -102,11 +102,13 @@ function lt(t) {
   return `${d.toLocaleString('nl-NL', { timeZone: 'Europe/Amsterdam', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} LT (${d.toISOString().slice(11, 16).replace(':', '')}Z)`;
 }
 
-// the latest 06:00, 18:00 or 22:00 Amsterdam time before now
+// the latest 06:00, 18:00 or 22:00 Amsterdam time before now: step back whole hours until the Amsterdam hour is a slot,
+// so the clock change nights come out right too
 function lastSlot(now) {
-  const t = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Amsterdam', hour: 'numeric', minute: 'numeric', hourCycle: 'h23' }).formatToParts(now).map(x => [x.type, +x.value]));
-  const slot = SLOTS.findLast(h => h <= t.hour) ?? SLOTS.at(-1) - 24;
-  return now - ((t.hour - slot) * 60 + t.minute) * 60e3 - now % 60e3;
+  const hourLT = t => +new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Amsterdam', hour: 'numeric', hourCycle: 'h23' }).format(t);
+  let t = now - now % 3600e3;
+  while (!SLOTS.includes(hourLT(t))) t -= 3600e3;
+  return t;
 }
 
 // fetch the first circle (of 'only', default all) not yet fetched since the latest slot, if the FAA's limit allows
