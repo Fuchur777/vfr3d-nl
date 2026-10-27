@@ -167,8 +167,10 @@ async function notams(env, [latitude, longitude]) {
     const category = heading && (KINDS.find(([, pattern]) => pattern.test(text))?.[0] ?? heading);
     const start = Date.parse(n?.effectiveStart), end = Date.parse(n?.effectiveEnd);
     // only what is active now or starts within a day; no cancellations (type C), and no
-    // country-wide notices drawn as a circle over half the map (radius in NM)
-    if (!category || n.type === 'C' || +n.radius > 50 || !(start < day) || end < now) continue;
+    // country-wide notices drawn as a circle over half the map (radius in NM), unless it is about airspace (QA/QR) and
+    // names a TRA, TSA or EHD/R/P: the app draws those with their own shape (same pattern as designators() in notam-regels.js)
+    const named = /^Q[AR]/.test(n?.selectionCode ?? '') && /\b(?:EH\s?)?(TRA|TSA)\s?\d+[A-Z]?\b|\bEH\s?[DRP]\s?\d+[A-Z]?\b/.test(text);
+    if (!category || n.type === 'C' || (+n.radius > 50 && !named) || !(start < day) || end < now) continue;
     const geometries = f.geometry?.type === 'GeometryCollection' ? f.geometry.geometries : [f.geometry].filter(Boolean);
     const areas = geometries.filter(g => ['Polygon', 'MultiPolygon'].includes(g.type));
     const point = geometries.find(g => g.type === 'Point');
