@@ -56,8 +56,11 @@ export default {
     const circles = [...new Set(prefixes.flatMap(p => COUNTRIES[p] ?? []))];
     const date = url.searchParams.get('datum');
     // POST (the app's refresh button when the date is orange or red): fetch one of these circles now if it is
-    // behind and the FAA's limit allows; otherwise nothing happens and the answer is the same as a GET
-    if (request.method === 'POST') await step(env, circles);
+    // behind and the FAA's limit allows; otherwise 429 with the reason, like the FUA Worker
+    if (request.method === 'POST') {
+      const reden = await step(env, circles);
+      if (reden) return Response.json({ fout: reden }, { status: 429, headers: HEADERS });
+    }
     const stored = await Promise.all(circles.map(i => env.NOTAMS.get(date ? `dag:${date}:${i}` : `cirkel:${i}`, 'json')));
     // never fetched yet (a fresh deploy): fetch one circle now instead of waiting for the next slot
     if (!date && stored.some(c => !c)) ctx.waitUntil(step(env));
@@ -111,13 +114,15 @@ function lastSlot(now) {
   return t;
 }
 
-// fetch the first circle (of 'only', default all) not yet fetched since the latest slot, if the FAA's limit allows
+// fetch the first circle (of 'only', default all) not yet fetched since the latest slot, if the FAA's limit allows;
+// returns why nothing was fetched, if so (shown by the app's refresh button)
 async function step(env, only = CIRCLES.map((_, i) => i)) {
   const now = Date.now(), state = await env.NOTAMS.get('staat', 'json') ?? { klaar: {}, fout: {} };
   // of the circles not yet fetched since the slot, the one tried longest ago, so one failing circle can't block the rest
   state.poging ??= {};
   const due = only.filter(i => !(state.klaar[i] >= lastSlot(now))).sort((a, b) => (state.poging[a] ?? 0) - (state.poging[b] ?? 0))[0];
-  if (due === undefined || now - (state.laatste ?? 0) < 200e3) return;
+  if (due === undefined) return 'Alles is al opgehaald sinds het laatste ophaalmoment.';
+  if (now - (state.laatste ?? 0) < 200e3) return `De FAA staat één verzoek per 3 minuten toe; probeer het over ${Math.ceil((200e3 - (now - state.laatste)) / 60e3)} min opnieuw.`;
   state.laatste = state.poging[due] = now;
   await env.NOTAMS.put('staat', JSON.stringify(state));
   try {
@@ -134,6 +139,7 @@ async function step(env, only = CIRCLES.map((_, i) => i)) {
     state.fout[due] = `${new Date(now).toISOString()} ${error}`;
   }
   await env.NOTAMS.put('staat', JSON.stringify(state));
+  if (state.fout[due]) return `Ophalen mislukt: ${state.fout[due]}`;
 }
 
 // one token for all circles while it is valid, so the FAA sees few token requests
