@@ -160,7 +160,7 @@
 import { fuaKey, designators, aboutAirspace, namedIn, frees, ownCircle } from './notam-regels.js';
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '27-10-2026k';
+const CODE_VERSION = '27-10-2026m';
 const disclaimer = document.getElementById('disclaimer'), codeDate = CODE_VERSION;
 let accepted = (() => { try { return localStorage.getItem('vfr3d-disclaimer') === codeDate; } catch {} })();
 document.getElementById('accept').onclick = () => {
@@ -653,6 +653,8 @@ LAYERS.forEach(([, label, colour, show], i) => {
     e.limits = p;
     e.description = describe(p);
     e.polygon.material = color.withAlpha(0.25);
+    // also on volumes built here (FUA, extra NOTAM shapes), which lack the GeoJSON loader's outline
+    e.polygon.outline = true;
     e.polygon.outlineColor = color;
     // a MultiPolygon becomes several entities; list it once
     e.baseDescription = e.description.getValue();
@@ -1026,6 +1028,7 @@ async function loadFlight(target) {
       e.name = [p.Designator, p.Name].filter(Boolean).join(' ');
       e.description = describe(p);
       e.polygon.material = color.withAlpha(0.25);
+      e.polygon.outline = true;
       e.polygon.outlineColor = color;
     }
   });
