@@ -67,12 +67,12 @@ export default {
 const scheduled = hour => (hour >= 6 && hour <= 10) || hour % 3 === 0;
 const hourLT = t => +new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Amsterdam', hour: 'numeric', hourCycle: 'h23' }).format(t);
 
-// red once it is past 06:00 LT without a plan read after it; orange when the latest scheduled read failed or is
+// red once it is past 06:10 LT without a plan read after 06:00 (10 minutes for that read, like the other slots); orange when the latest scheduled read failed or is
 // missing (10 minutes for it to finish); else green (Frank 2026-10-16)
 function current(fetched, failed) {
   const now = Date.now(), hour = now - now % 3600e3, latest = test => { let t = hour; while (!test(hourLT(t))) t -= 3600e3; return t; };
   const six = latest(h => h === 6), slot = latest(scheduled);
-  if (hourLT(now) >= 6 && !(fetched >= six)) {
+  if (hourLT(now) >= 6 && !(fetched >= six) && now - six >= 600e3) {
     return { kleur: 'rood', reden: `Nog geen plan van na ${lt(six)}${failed ? ` (laatste fout: ${failed})` : ''}` };
   }
   if (failed) {
