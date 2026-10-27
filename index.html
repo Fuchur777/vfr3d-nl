@@ -155,7 +155,7 @@
 import { fuaKey, designators, aboutAirspace, namedIn, frees } from './notam-regels.js';
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '27-10-2026a';
+const CODE_VERSION = '27-10-2026b';
 const disclaimer = document.getElementById('disclaimer'), codeDate = CODE_VERSION;
 let accepted = (() => { try { return localStorage.getItem('vfr3d-disclaimer') === codeDate; } catch {} })();
 document.getElementById('accept').onclick = () => {
@@ -629,6 +629,8 @@ LAYERS.forEach(([, label, colour, show], i) => {
     if (p.Van && (Date.parse(p.Van) > until || (p.Tot !== 'PERM' && Date.parse(p.Tot) < dayStart))) { source.entities.remove(e); continue; }
     // time windows (ms) for NOTAMs and FUA; other airspace has none and is always there
     e.windows = p.Vensters ?? (p.Van && [[Date.parse(p.Van), p.Tot === 'PERM' ? Infinity : Date.parse(p.Tot)]]);
+    // a schedule without a day in that range (e.g. SAT SUN on a Tuesday): not today's either (Frank 2026-10-27)
+    if (e.windows && !e.windows.some(([s, u]) => s <= until && u >= dayStart)) { source.entities.remove(e); continue; }
     const cls = /^[A-G]$/.test(p.Class) ? p.Class : '';
     const key = `${label}|${p.Designator}|${p.Name}`;
     const own = label.startsWith('NOTAMs') && relaxing(p) ? NOTAM_GREEN : colour;
