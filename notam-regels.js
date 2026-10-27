@@ -22,9 +22,20 @@ export const frees = t => {
   return [/\bQ\)\s*[^/]+\/Q[AR][A-Z](LC|CD|AU|AW)\//.test(t), /\b(CLOSED|CLSD|DEACTIVATED|NOT ACTIVE|WITHDRAWN|NOT AVBL|NOT AVAILABLE)\b/.test(e)];
 };
 
-// the E line gives the area itself as one circle ("WI 45M RADIUS CENTRED ON 514842N 0043132E"), which the NOTAM Worker draws;
-// the same test as textCircle() in worker/notams.js (not after EXC, not when there are several)
-export const ownCircle = t => {
-  const all = [...t.matchAll(/\bWI\s+(\d+(?:\.\d+)?)\s*(M|KM|NM)\s+RADIUS\s+(?:CENTRED|CENTERED)\s+(?:ON|AT)\s+(\d{2})(\d{2})(\d{2}(?:\.\d+)?)([NS])\s*(\d{3})(\d{2})(\d{2}(?:\.\d+)?)([EW])/g)];
-  return all.length === 1 && !/\bEXC(EPT)?\s*$/.test(t.slice(0, all[0].index));
-};
+// [[lon, lat], radius in NM] from the E line's one circle: "WI 45M RADIUS CENTRED ON 514842N 0043132E", "WI 0,25NM RADIUS CENTRED AT …"
+// or "PSN 513102N 0055120E RADIUS 300M" (seconds optional); null when there is none, several, or it follows EXC (cut out of the area).
+// The same function is in worker/notams.js and notam-regels.js; keep both the same
+export function textCircle(text) {
+  const COORD = '(\\d{2})(\\d{2})(\\d{2}(?:[.,]\\d+)?)?([NS])\\s*(\\d{3})(\\d{2})(\\d{2}(?:[.,]\\d+)?)?([EW])', R = '(\\d+(?:[.,]\\d+)?)\\s*(M|KM|NM)';
+  const all = [
+    ...[...text.matchAll(new RegExp(`\\bWI\\s+${R}\\s+RADIUS\\s+(?:CENTRED|CENTERED)\\s+(?:ON|AT)\\s+${COORD}`, 'g'))].map(m => [m.index, m[1], m[2], m.slice(3, 11)]),
+    ...[...text.matchAll(new RegExp(`\\bPSN\\s+${COORD}\\s+RADIUS\\s+${R}\\b`, 'g'))].map(m => [m.index, m[9], m[10], m.slice(1, 9)]),
+  ];
+  if (all.length !== 1 || /\bEXC(EPT)?\s*$/.test(text.slice(0, all[0][0]))) return null;
+  const num = s => s ? +s.replace(',', '.') : 0, [, r, unit, [a, b, c, ns, d, e, f, ew]] = all[0];
+  const lat = (+a + b / 60 + num(c) / 3600) * (ns === 'S' ? -1 : 1), lon = (+d + e / 60 + num(f) / 3600) * (ew === 'W' ? -1 : 1);
+  return [[lon, lat], num(r) / { M: 1852, KM: 1.852, NM: 1 }[unit]];
+}
+
+// the NOTAM's own shape is that circle (the Worker draws it)
+export const ownCircle = t => !!textCircle(t);

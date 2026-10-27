@@ -205,15 +205,19 @@ function limit(text, fl, top) {
   return [0, 'FT', 'SFC'];
 }
 
-// [[lon, lat], radius in NM] from "WI 45M RADIUS CENTRED ON 514842N 0043132E", or null when there is none, several, or an exception
+// [[lon, lat], radius in NM] from the E line's one circle: "WI 45M RADIUS CENTRED ON 514842N 0043132E", "WI 0,25NM RADIUS CENTRED AT …"
+// or "PSN 513102N 0055120E RADIUS 300M" (seconds optional); null when there is none, several, or it follows EXC (cut out of the area).
+// The same function is in worker/notams.js and notam-regels.js; keep both the same
 function textCircle(text) {
-  const all = [...text.matchAll(/\bWI\s+(\d+(?:\.\d+)?)\s*(M|KM|NM)\s+RADIUS\s+(?:CENTRED|CENTERED)\s+(?:ON|AT)\s+(\d{2})(\d{2})(\d{2}(?:\.\d+)?)([NS])\s*(\d{3})(\d{2})(\d{2}(?:\.\d+)?)([EW])/g)];
-  // only a single circle that is the area itself, not one cut out of it ("... EXC WI 500M RADIUS ...")
-  const m = all.length === 1 && !/\bEXC(EPT)?\s*$/.test(text.slice(0, all[0].index)) ? all[0] : null;
-  if (!m) return null;
-  const nm = +m[1] / { M: 1852, KM: 1.852, NM: 1 }[m[2]];
-  const lat = (+m[3] + m[4] / 60 + m[5] / 3600) * (m[6] === 'S' ? -1 : 1), lon = (+m[7] + m[8] / 60 + m[9] / 3600) * (m[10] === 'W' ? -1 : 1);
-  return [[lon, lat], nm];
+  const COORD = '(\\d{2})(\\d{2})(\\d{2}(?:[.,]\\d+)?)?([NS])\\s*(\\d{3})(\\d{2})(\\d{2}(?:[.,]\\d+)?)?([EW])', R = '(\\d+(?:[.,]\\d+)?)\\s*(M|KM|NM)';
+  const all = [
+    ...[...text.matchAll(new RegExp(`\\bWI\\s+${R}\\s+RADIUS\\s+(?:CENTRED|CENTERED)\\s+(?:ON|AT)\\s+${COORD}`, 'g'))].map(m => [m.index, m[1], m[2], m.slice(3, 11)]),
+    ...[...text.matchAll(new RegExp(`\\bPSN\\s+${COORD}\\s+RADIUS\\s+${R}\\b`, 'g'))].map(m => [m.index, m[9], m[10], m.slice(1, 9)]),
+  ];
+  if (all.length !== 1 || /\bEXC(EPT)?\s*$/.test(text.slice(0, all[0][0]))) return null;
+  const num = s => s ? +s.replace(',', '.') : 0, [, r, unit, [a, b, c, ns, d, e, f, ew]] = all[0];
+  const lat = (+a + b / 60 + num(c) / 3600) * (ns === 'S' ? -1 : 1), lon = (+d + e / 60 + num(f) / 3600) * (ew === 'W' ? -1 : 1);
+  return [[lon, lat], num(r) / { M: 1852, KM: 1.852, NM: 1 }[unit]];
 }
 
 // a circle as a polygon, for NOTAMs that only give a centre and a radius in NM
