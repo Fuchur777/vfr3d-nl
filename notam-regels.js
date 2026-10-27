@@ -13,7 +13,9 @@ export const aboutAirspace = t => /\bQ\)\s*\w+\/Q[AR]/.test(t);
 
 // the airspace names (upper case) that occur in the text as whole words; not \b, so a name may start with a quote ('S HEER ARENDSKERKE)
 const escape = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-export const namedIn = (names, t) => names.filter(n => new RegExp(`(?<![A-Z0-9])${escape(n)}(?![A-Z0-9])`).test(t));
+// each name's pattern is made once and kept, not again for every NOTAM
+const patterns = new Map(), pattern = n => patterns.get(n) ?? patterns.set(n, new RegExp(`(?<![A-Z0-9])${escape(n)}(?![A-Z0-9])`)).get(n);
+export const namedIn = (names, t) => names.filter(n => pattern(n).test(t));
 
 // whether the Q-code (QA…/QR… closed LC, deactivated CD, not available AU, withdrawn AW) and the E line (CLOSED, DEACTIVATED, …)
 // each say the airspace is given free; green in the app only when both do, e.g. DE PEEL CTR CLOSED
