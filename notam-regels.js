@@ -19,10 +19,14 @@ export const namedIn = (names, t) => names.filter(n => pattern(n).test(t));
 
 // whether the Q-code (QA…/QR… closed LC, deactivated CD, not available AU, withdrawn AW) and the E line (CLOSED, DEACTIVATED, …)
 // each say the airspace is given free; green in the app only when both do, e.g. DE PEEL CTR CLOSED
+const eLine = t => t.split(/\bE\)/)[1]?.split(/\b[FG]\)/)[0] ?? '';
 export const frees = t => {
-  const e = t.split(/\bE\)/)[1]?.split(/\b[FG]\)/)[0] ?? '';
+  const e = eLine(t);
   return [/\bQ\)\s*[^/]+\/Q[AR][A-Z](LC|CD|AU|AW)\//.test(t), /\b(CLOSED|CLSD|DEACTIVATED|NOT ACTIVE|WITHDRAWN|NOT AVBL|NOT AVAILABLE)\b/.test(e)];
 };
+
+// the highest height the E line gives in feet ("53FT AMSL", "150FT AGL"; AGL counts as MSL, the Netherlands is flat), else null
+export const eHeight = t => Math.max(0, ...[...eLine(t).matchAll(/\b(\d+)\s*FT\s*(?:AMSL|MSL|AGL)\b/g)].map(m => +m[1])) || null;
 
 // [[lon, lat], radius in NM] from the E line's one circle: "WI 45M RADIUS CENTRED ON 514842N 0043132E", "WI 0,25NM RADIUS CENTRED AT …"
 // or "PSN 513102N 0055120E RADIUS 300M" (seconds optional); null when there is none, several, or it follows EXC (cut out of the area).
