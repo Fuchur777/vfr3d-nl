@@ -67,8 +67,9 @@
   /* Cesium's navigation help, moved into #help after Accepteren: in the flow instead of under its button */
   /* a mouse instead of Cesium's "?", so the button reads as the controls */
   .cesium-navigation-help-button .cesium-svgPath-svg { display: none; }
-  .cesium-navigation-help-button { background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23edffff' stroke-width='2'%3E%3Crect x='6' y='3' width='12' height='18' rx='6'/%3E%3Cpath d='M12 7v4'/%3E%3C/svg%3E") center / 22px no-repeat; }
-  #help .cesium-navigation-help { position: static; transform: none; width: auto; }
+  .cesium-navigation-help-button { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23edffff' stroke-width='2'%3E%3Crect x='6' y='3' width='12' height='18' rx='6'/%3E%3Cpath d='M12 7v4'/%3E%3C/svg%3E"); background-position: center; background-size: 22px; background-repeat: no-repeat; }
+  /* always shown there: Cesium hides it on any click outside its button, which a click on Aanraken now is */
+  #help .cesium-navigation-help { position: static; visibility: visible; transform: none; width: auto; }
   #disclaimer #accept { background: #ffc24b; border-color: #ffc24b; color: #1b232b; font-weight: 600; }
   .credits { color: #7d8c99; font-size: 11px; line-height: 1.45; }
   #kaart a { color: #d8e0e6; }
@@ -167,7 +168,7 @@
 import { fuaKey, designators, aboutAirspace, namedIn, frees, ownCircle, eHeight } from './notam-regels.js?v=28-10-2026c'; // ?v: a cached older copy would lack new exports and stop the whole page; change it with notam-regels.js
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '28-10-2026d';
+const CODE_VERSION = '28-10-2026e';
 const disclaimer = document.getElementById('disclaimer'), codeDate = CODE_VERSION;
 let showHelp = () => {}; // set once the viewer exists
 let accepted = (() => { try { return localStorage.getItem('vfr3d-disclaimer') === codeDate; } catch {} })();
@@ -248,8 +249,8 @@ const NL = {
 viewer.navigationHelpButton.viewModel.tooltip = 'Bediening';
 // after Accepteren the navigation help opens in the middle with a Begrepen button; closing puts it back under its button
 const help = document.getElementById('help'), helpPanel = viewer.navigationHelpButton.container.querySelector('.cesium-navigation-help');
-showHelp = () => { help.prepend(helpPanel); viewer.navigationHelpButton.viewModel.showInstructions = true; help.showModal(); };
-help.onclose = () => { viewer.navigationHelpButton.viewModel.showInstructions = false; viewer.navigationHelpButton.container.append(helpPanel); };
+showHelp = () => { help.prepend(helpPanel); help.showModal(); };
+help.onclose = () => viewer.navigationHelpButton.container.append(helpPanel);
 // hamburger on phones
 const menu = document.getElementById('menu');
 menu.onclick = () => { const open = document.body.classList.toggle('menu-open'); menu.setAttribute('aria-expanded', open); menu.textContent = open ? '✕' : '☰'; };
