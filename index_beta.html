@@ -59,10 +59,16 @@
   #disclaimer .legend { font-size: 11px; color: #8a9aa8; }
   #disclaimer b { display: block; margin: 10px 0 2px; color: #8a9aa8; font-weight: 500; }
   #links { align-items: center; }
-  #disclaimer { max-width: 420px; border: 1px solid #2f3b46; border-radius: 10px; background: #1b232b; color: #d8e0e6; font: 13px/1.5 sans-serif; padding: 18px 20px; }
-  #disclaimer::backdrop { background: rgba(10, 14, 18, .7); }
-  #disclaimer .buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
-  #disclaimer button { padding: 6px 14px; border-radius: 6px; border: 1px solid #4a5865; background: none; color: #d8e0e6; font: inherit; cursor: pointer; }
+  #disclaimer, #help { max-width: 420px; border: 1px solid #2f3b46; border-radius: 10px; background: #1b232b; color: #d8e0e6; font: 13px/1.5 sans-serif; padding: 18px 20px; }
+  #disclaimer::backdrop, #help::backdrop { background: rgba(10, 14, 18, .7); }
+  #disclaimer .buttons, #help .buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+  #disclaimer button, #help .buttons button { padding: 6px 14px; border-radius: 6px; border: 1px solid #4a5865; background: none; color: #d8e0e6; font: inherit; cursor: pointer; }
+  #disclaimer #accept, #help .buttons button { background: #ffc24b; border-color: #ffc24b; color: #1b232b; font-weight: 600; }
+  /* Cesium's navigation help, moved into #help after Accepteren: in the flow instead of under its button */
+  /* a mouse instead of Cesium's "?", so the button reads as the controls */
+  .cesium-navigation-help-button .cesium-svgPath-svg { display: none; }
+  .cesium-navigation-help-button { background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23edffff' stroke-width='2'%3E%3Crect x='6' y='3' width='12' height='18' rx='6'/%3E%3Cpath d='M12 7v4'/%3E%3C/svg%3E") center / 22px no-repeat; }
+  #help .cesium-navigation-help { position: static; transform: none; width: auto; }
   #disclaimer #accept { background: #ffc24b; border-color: #ffc24b; color: #1b232b; font-weight: 600; }
   .credits { color: #7d8c99; font-size: 11px; line-height: 1.45; }
   #kaart a { color: #d8e0e6; }
@@ -154,19 +160,23 @@
 <p class="legend"><span style="color: #69db7c">groen</span> zeker actueel · <span style="color: #ffc24b">oranje</span> nog niet gecontroleerd · <span style="color: #ff8787">rood</span> verouderd</p>
 <div class="buttons"><button type="button" id="decline">Weigeren</button><button type="button" id="accept">Accepteren</button></div>
 </dialog>
+<!-- after Accepteren: Cesium's navigation help in the middle, closed with Begrepen -->
+<dialog id="help"><form method="dialog" class="buttons"><button>Begrepen</button></form></dialog>
 <script src="https://cdn.jsdelivr.net/npm/cesium@1.145.0/Build/Cesium/Cesium.js"></script>
 <script type="module">
 import { fuaKey, designators, aboutAirspace, namedIn, frees, ownCircle, eHeight } from './notam-regels.js?v=28-10-2026c'; // ?v: a cached older copy would lack new exports and stop the whole page; change it with notam-regels.js
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '28-10-2026c';
+const CODE_VERSION = '28-10-2026d';
 const disclaimer = document.getElementById('disclaimer'), codeDate = CODE_VERSION;
+let showHelp = () => {}; // set once the viewer exists
 let accepted = (() => { try { return localStorage.getItem('vfr3d-disclaimer') === codeDate; } catch {} })();
 document.getElementById('accept').onclick = () => {
   if (!accepted) window.goatcounter?.count({ path: 'disclaimer-geaccepteerd', title: 'Disclaimer geaccepteerd', event: true });
   accepted = true;
   try { localStorage.setItem('vfr3d-disclaimer', codeDate); } catch {}
   disclaimer.close();
+  showHelp();
 };
 const decline = () => location.href = 'https://www.lvnl.nl/';
 document.getElementById('decline').onclick = decline;
@@ -235,7 +245,11 @@ const NL = {
   'One finger drag': 'Eén vinger slepen', 'Two finger pinch': 'Twee vingers knijpen',
   'Two finger drag, same direction': 'Twee vingers slepen, zelfde richting', 'Two finger drag, opposite direction': 'Twee vingers slepen, tegengestelde richting',
 };
-viewer.navigationHelpButton.viewModel.tooltip = 'Navigatie-uitleg';
+viewer.navigationHelpButton.viewModel.tooltip = 'Bediening';
+// after Accepteren the navigation help opens in the middle with a Begrepen button; closing puts it back under its button
+const help = document.getElementById('help'), helpPanel = viewer.navigationHelpButton.container.querySelector('.cesium-navigation-help');
+showHelp = () => { help.prepend(helpPanel); viewer.navigationHelpButton.viewModel.showInstructions = true; help.showModal(); };
+help.onclose = () => { viewer.navigationHelpButton.viewModel.showInstructions = false; viewer.navigationHelpButton.container.append(helpPanel); };
 // hamburger on phones
 const menu = document.getElementById('menu');
 menu.onclick = () => { const open = document.body.classList.toggle('menu-open'); menu.setAttribute('aria-expanded', open); menu.textContent = open ? '✕' : '☰'; };
