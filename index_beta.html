@@ -171,7 +171,7 @@
 import { fuaKey, designators, aboutAirspace, namedIn, frees, ownCircle, eHeight } from './notam-regels.js?v=28-10-2026c'; // ?v: a cached older copy would lack new exports and stop the whole page; change it with notam-regels.js
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '29-10-2026j';
+const CODE_VERSION = '29-10-2026k';
 const disclaimer = document.getElementById('disclaimer'), codeDate = CODE_VERSION;
 let showHelp = () => {}; // set once the viewer exists
 let accepted = (() => { try { return localStorage.getItem('vfr3d-disclaimer') === codeDate; } catch {} })();
@@ -519,6 +519,8 @@ contact.href = `mailto:${mail}?subject=vfr3d.nl`;
 
 // One source of truth: the on/off state per airspace. Type and class only set those states.
 const saved = (() => { try { return JSON.parse(localStorage.getItem('vfr3d-selection-2')) ?? {}; } catch { return {}; } })();
+// until 2026-10-29 the low Nieuw Milligen TMA parts switched class with the SUP, so their saved state was set by the app, not the visitor: forget it once
+try { if (!localStorage.getItem('vfr3d-sup-fix')) { for (const k of Object.keys(saved)) if (/^TMA\|EHMC(BE|C2E|EE)\|/.test(k)) delete saved[k]; localStorage.setItem('vfr3d-sup-fix', '1'); } } catch {}
 // "Vandaag uit" (Frank 2026-10-25): NOTAMs turned off until midnight (Amsterdam); on a later day they follow their default again
 const DAY = new Date().toLocaleDateString('sv', { timeZone: 'Europe/Amsterdam' });
 const dayOff = (() => { try { return JSON.parse(localStorage.getItem('vfr3d-vandaag-uit')) ?? {}; } catch { return {}; } })();
