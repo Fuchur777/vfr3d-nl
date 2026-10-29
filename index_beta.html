@@ -168,7 +168,7 @@
 import { fuaKey, designators, aboutAirspace, namedIn, frees, ownCircle, eHeight } from './notam-regels.js?v=28-10-2026c'; // ?v: a cached older copy would lack new exports and stop the whole page; change it with notam-regels.js
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '29-10-2026';
+const CODE_VERSION = '29-10-2026b';
 const disclaimer = document.getElementById('disclaimer'), codeDate = CODE_VERSION;
 let showHelp = () => {}; // set once the viewer exists
 let accepted = (() => { try { return localStorage.getItem('vfr3d-disclaimer') === codeDate; } catch {} })();
@@ -636,10 +636,8 @@ const lowerBand = t => [...(inW(t) ? ['D', 'D tot 22:00 LT, daarna E'] : ['E', '
 const upperBand = t => [...(weekend(t) && !inW(t) ? ['E', 'E (vrijdag 17:00 tot maandag 00:00 LT en feestdagen), klasse D van 18:00 tot 22:00 LT'] : ['D', 'D']), 'E vr17-ma00 LT, fd, niet 18-22'];
 const SUP = [
   [/LELYSTAD TMA ?[345]\b|NIEUW MILLIGEN TMA ?B\b/, t => lowerBand(t)],
-  // two bands: FL065–FL095 follows note 3, FL055–FL065 follows W; a volume spanning both gets the class of its upper band
-  [/NIEUW MILLIGEN TMA ?(C2|E)\b/, (t, p) => p.UpperLimitUnit === 'FL' && p.UpperLimit <= 65 ? lowerBand(t)
-    : p.LowerLimitUnit === 'FL' && p.LowerLimit >= 65 ? upperBand(t)
-    : [upperBand(t)[0], `FL065–FL095: ${upperBand(t)[1]}\nFL055–FL065: ${lowerBand(t)[1]}`, 'deels E buiten 18-22 LT']],
+  // two bands: FL065–FL095 follows note 3, FL055–FL065 follows W (the LVNL volume is split at FL065)
+  [/NIEUW MILLIGEN TMA ?(C2|E)\b/, (t, p) => p.UpperLimitUnit === 'FL' && p.UpperLimit <= 65 ? lowerBand(t) : upperBand(t)],
 ];
 const supRows = (t, text) => `<tr><th>Klasse (AIP SUP 03/2022)</th><td style="white-space: pre-wrap">${text}</td></tr>`
   + `<tr><th>Radio</th><td>${inW(t) ? 'Lelystad Arrival 134.530' : 'Dutch MIL Info 132.350 (FIS)'}</td></tr>`;
@@ -657,6 +655,14 @@ LAYERS.forEach(([, label, colour, show], i) => {
   if (!label.includes('|')) viewer.dataSources.add(source);
   if (!byLabel.has(label)) byLabel.set(label, new Map());
   const items = byLabel.get(label);
+  // SUP 03/2022 gives FL055–FL065 and FL065–FL095 of Nieuw Milligen TMA C2 and E their own class, LVNL has one volume FL055–FL095:
+  // split it at FL065 so the map shows E up to FL065 on weekdays and up to FL095 in the weekend (local pilot, 2026-10-29)
+  for (const e of [...source.entities.values]) {
+    const p = e.properties?.getValue();
+    if (!/NIEUW MILLIGEN TMA ?(C2|E)\b/.test(`${p?.Name}`.toUpperCase()) || p.LowerLimitUnit !== 'FL' || p.LowerLimit >= 65 || p.UpperLimit <= 65) continue;
+    e.properties = new Cesium.PropertyBag({ ...p, LowerLimit: 65 });
+    source.entities.add({ polygon: { hierarchy: e.polygon.hierarchy.getValue() }, properties: { ...p, UpperLimit: 65 } });
+  }
   for (const e of [...source.entities.values]) {
     const p = e.properties.getValue();
     // LVNL also publishes British danger areas over the North Sea (EGD...); not Dutch
