@@ -171,7 +171,7 @@
 import { fuaKey, designators, aboutAirspace, namedIn, frees, ownCircle, eHeight } from './notam-regels.js?v=28-10-2026c'; // ?v: a cached older copy would lack new exports and stop the whole page; change it with notam-regels.js
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '29-10-2026l';
+const CODE_VERSION = '29-10-2026m';
 const disclaimer = document.getElementById('disclaimer'), codeDate = CODE_VERSION;
 let showHelp = () => {}; // set once the viewer exists
 let accepted = (() => { try { return localStorage.getItem('vfr3d-disclaimer') === codeDate; } catch {} })();
@@ -822,6 +822,7 @@ function refresh() {
     const c = Cesium.Color.fromCssColorString(CLASS_COLOURS[cls]);
     Object.assign(e, { cls, name: e.name.replace(/^\[.\]/, `[${cls}]`) });
     e.polygon.material = c.withAlpha(0.25);
+    for (const r of e.rings ?? []) r.polyline.material = c.withAlpha(0.25);
     // on a class change, follow the class buttons: on when the other airspace of the new class is on
     // except at page load, where a saved choice wins
     if (i === 0 && cls !== a.cls && (a.loaded || saved[a.key] === undefined)) a.on = airspaces.some(b => !b.rule && b.cls === cls && b.on);
@@ -878,7 +879,9 @@ const off = tool('Uitzetten', 'Zet dit luchtruim uit'), offToday = Object.assign
 const tools = Object.assign(document.createElement('div'), { style: 'position: absolute; top: 4px; left: 6px; z-index: 1; display: flex; gap: 4px' });
 tools.append(off, offToday);
 viewer.infoBox.container.querySelector('.cesium-infoBox').append(tools);
-viewer.selectedEntityChanged.addEventListener(e => { off.hidden = !itemOf.has(e); offToday.hidden = !itemOf.get(e)?.today || itemOf.get(e).soort === 'FUA'; });
+viewer.selectedEntityChanged.addEventListener(e => {
+  if (e?.parent?.polygon) return viewer.selectedEntity = e.parent; // a click on an edge line selects its volume
+  off.hidden = !itemOf.has(e); offToday.hidden = !itemOf.get(e)?.today || itemOf.get(e).soort === 'FUA'; });
 off.onclick = () => { setOn([itemOf.get(viewer.selectedEntity)], false); viewer.selectedEntity = undefined; };
 offToday.onclick = () => { dayOff.keys.push(itemOf.get(viewer.selectedEntity).key); saveDayOff(); off.onclick(); };
 whenDrawn().then(() => busy());
@@ -940,11 +943,19 @@ const scale = document.getElementById('scale');
 const setHeight = (polygon, key, value) => polygon[key]?.getValue() !== value && (polygon[key] = value);
 function updateHeights() {
   document.getElementById('scaleOut').value = scale.value;
-  for (const source of [...sources, ...flightDay].filter(Boolean)) for (const e of source.entities.values) {
-    const p = e.limits;
-    setHeight(e.polygon, 'height', metres(p.LowerLimit, p.LowerLimitUnit, p.LowerLimitReference) * scale.value);
+  for (const source of [...sources, ...flightDay].filter(Boolean)) for (const e of [...source.entities.values]) {
+    if (!e.polygon) continue;
+    const p = e.limits, lo = metres(p.LowerLimit, p.LowerLimitUnit, p.LowerLimitReference) * scale.value;
     // cut off at the FL filter, so areas reaching above it only show their lower part
-    setHeight(e.polygon, 'extrudedHeight', Math.min(metres(p.UpperLimit, p.UpperLimitUnit, p.UpperLimitReference), metres(maxFl.value, 'FL')) * scale.value);
+    const hi = Math.min(metres(p.UpperLimit, p.UpperLimitUnit, p.UpperLimitReference), metres(maxFl.value, 'FL')) * scale.value;
+    const moved = e.polygon.height?.getValue() !== lo || e.polygon.extrudedHeight?.getValue() !== hi;
+    setHeight(e.polygon, 'height', lo);
+    setHeight(e.polygon, 'extrudedHeight', hi);
+    if (!moved && e.rings) continue;
+    // only the bottom and top edges as lines, 75% see-through (Frank 2026-10-29); they show and hide with their volume
+    e.rings ??= [0, 1].map(() => source.entities.add({ parent: e, polyline: { width: 1, arcType: Cesium.ArcType.NONE, material: e.polygon.material.color.getValue() } }));
+    const ground = e.polygon.hierarchy.getValue().positions.map(c => Cesium.Cartographic.fromCartesian(c));
+    [lo, hi].forEach((h, i) => e.rings[i].polyline.positions = [...ground, ground[0]].map(g => Cesium.Cartesian3.fromRadians(g.longitude, g.latitude, h)));
   }
   if (fixes.length) showTrack();
   refresh(); // the FL filter depends on the QNH
