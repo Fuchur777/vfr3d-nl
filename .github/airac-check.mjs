@@ -48,6 +48,7 @@ ${failed ? `LVNL niet bereikbaar (${failed}); lierlocaties handmatig in ENR 5.5 
 - [ ] ENR 5.5: hoogtes en lierlocaties op vliegvelden (bij wijzigingen ENR 5.5 in de vfr3d-chat plakken)
 - [ ] Lijst met geldige AIP SUP's: is SUP 03/2022 (tijdafhankelijke klasse TMA's) nog geldig en ongewijzigd?
 - [ ] Nieuwe ICAO-kaart 1:500.000 verschenen? (icao-nl.jpg)
+- [ ] TFZ's: nieuwe versie van Bijlage 4 bij https://wetten.overheid.nl/BWBR0009899 (in de app: versie van 23-09-2026)?
 - [ ] Regeling luchtverkeersdienstverlening, bijlage 4 (TFZ's): nieuwe versie op https://wetten.overheid.nl/BWBR0009899/ ? (tfz.geojson is van de versie van 23-09-2026; bij wijzigingen de zip in de vfr3d-chat zetten)
 
 Niets veranderd? Sluit dit issue.`);
