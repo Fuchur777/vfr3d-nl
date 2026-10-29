@@ -157,7 +157,7 @@
 <strong>Let op: alleen voor educatieve doeleinden. Niet geschikt voor vluchtvoorbereiding!</strong>
 <p class="credits">Luchtruim © LVNL (CC BY 4.0). Activeringen (FUA) © EUROCONTROL. Vormen België/Luxemburg en Duitsland © openAIP (CC BY-NC 4.0). De AIP Netherlands van LVNL is leidend.</p>
 <b>Laatste update</b>
-<dl id="updates"><dt data-for="luchtruim">Luchtruim LVNL</dt><dd data-for="luchtruim" id="vAirspace">…</dd><dt data-for="luchtruim">Sporting Areas</dt><dd data-for="luchtruim" id="vSport">ENR 5.5, AIRAC AMDT 10-2026 (1-10-2026)</dd><dt data-for="vandaag">NOTAMs</dt><dd data-for="vandaag" id="vNotams">…</dd><dt data-for="vandaag">FUA</dt><dd data-for="vandaag" id="vFua">…</dd><dt>Code</dt><dd id="vCode"></dd></dl>
+<dl id="updates"><dt data-for="luchtruim">Luchtruim LVNL</dt><dd data-for="luchtruim" id="vAirspace">…</dd><dt data-for="luchtruim">Sporting Areas</dt><dd data-for="luchtruim" id="vSport">…</dd><dt data-for="vandaag">NOTAMs</dt><dd data-for="vandaag" id="vNotams">…</dd><dt data-for="vandaag">FUA</dt><dd data-for="vandaag" id="vFua">…</dd><dt>Code</dt><dd id="vCode"></dd></dl>
 <p class="legend"><span style="color: #69db7c">groen</span> zeker actueel · <span style="color: #ffc24b">oranje</span> nog niet gecontroleerd · <span style="color: #ff8787">rood</span> verouderd</p>
 <div class="buttons"><button type="button" id="decline">Weigeren</button><button type="button" id="accept">Accepteren</button></div>
 </dialog>
@@ -168,7 +168,7 @@
 import { fuaKey, designators, aboutAirspace, namedIn, frees, ownCircle, eHeight } from './notam-regels.js?v=28-10-2026c'; // ?v: a cached older copy would lack new exports and stop the whole page; change it with notam-regels.js
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '28-10-2026f';
+const CODE_VERSION = '29-10-2026';
 const disclaimer = document.getElementById('disclaimer'), codeDate = CODE_VERSION;
 let showHelp = () => {}; // set once the viewer exists
 let accepted = (() => { try { return localStorage.getItem('vfr3d-disclaimer') === codeDate; } catch {} })();
@@ -497,8 +497,13 @@ fetch('data/lvnl/meta.json').then(r => r.json()).catch(() => ({})).then(m => {
   document.getElementById('vAirspace').textContent = m.lastEditDate ? nlDate(m.lastEditDate) : 'datum onbekend';
   mark('vAirspace', m.actueel);
 });
-// ENR 5.5 of AIRAC AMDT 10-2026; from the next AIRAC date (29-10-2026) it has to be checked again (AIRAC-check issue)
-mark('vSport', { kleur: Date.now() < Date.UTC(2026, 9, 29) ? 'groen' : 'oranje', reden: 'Geldig tot de volgende AIRAC-datum, daarna nakijken' });
+// winch sites (ENR 5.5) are green until the next AIRAC, which the AIRAC-check Action writes once the AIRAC issue is closed
+fetch('data/airac.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => ({})).then(a => {
+  const checked = a.nagekeken && nlDate(a.nagekeken);
+  if (checked) document.getElementById('vSport').textContent = `ENR 5.5, nagekeken voor AIRAC ${checked}`;
+  mark('vSport', Date.now() < Date.parse(a.geldigTot) ? { kleur: 'groen', reden: `Nagekeken voor AIRAC ${checked}, geldig tot ${when(Date.parse(a.geldigTot))}` }
+    : { kleur: 'oranje', reden: 'Nieuwe AIRAC nog niet nagekeken (AIRAC-issue op GitHub)' });
+});
 document.getElementById('vCode').textContent = CODE_VERSION;
 // feedback address is put together in the browser, so it is not in the HTML for robots that only read the page
 const contact = document.getElementById('contact'), mail = ['frank', 'schellenberg.nl'].join('@');
