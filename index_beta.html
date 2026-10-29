@@ -168,7 +168,7 @@
 import { fuaKey, designators, aboutAirspace, namedIn, frees, ownCircle, eHeight } from './notam-regels.js?v=28-10-2026c'; // ?v: a cached older copy would lack new exports and stop the whole page; change it with notam-regels.js
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '29-10-2026c';
+const CODE_VERSION = '29-10-2026d';
 const disclaimer = document.getElementById('disclaimer'), codeDate = CODE_VERSION;
 let showHelp = () => {}; // set once the viewer exists
 let accepted = (() => { try { return localStorage.getItem('vfr3d-disclaimer') === codeDate; } catch {} })();
@@ -810,7 +810,8 @@ function refresh() {
   // airspace that changes class during the day (AIP SUP 03/2022): class, colour, badge and infobox for moment t
   for (const a of airspaces) if (a.rule) for (const [i, e] of a.entities.entries()) {
     const [cls, text] = a.rule(simDay(t), e.limits);
-    e.description = e.baseDescription.replace('</table>', supRows(simDay(t), text) + '</table>');
+    // the Class row shows the SUP class at this moment, not LVNL's fixed class (Frank 2026-10-29)
+    e.description = e.baseDescription.replace(/(<th>Class<\/th><td>)[^<]*/, `$1${cls}`).replace('</table>', supRows(simDay(t), text) + '</table>');
     if (e.cls === cls) continue;
     const c = Cesium.Color.fromCssColorString(CLASS_COLOURS[cls]);
     Object.assign(e, { cls, name: e.name.replace(/^\[.\]/, `[${cls}]`) });
