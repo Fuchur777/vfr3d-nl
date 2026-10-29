@@ -168,7 +168,7 @@
 import { fuaKey, designators, aboutAirspace, namedIn, frees, ownCircle, eHeight } from './notam-regels.js?v=28-10-2026c'; // ?v: a cached older copy would lack new exports and stop the whole page; change it with notam-regels.js
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '29-10-2026d';
+const CODE_VERSION = '29-10-2026e';
 const disclaimer = document.getElementById('disclaimer'), codeDate = CODE_VERSION;
 let showHelp = () => {}; // set once the viewer exists
 let accepted = (() => { try { return localStorage.getItem('vfr3d-disclaimer') === codeDate; } catch {} })();
@@ -663,8 +663,9 @@ LAYERS.forEach(([, label, colour, show], i) => {
   for (const e of [...source.entities.values]) {
     const p = e.properties?.getValue();
     if (!/NIEUW MILLIGEN TMA ?(C2|E)\b/.test(`${p?.Name}`.toUpperCase()) || p.LowerLimitUnit !== 'FL' || p.LowerLimit >= 65 || p.UpperLimit <= 65) continue;
-    e.properties = new Cesium.PropertyBag({ ...p, LowerLimit: 65 });
-    source.entities.add({ polygon: { hierarchy: e.polygon.hierarchy.getValue() }, properties: { ...p, UpperLimit: 65 } });
+    // each part is its own item, so it follows the class buttons on its own (Frank 2026-10-29)
+    e.properties = new Cesium.PropertyBag({ ...p, LowerLimit: 65, Name: `${p.Name} FL065-FL095` });
+    source.entities.add({ polygon: { hierarchy: e.polygon.hierarchy.getValue() }, properties: { ...p, UpperLimit: 65, Name: `${p.Name} FL055-FL065` } });
   }
   for (const e of [...source.entities.values]) {
     const p = e.properties.getValue();
