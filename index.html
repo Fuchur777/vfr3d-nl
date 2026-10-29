@@ -170,7 +170,7 @@
 import { fuaKey, designators, aboutAirspace, namedIn, frees, ownCircle, eHeight } from './notam-regels.js?v=28-10-2026c'; // ?v: a cached older copy would lack new exports and stop the whole page; change it with notam-regels.js
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '29-10-2026h';
+const CODE_VERSION = '29-10-2026j';
 const disclaimer = document.getElementById('disclaimer'), codeDate = CODE_VERSION;
 let showHelp = () => {}; // set once the viewer exists
 let accepted = (() => { try { return localStorage.getItem('vfr3d-disclaimer') === codeDate; } catch {} })();
@@ -695,8 +695,9 @@ LAYERS.forEach(([, label, colour, show], i) => {
     // a MultiPolygon becomes several entities; list it once
     e.baseDescription = e.description.getValue();
     if (!items.has(key)) items.set(key, { key, cls, show, name: e.name, colour: CLASS_COLOURS[cls] ?? own, entities: [],
-      // SUP 03/2022 covers up to FL095; volumes from FL095 up (e.g. EHMCC2B, class B) keep their LVNL class
-      rule: !(p.LowerLimitUnit === 'FL' && p.LowerLimit >= 95) && SUP.find(([re]) => re.test(`${p.Designator} ${p.Name}`.toUpperCase()))?.[1] });
+      // SUP 03/2022 covers FL055–FL095 in Nieuw Milligen (Lelystad from 1500 ft): volumes from FL095 up (e.g. EHMCC2B, class B)
+      // and Nieuw Milligen's lower parts up to FL055 (EHMCBE, EHMCC2E, EHMCEE, always class E) keep their LVNL class (local pilot 2026-10-29)
+      rule: !(p.LowerLimitUnit === 'FL' && p.LowerLimit >= 95) && !(p.UpperLimitUnit === 'FL' && p.UpperLimit <= 55) && SUP.find(([re]) => re.test(`${p.Designator} ${p.Name}`.toUpperCase()))?.[1] });
     items.get(key).entities.push(e);
   }
 });
