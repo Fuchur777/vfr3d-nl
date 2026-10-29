@@ -29,6 +29,8 @@
   #layers input[type=range] { width: 100%; }
   #layers select, #layers input[type=search], #layers input[type=number], #layers button:not(#tabs button):not(#classes button) { background: #111820; color: #d8e0e6; border: 1px solid #34414d; border-radius: 5px; padding: 4px 8px; font: inherit; }
   #classes { display: flex; gap: 4px; flex-wrap: wrap; }
+  #layers button:not(#tabs button):not(#classes button):enabled:hover { border-color: #ffc24b; cursor: pointer; }
+  #layers button:not(#tabs button):not(#classes button):enabled:active { border-color: #ffc24b; background: #ffc24b33; }
   .sel { display: flex; gap: 4px; } .sel button { width: 28px; height: 24px; padding: 0; font-size: 14px; display: inline-grid; place-items: center; }
   #classes button { width: 24px; height: 22px; padding: 0; color: #fff; border: 0; border-radius: 4px; font-weight: bold; cursor: pointer; }
   .badge { display: inline-block; width: 14px; margin-right: 4px; color: #fff; border-radius: 3px; text-align: center; font-size: 11px; font-weight: bold; }
@@ -170,7 +172,7 @@
 import { fuaKey, designators, aboutAirspace, namedIn, frees, ownCircle, eHeight } from './notam-regels.js?v=28-10-2026c'; // ?v: a cached older copy would lack new exports and stop the whole page; change it with notam-regels.js
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '29-10-2026k';
+const CODE_VERSION = '29-10-2026m';
 const disclaimer = document.getElementById('disclaimer'), codeDate = CODE_VERSION;
 let showHelp = () => {}; // set once the viewer exists
 let accepted = (() => { try { return localStorage.getItem('vfr3d-disclaimer') === codeDate; } catch {} })();
@@ -652,7 +654,7 @@ const supRows = (t, text) => `<tr><th>Klasse (AIP SUP 03/2022)</th><td style="wh
 // infobox: only the fields a pilot needs, in this order
 // a limit with its unit and reference on one line (Frank 2026-10-17): "FL 95", "1500 FT MSL", "SFC"
 const limit = (v, unit, ref) => ref === 'SFC' || ref === 'GND' && !v ? ref : unit === 'FL' ? `FL ${v}` : [v, unit, ref].filter(x => x != null && x !== '').join(' ');
-const describe = p => '<table class="cesium-infoBox-defaultTable">' + ['UpperLimit', 'LowerLimit', 'Type', 'Class', 'Designator', 'Actief', 'Van', 'Tot', 'Schema', 'Tekst']
+const describe = p => '<table class="cesium-infoBox-defaultTable">' + ['UpperLimit', 'LowerLimit', 'Type', 'Class', 'Designator', 'Name', 'Actief', 'Van', 'Tot', 'Schema', 'Tekst']
   .filter(k => p[k] != null && p[k] !== '').map(k => `<tr><th>${k}</th><td${k === 'Tekst' || k === 'Actief' ? ' style="white-space: pre-wrap; word-break: break-word"' : ''}>${String(k === 'Van' || k === 'Tot' ? when(p[k])
     : k === 'UpperLimit' ? limit(p.UpperLimit, p.UpperLimitUnit, p.UpperLimitReference) : k === 'LowerLimit' ? limit(p.LowerLimit, p.LowerLimitUnit, p.LowerLimitReference) : p[k]).replace(/&/g, '&amp;').replace(/</g, '&lt;')}</td></tr>`).join('') + '</table>';
 const byLabel = new Map();
@@ -691,9 +693,7 @@ LAYERS.forEach(([, label, colour, show], i) => {
     e.limits = p;
     e.description = describe(p);
     e.polygon.material = color.withAlpha(0.25);
-    // also on volumes built here (FUA, extra NOTAM shapes), which lack the GeoJSON loader's outline
-    e.polygon.outline = true;
-    e.polygon.outlineColor = color.withAlpha(0.25); // same as the fill, so the vertical lines blend in (Frank 2026-10-29)
+    e.polygon.outline = false; // no edge lines: on phones they showed as dense vertical stripes (Frank 2026-10-29)
     // a MultiPolygon becomes several entities; list it once
     e.baseDescription = e.description.getValue();
     if (!items.has(key)) items.set(key, { key, cls, show, name: e.name, colour: CLASS_COLOURS[cls] ?? own, entities: [],
@@ -823,7 +823,7 @@ function refresh() {
     const c = Cesium.Color.fromCssColorString(CLASS_COLOURS[cls]);
     Object.assign(e, { cls, name: e.name.replace(/^\[.\]/, `[${cls}]`) });
     e.polygon.material = c.withAlpha(0.25);
-    e.polygon.outlineColor = c.withAlpha(0.25);
+    for (const r of e.rings ?? []) r.polyline.material = c.withAlpha(0.25);
     // on a class change, follow the class buttons: on when the other airspace of the new class is on
     // except at page load, where a saved choice wins
     if (i === 0 && cls !== a.cls && (a.loaded || saved[a.key] === undefined)) a.on = airspaces.some(b => !b.rule && b.cls === cls && b.on);
@@ -880,7 +880,9 @@ const off = tool('Uitzetten', 'Zet dit luchtruim uit'), offToday = Object.assign
 const tools = Object.assign(document.createElement('div'), { style: 'position: absolute; top: 4px; left: 6px; z-index: 1; display: flex; gap: 4px' });
 tools.append(off, offToday);
 viewer.infoBox.container.querySelector('.cesium-infoBox').append(tools);
-viewer.selectedEntityChanged.addEventListener(e => { off.hidden = !itemOf.has(e); offToday.hidden = !itemOf.get(e)?.today || itemOf.get(e).soort === 'FUA'; });
+viewer.selectedEntityChanged.addEventListener(e => {
+  if (e?.parent?.polygon) return viewer.selectedEntity = e.parent; // a click on an edge line selects its volume
+  off.hidden = !itemOf.has(e); offToday.hidden = !itemOf.get(e)?.today || itemOf.get(e).soort === 'FUA'; });
 off.onclick = () => { setOn([itemOf.get(viewer.selectedEntity)], false); viewer.selectedEntity = undefined; };
 offToday.onclick = () => { dayOff.keys.push(itemOf.get(viewer.selectedEntity).key); saveDayOff(); off.onclick(); };
 whenDrawn().then(() => busy());
@@ -942,11 +944,19 @@ const scale = document.getElementById('scale');
 const setHeight = (polygon, key, value) => polygon[key]?.getValue() !== value && (polygon[key] = value);
 function updateHeights() {
   document.getElementById('scaleOut').value = scale.value;
-  for (const source of [...sources, ...flightDay].filter(Boolean)) for (const e of source.entities.values) {
-    const p = e.limits;
-    setHeight(e.polygon, 'height', metres(p.LowerLimit, p.LowerLimitUnit, p.LowerLimitReference) * scale.value);
+  for (const source of [...sources, ...flightDay].filter(Boolean)) for (const e of [...source.entities.values]) {
+    if (!e.polygon) continue;
+    const p = e.limits, lo = metres(p.LowerLimit, p.LowerLimitUnit, p.LowerLimitReference) * scale.value;
     // cut off at the FL filter, so areas reaching above it only show their lower part
-    setHeight(e.polygon, 'extrudedHeight', Math.min(metres(p.UpperLimit, p.UpperLimitUnit, p.UpperLimitReference), metres(maxFl.value, 'FL')) * scale.value);
+    const hi = Math.min(metres(p.UpperLimit, p.UpperLimitUnit, p.UpperLimitReference), metres(maxFl.value, 'FL')) * scale.value;
+    const moved = e.polygon.height?.getValue() !== lo || e.polygon.extrudedHeight?.getValue() !== hi;
+    setHeight(e.polygon, 'height', lo);
+    setHeight(e.polygon, 'extrudedHeight', hi);
+    if (!moved && e.rings) continue;
+    // only the bottom and top edges as lines, 75% see-through (Frank 2026-10-29); they show and hide with their volume
+    e.rings ??= [0, 1].map(() => source.entities.add({ parent: e, polyline: { width: 1, arcType: Cesium.ArcType.NONE, material: e.polygon.material.color.getValue() } }));
+    const ground = e.polygon.hierarchy.getValue().positions.map(c => Cesium.Cartographic.fromCartesian(c));
+    [lo, hi].forEach((h, i) => e.rings[i].polyline.positions = [...ground, ground[0]].map(g => Cesium.Cartesian3.fromRadians(g.longitude, g.latitude, h)));
   }
   if (fixes.length) showTrack();
   refresh(); // the FL filter depends on the QNH
@@ -1110,8 +1120,7 @@ async function loadFlight(target) {
       e.name = [p.Designator, p.Name].filter(Boolean).join(' ');
       e.description = describe(p);
       e.polygon.material = color.withAlpha(0.25);
-      e.polygon.outline = true;
-      e.polygon.outlineColor = color.withAlpha(0.25); // same as the fill, so the vertical lines blend in (Frank 2026-10-29)
+      e.polygon.outline = false;
     }
   });
   const count = ds => new Set(ds?.entities.values.map(e => e.name)).size;
