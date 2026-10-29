@@ -28,6 +28,7 @@
   #layers input[type=range] { width: 100%; }
   #layers select, #layers input[type=search], #layers input[type=number], #layers button:not(#tabs button):not(#classes button) { background: #111820; color: #d8e0e6; border: 1px solid #34414d; border-radius: 5px; padding: 4px 8px; font: inherit; }
   #classes { display: flex; gap: 4px; flex-wrap: wrap; }
+  .sel { display: flex; gap: 4px; } .sel button { width: 28px; height: 24px; padding: 0; font-size: 14px; }
   #classes button { width: 24px; height: 22px; padding: 0; color: #fff; border: 0; border-radius: 4px; font-weight: bold; cursor: pointer; }
   .badge { display: inline-block; width: 14px; margin-right: 4px; color: #fff; border-radius: 3px; text-align: center; font-size: 11px; font-weight: bold; }
   #note { flex: none; padding: 10px 14px 12px; border-top: 1px solid #2f3b46; color: #7d8c99; font-size: 11px; line-height: 1.45; }
@@ -123,8 +124,8 @@
 <form id="layers">
 <div id="tabs" role="tablist"><button type="button" role="tab" data-tab="kaart">Kaart</button><button type="button" role="tab" data-tab="luchtruim">Luchtruim</button><button type="button" role="tab" data-tab="vandaag">Vandaag</button><button type="button" role="tab" data-tab="vlucht">Vlucht</button></div>
 <section id="kaart" role="tabpanel"><label>Onderlaag <select id="base"><option>Satelliet</option><option>Kaart</option><option selected>ICAO-kaart</option></select></label><div id="tileError" style="color: #ff8787"></div><h3>Hoogte</h3><label>Verticale schaal <output id="scaleOut">10</output>×<br><input id="scale" type="range" min="1" max="20" step="0.5" value="10"></label><label>Verberg luchtruim boven <select id="maxFl"><option value="10">FL 10</option><option value="15">FL 15</option><option value="20">FL 20</option><option value="25">FL 25</option><option value="30">FL 30</option><option value="35">FL 35</option><option value="40">FL 40</option><option value="45">FL 45</option><option value="50">FL 50</option><option value="55">FL 55</option><option value="60">FL 60</option><option value="65">FL 65</option><option value="70">FL 70</option><option value="75">FL 75</option><option value="80">FL 80</option><option value="85">FL 85</option><option value="90">FL 90</option><option value="95" selected>FL 95</option><option value="100">FL 100</option><option value="105">FL 105</option><option value="110">FL 110</option><option value="115">FL 115</option><option value="120">FL 120</option><option value="125">FL 125</option><option value="130">FL 130</option><option value="135">FL 135</option><option value="140">FL 140</option><option value="145">FL 145</option><option value="150">FL 150</option></select></label><p class="credits">Luchtruim © LVNL (CC BY 4.0). Activeringen (FUA) © EUROCONTROL. Vormen België/Luxemburg en Duitsland © openAIP (CC BY-NC 4.0). De AIP Netherlands van LVNL is leidend.</p><p><a href="luchtruim.html">Luchtruim in Nederland uitgelegd</a></p><button type="button" id="showDisclaimer" style="width: 100%">Disclaimer en updates</button></section>
-<section id="luchtruim" role="tabpanel"><label><input id="all" type="checkbox"> <b>Alle luchtruimen</b></label><div id="classes"></div><div style="display:flex;gap:6px;flex-wrap:wrap"><button type="button" id="expand">Alles uitklappen</button><button type="button" id="collapse">Alles inklappen</button></div><input id="search" type="search" placeholder="Zoek luchtruim op naam" style="width:100%;box-sizing:border-box"><div id="tree"></div><button type="button" id="lxnavAirspace" title="SeeYou CUB-bestand met het aangevinkte luchtruim, voor LXNAV en SeeYou" style="width: 100%; margin-top: 8px">Download als .cub</button></section>
-<section id="vandaag" role="tabpanel"><div class="hint">FUA-activaties en NOTAMs van vandaag 00:00 tot 06:00 LT morgen. NOTAMs worden om 06:00, 18:00 en 22:00 LT opgehaald. Klik op een naam om erheen te vliegen.</div><div id="fout" style="color: #ff8787; white-space: pre-line"></div><label>Verberg NOTAMs onder <select id="notamFl"><option value="">uit</option><option value="10">FL 10</option><option value="15">FL 15</option><option value="20">FL 20</option><option value="25">FL 25</option><option value="30">FL 30</option><option value="35">FL 35</option><option value="40">FL 40</option><option value="45">FL 45</option><option value="50">FL 50</option><option value="55">FL 55</option><option value="60">FL 60</option><option value="65">FL 65</option><option value="70">FL 70</option><option value="75">FL 75</option><option value="80">FL 80</option><option value="85">FL 85</option><option value="90">FL 90</option><option value="95">FL 95</option><option value="100">FL 100</option><option value="105">FL 105</option><option value="110">FL 110</option><option value="115">FL 115</option><option value="120">FL 120</option><option value="125">FL 125</option><option value="130">FL 130</option><option value="135">FL 135</option><option value="140">FL 140</option><option value="145">FL 145</option><option value="150">FL 150</option></select></label><label title="Is een gebied vandaag zowel FUA als NOTAM: de kaart toont de FUA zolang die actief is, anders de NOTAM; de download bevat dan alleen de NOTAM, met de tijden in de omschrijving"><input type="checkbox" class="toggle" id="dedup" checked> Ontdubbel FUA/NOTAM</label><label id="greenRow" style="display: none" title="Alle NOTAMs die luchtruim vrijgeven (groen) tegelijk aan of uit"><input type="checkbox" class="toggle" id="green"> Vrijgegeven luchtruim tonen</label><div id="today"></div><button type="button" id="lxnav" title="SeeYou CUB-bestand met de aangevinkte FUA en NOTAMs, voor LXNAV en SeeYou">Download als .cub</button></section>
+<section id="luchtruim" role="tabpanel"><div style="display:flex;justify-content:space-between;align-items:center"><label><input id="all" type="checkbox"> <b>Alle luchtruimen</b></label><span class="sel" id="selLuchtruim"></span></div><div id="classes"></div><div style="display:flex;gap:6px;flex-wrap:wrap"><button type="button" id="expand">Alles uitklappen</button></div><input id="search" type="search" placeholder="Zoek luchtruim op naam" style="width:100%;box-sizing:border-box"><div id="tree"></div><button type="button" id="lxnavAirspace" title="SeeYou CUB-bestand met het aangevinkte luchtruim, voor LXNAV en SeeYou" style="width: 100%; margin-top: 8px">Download als .cub</button></section>
+<section id="vandaag" role="tabpanel"><div class="hint">FUA-activaties en NOTAMs van vandaag 00:00 tot 06:00 LT morgen. NOTAMs worden om 06:00, 18:00 en 22:00 LT opgehaald. Klik op een naam om erheen te vliegen.</div><div id="fout" style="color: #ff8787; white-space: pre-line"></div><div class="sel" id="selVandaag" style="justify-content: flex-end"></div><label>Verberg NOTAMs onder <select id="notamFl"><option value="">uit</option><option value="10">FL 10</option><option value="15">FL 15</option><option value="20">FL 20</option><option value="25">FL 25</option><option value="30">FL 30</option><option value="35">FL 35</option><option value="40">FL 40</option><option value="45">FL 45</option><option value="50">FL 50</option><option value="55">FL 55</option><option value="60">FL 60</option><option value="65">FL 65</option><option value="70">FL 70</option><option value="75">FL 75</option><option value="80">FL 80</option><option value="85">FL 85</option><option value="90">FL 90</option><option value="95">FL 95</option><option value="100">FL 100</option><option value="105">FL 105</option><option value="110">FL 110</option><option value="115">FL 115</option><option value="120">FL 120</option><option value="125">FL 125</option><option value="130">FL 130</option><option value="135">FL 135</option><option value="140">FL 140</option><option value="145">FL 145</option><option value="150">FL 150</option></select></label><label title="Is een gebied vandaag zowel FUA als NOTAM: de kaart toont de FUA zolang die actief is, anders de NOTAM; de download bevat dan alleen de NOTAM, met de tijden in de omschrijving"><input type="checkbox" class="toggle" id="dedup" checked> Ontdubbel FUA/NOTAM</label><label id="greenRow" style="display: none" title="Alle NOTAMs die luchtruim vrijgeven (groen) tegelijk aan of uit"><input type="checkbox" class="toggle" id="green"> Vrijgegeven luchtruim tonen</label><div id="today"></div><button type="button" id="lxnav" title="SeeYou CUB-bestand met de aangevinkte FUA en NOTAMs, voor LXNAV en SeeYou">Download als .cub</button></section>
 <section id="vlucht" role="tabpanel">
 <label id="drop"><input id="igc" type="file" accept=".igc,.gpx,.kml,.kmz">
   <span class="pick">✈ Kies een vluchtbestand</span>
@@ -168,7 +169,7 @@
 import { fuaKey, designators, aboutAirspace, namedIn, frees, ownCircle, eHeight } from './notam-regels.js?v=28-10-2026c'; // ?v: a cached older copy would lack new exports and stop the whole page; change it with notam-regels.js
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '29-10-2026g';
+const CODE_VERSION = '29-10-2026h';
 const disclaimer = document.getElementById('disclaimer'), codeDate = CODE_VERSION;
 let showHelp = () => {}; // set once the viewer exists
 let accepted = (() => { try { return localStorage.getItem('vfr3d-disclaimer') === codeDate; } catch {} })();
@@ -721,7 +722,7 @@ byLabel.forEach((items, label) => {
   details.append(summary);
   for (const a of group.items) {
     a.box = box(() => setOn([a], a.box.checked));
-    a.on = saved[a.key] ?? (a.show || /^[A-D]$/.test(a.cls));
+    a.on = saved[a.key] ?? (a.show || /^[A-D]$/.test(a.cls)); // same rule as the Standaard button
     const row = document.createElement('label');
     row.append(a.box, a.badge = badge(a.cls, a.colour), a.name.replace(/^\[.\] /, ''));
     details.append(row);
@@ -879,9 +880,28 @@ viewer.selectedEntityChanged.addEventListener(e => { off.hidden = !itemOf.has(e)
 off.onclick = () => { setOn([itemOf.get(viewer.selectedEntity)], false); viewer.selectedEntity = undefined; };
 offToday.onclick = () => { dayOff.keys.push(itemOf.get(viewer.selectedEntity).key); saveDayOff(); off.onclick(); };
 whenDrawn().then(() => busy());
-const openAll = open => document.querySelectorAll('#tree details').forEach(d => d.open = open);
-document.getElementById('expand').onclick = () => openAll(true);
-document.getElementById('collapse').onclick = () => openAll(false);
+// one button that opens all types, then closes them again (Frank 2026-10-29)
+const expand = document.getElementById('expand');
+expand.onclick = () => {
+  const open = expand.textContent === 'Alles uitklappen';
+  document.querySelectorAll('#tree details').forEach(d => d.open = open);
+  expand.textContent = open ? 'Alles inklappen' : 'Alles uitklappen';
+};
+// Standaard and Mijn selectie on Luchtruim and Vandaag (Frank 2026-10-29): back to the default choice, or to one saved in this browser
+const selButtons = (id, items, defaultOn, key) => {
+  const button = (textContent, title, onclick) => Object.assign(document.createElement('button'), { type: 'button', textContent, title, onclick });
+  const mine = () => { try { return JSON.parse(localStorage.getItem(key)); } catch { return null; } };
+  const set = on => { for (const a of items) a.on = on(a); refresh(); };
+  const restore = button('★', 'Mijn selectie terugzetten', () => { const m = mine() ?? {}; set(a => m[a.key] ?? defaultOn(a)); });
+  const save = button('💾', 'Huidige selectie bewaren als Mijn selectie', () => {
+    try { localStorage.setItem(key, JSON.stringify(Object.fromEntries(items.map(a => [a.key, a.on])))); } catch { return; }
+    restore.disabled = false; save.textContent = '✓'; setTimeout(() => save.textContent = '💾', 1500);
+  });
+  restore.disabled = !mine();
+  document.getElementById(id).append(button('↺', 'Terug naar de standaardselectie', () => set(defaultOn)), restore, save);
+};
+selButtons('selLuchtruim', airspaces, a => a.show || /^[A-D]$/.test(a.cls), 'vfr3d-mijn-selectie');
+selButtons('selVandaag', today, a => a.show && !NOTAMS_OFF.includes(a.soort), 'vfr3d-mijn-selectie-vandaag');
 // search hides non-matching airspaces and opens the types that contain a match
 const search = document.getElementById('search');
 document.getElementById('layers').onsubmit = e => e.preventDefault();
