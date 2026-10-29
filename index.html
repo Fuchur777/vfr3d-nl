@@ -169,7 +169,7 @@
 import { fuaKey, designators, aboutAirspace, namedIn, frees, ownCircle, eHeight } from './notam-regels.js?v=28-10-2026c'; // ?v: a cached older copy would lack new exports and stop the whole page; change it with notam-regels.js
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '29-10-2026b';
+const CODE_VERSION = '29-10-2026c';
 const disclaimer = document.getElementById('disclaimer'), codeDate = CODE_VERSION;
 let showHelp = () => {}; // set once the viewer exists
 let accepted = (() => { try { return localStorage.getItem('vfr3d-disclaimer') === codeDate; } catch {} })();
@@ -500,9 +500,12 @@ fetch('data/lvnl/meta.json').then(r => r.json()).catch(() => ({})).then(m => {
 });
 // winch sites (ENR 5.5) are green until the next AIRAC, which the AIRAC-check Action writes once the AIRAC issue is closed
 fetch('data/airac.json', { cache: 'no-cache' }).then(r => r.json()).catch(() => ({})).then(a => {
-  const checked = a.nagekeken && nlDate(a.nagekeken);
-  if (checked) document.getElementById('vSport').textContent = `ENR 5.5, nagekeken voor AIRAC ${checked}`;
-  mark('vSport', Date.now() < Date.parse(a.geldigTot) ? { kleur: 'groen', reden: `Nagekeken voor AIRAC ${checked}, geldig tot ${when(Date.parse(a.geldigTot))}` }
+  // Frank may check the next AIRAC before it starts (2026-10-29): show the AIRAC in force now, 28 days per cycle
+  let inForce = Date.parse(a.nagekeken);
+  while (inForce > Date.now()) inForce -= 28 * 864e5;
+  const checked = a.nagekeken && nlDate(a.nagekeken), current = a.nagekeken && nlDate(inForce);
+  if (checked) document.getElementById('vSport').textContent = `ENR 5.5, AIRAC ${current}`;
+  mark('vSport', Date.now() < Date.parse(a.geldigTot) ? { kleur: 'groen', reden: `Nagekeken tot en met AIRAC ${checked}, groen tot ${when(Date.parse(a.geldigTot))}` }
     : { kleur: 'oranje', reden: 'Nieuwe AIRAC nog niet nagekeken (AIRAC-issue op GitHub)' });
 });
 document.getElementById('vCode').textContent = CODE_VERSION;
