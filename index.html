@@ -169,7 +169,7 @@
 import { fuaKey, designators, aboutAirspace, namedIn, frees, ownCircle, eHeight } from './notam-regels.js?v=28-10-2026c'; // ?v: a cached older copy would lack new exports and stop the whole page; change it with notam-regels.js
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '29-10-2026e';
+const CODE_VERSION = '29-10-2026f';
 const disclaimer = document.getElementById('disclaimer'), codeDate = CODE_VERSION;
 let showHelp = () => {}; // set once the viewer exists
 let accepted = (() => { try { return localStorage.getItem('vfr3d-disclaimer') === codeDate; } catch {} })();
@@ -203,6 +203,7 @@ const LAYERS = [
   [11, 'Zweefvliegen', '#0ca678', false],
   ['lier-zweefvliegen.geojson', 'Zweefvliegen', '#0ca678', false], // winch sites from ENR 5.5, files next to index.html
   ['lier-paragliden.geojson', 'Paragliden', '#a9e34b', false],
+  ['tfz.geojson', 'TFZ', '#2f9e44', false], // Transponder Free Zones, Regeling luchtverkeersdienstverlening bijlage 4 (Frank 2026-10-29), off by default
   [17, 'Danger (D)', '#f783ac', true],
   [18, 'Restricted (R)', '#f3e5ab', true],
   [19, 'Prohibited (P)', '#1a1a1a', true],
