@@ -171,7 +171,7 @@
 import { fuaKey, designators, aboutAirspace, namedIn, frees, ownCircle, eHeight } from './notam-regels.js?v=28-10-2026c'; // ?v: a cached older copy would lack new exports and stop the whole page; change it with notam-regels.js
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '29-10-2026m';
+const CODE_VERSION = '29-10-2026n';
 const disclaimer = document.getElementById('disclaimer'), codeDate = CODE_VERSION;
 let showHelp = () => {}; // set once the viewer exists
 let accepted = (() => { try { return localStorage.getItem('vfr3d-disclaimer') === codeDate; } catch {} })();
@@ -691,7 +691,7 @@ LAYERS.forEach(([, label, colour, show], i) => {
     e.name = `${cls ? `[${cls}] ` : ''}${[p.Designator, p.Name].filter(Boolean).join(' ')}`;
     e.limits = p;
     e.description = describe(p);
-    e.polygon.material = color.withAlpha(0.25);
+    e.polygon.material = color.withAlpha(0.4); // 60% see-through (Frank 2026-10-29)
     e.polygon.outline = false; // no edge lines: on phones they showed as dense vertical stripes (Frank 2026-10-29)
     // a MultiPolygon becomes several entities; list it once
     e.baseDescription = e.description.getValue();
@@ -821,7 +821,7 @@ function refresh() {
     if (e.cls === cls) continue;
     const c = Cesium.Color.fromCssColorString(CLASS_COLOURS[cls]);
     Object.assign(e, { cls, name: e.name.replace(/^\[.\]/, `[${cls}]`) });
-    e.polygon.material = c.withAlpha(0.25);
+    e.polygon.material = c.withAlpha(0.4);
     for (const r of e.rings ?? []) r.polyline.material = c.withAlpha(0.25);
     // on a class change, follow the class buttons: on when the other airspace of the new class is on
     // except at page load, where a saved choice wins
@@ -953,7 +953,7 @@ function updateHeights() {
     setHeight(e.polygon, 'extrudedHeight', hi);
     if (!moved && e.rings) continue;
     // only the bottom and top edges as lines, 75% see-through (Frank 2026-10-29); they show and hide with their volume
-    e.rings ??= [0, 1].map(() => source.entities.add({ parent: e, polyline: { width: 1, arcType: Cesium.ArcType.NONE, material: e.polygon.material.color.getValue() } }));
+    e.rings ??= [0, 1].map(() => source.entities.add({ parent: e, polyline: { width: 1, arcType: Cesium.ArcType.NONE, material: e.polygon.material.color.getValue().withAlpha(0.25) } }));
     const ground = e.polygon.hierarchy.getValue().positions.map(c => Cesium.Cartographic.fromCartesian(c));
     [lo, hi].forEach((h, i) => e.rings[i].polyline.positions = [...ground, ground[0]].map(g => Cesium.Cartesian3.fromRadians(g.longitude, g.latitude, h)));
   }
@@ -1118,7 +1118,7 @@ async function loadFlight(target) {
       e.windows = p.Vensters ?? [[Date.parse(p.Van), p.Tot === 'PERM' ? Infinity : Date.parse(p.Tot)]];
       e.name = [p.Designator, p.Name].filter(Boolean).join(' ');
       e.description = describe(p);
-      e.polygon.material = color.withAlpha(0.25);
+      e.polygon.material = color.withAlpha(0.4);
       e.polygon.outline = false;
     }
   });
