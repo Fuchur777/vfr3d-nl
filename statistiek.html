@@ -17,6 +17,8 @@
   th, td { border: 1px solid #d5dbe1; padding: 6px 8px; text-align: left; }
   th { background: #e9edf1; }
   td + td { text-align: right; }
+  figure { margin: 24px 0 0; } figcaption { font-weight: 600; margin-bottom: 6px; }
+  svg { width: 100%; height: auto; font-size: 11px; } .bar { fill: #378ADD; } .as { fill: #66727d; }
   footer { padding: 16px; color: #66727d; font-size: 13px; }
 </style>
 </head>
@@ -24,6 +26,7 @@
 <header><div><h1>Bezoekersstatistiek</h1>Weergaven van <a href="/">vfr3d.nl</a> sinds de start, gemeten met GoatCounter (zonder cookies).</div></header>
 <main>
 <table><thead><tr><th>Pagina</th><th>Weergaven</th></tr></thead><tbody id="rijen"></tbody></table>
+<figure><figcaption>Weergaven per dag (UTC)</figcaption><svg id="grafiek" viewBox="0 0 760 220" role="img" aria-label="Weergaven per dag"></svg></figure>
 </main>
 <footer>Cijfers © <a href="https://fuchur777.goatcounter.com">GoatCounter</a> · <a href="/">vfr3d.nl</a></footer>
 <script>
@@ -37,6 +40,20 @@ for (const [naam, pad] of paginas) {
     .then(r => r.ok ? r.json() : { count: '0' })
     .then(d => n.textContent = d.count, () => n.textContent = '–');
 }
+
+// Views per day: the counter only takes a start date (hours >= start), so a day is the difference of two running totals
+const dagen = [];
+for (let t = Date.UTC(2026, 9, 15); t <= Date.now(); t += 864e5) dagen.push(new Date(t).toISOString().slice(0, 10));
+Promise.all(dagen.map(d => fetch('https://fuchur777.goatcounter.com/counter/TOTAL.json?start=' + d)
+  .then(r => r.ok ? r.json() : { count: '0' }).then(j => +j.count.replace(/\D/g, ''))))
+  .then(vanaf => {
+    const per = vanaf.map((v, i) => v - (vanaf[i + 1] ?? 0)), max = Math.max(1, ...per), w = 720 / per.length;
+    document.getElementById('grafiek').innerHTML = per.map((v, i) => {
+      const h = v / max * 170, x = 30 + i * w, [, m, d] = dagen[i].split('-');
+      return `<rect class="bar" x="${x + 1}" y="${190 - h}" width="${w - 2}" height="${h}"><title>${+d}-${+m}: ${v}</title></rect>`
+        + (i % Math.ceil(per.length / 8) === 0 ? `<text class="as" x="${x + w / 2}" y="205" text-anchor="middle">${+d}-${+m}</text>` : '');
+    }).join('') + `<text class="as" x="0" y="25">${max}</text><text class="as" x="0" y="190">0</text>`;
+  }, () => document.getElementById('grafiek').outerHTML = '<p>Grafiek niet beschikbaar.</p>');
 </script>
 </body>
 </html>
