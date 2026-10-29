@@ -32,9 +32,11 @@ for (const [id, site] of lvnl) {
     lines.push(`- Verschoven: **${id}** ${site.name}, ${Math.round(metres(site.at, ours.get(id).at))} m`);
   }
 }
-// aerodrome winches (EHxxGLD) are not in the LVNL service, so only EHAA sites can disappear
+// aerodrome winches (EHxxGLD) are not in the LVNL service, so only EHAA sites can disappear; these six are missing
+// from the service but still in ENR 5.5 (Frank 2026-10-29: Akkrum x3, Jirnsum, Kollumerzwaag, Beverwijk)
+const onlyInAip = new Set(['EHAAGLD001', 'EHAAGLD002', 'EHAAGLD003', 'EHAAGLD005', 'EHAAGLD006', 'EHAAGLD027']);
 for (const id of ours.keys()) {
-  if (!failed && id.startsWith('EHAA') && !lvnl.has(id)) lines.push(`- Niet meer bij LVNL: **${id}** (${ours.get(id).file})`);
+  if (!failed && id.startsWith('EHAA') && !lvnl.has(id) && !onlyInAip.has(id)) lines.push(`- Niet meer bij LVNL: **${id}** (${ours.get(id).file})`);
 }
 const since = Math.max(...[...lvnl.values()].map(s => s.since));
 console.log(`Nieuwe AIRAC-editie. ${failed ? 'LVNL-lierpunten niet gelezen.' : `LVNL-lierpunten bijgewerkt per ${Number.isFinite(since) ? new Date(since).toISOString().slice(0, 10) : 'datum onbekend (geen lierpunten ontvangen)'}.`}
