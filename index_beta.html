@@ -28,7 +28,7 @@
   #layers input[type=range] { width: 100%; }
   #layers select, #layers input[type=search], #layers input[type=number], #layers button:not(#tabs button):not(#classes button) { background: #111820; color: #d8e0e6; border: 1px solid #34414d; border-radius: 5px; padding: 4px 8px; font: inherit; }
   #classes { display: flex; gap: 4px; flex-wrap: wrap; }
-  .sel { display: flex; gap: 4px; } .sel button { width: 28px; height: 24px; padding: 0; font-size: 14px; }
+  .sel { display: flex; gap: 4px; } .sel button { width: 28px; height: 24px; padding: 0; font-size: 14px; display: inline-grid; place-items: center; }
   #classes button { width: 24px; height: 22px; padding: 0; color: #fff; border: 0; border-radius: 4px; font-weight: bold; cursor: pointer; }
   .badge { display: inline-block; width: 14px; margin-right: 4px; color: #fff; border-radius: 3px; text-align: center; font-size: 11px; font-weight: bold; }
   #note { flex: none; padding: 10px 14px 12px; border-top: 1px solid #2f3b46; color: #7d8c99; font-size: 11px; line-height: 1.45; }
@@ -887,21 +887,25 @@ for (const [id, list] of [['expand', '#tree'], ['expandToday', '#today']]) docum
   b.textContent = open ? 'Alles inklappen' : 'Alles uitklappen';
 };
 // Standaard and Mijn selectie on Luchtruim and Vandaag (Frank 2026-10-29): back to the default choice, or to one saved in this browser
+// duotone icons (Frank 2026-10-29): floppy disk to save, three linked dots to share
+const SAVE_ICON = '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path opacity=".35" d="M5 3h11l4 4v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a1 1 0 0 1 1-2z"/><path d="M7 3h8v5H7zM7 13h10v8H7z"/></svg>';
+const SHARE_ICON = '<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path opacity=".5" d="M18 5 6 12l12 7" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/></svg>';
 // a share link carries Mijn selectie as the differences from the default (?luchtruim=… or ?vandaag=…), base64 of the JSON
 const selButtons = (id, items, defaultOn, key, tab) => {
-  const button = (textContent, title, onclick) => Object.assign(document.createElement('button'), { type: 'button', textContent, title, onclick });
+  const button = (innerHTML, title, onclick) => Object.assign(document.createElement('button'), { type: 'button', innerHTML, title, onclick });
+  const flash = (b, icon) => { b.textContent = '✓'; setTimeout(() => b.innerHTML = icon, 1500); };
   const mine = () => { try { return JSON.parse(localStorage.getItem(key)); } catch { return null; } };
   const set = on => { for (const a of items) a.on = on(a); refresh(); };
   const restore = button('★', 'Mijn selectie terugzetten', () => { const m = mine() ?? {}; set(a => m[a.key] ?? defaultOn(a)); });
-  const save = button('💾', 'Huidige selectie bewaren als Mijn selectie', () => {
+  const save = button(SAVE_ICON, 'Huidige selectie bewaren als Mijn selectie', () => {
     try { localStorage.setItem(key, JSON.stringify(Object.fromEntries(items.map(a => [a.key, a.on])))); } catch { return; }
-    restore.disabled = false; save.textContent = '✓'; setTimeout(() => save.textContent = '💾', 1500);
+    restore.disabled = false; flash(save, SAVE_ICON);
   });
-  const share = button('🔗', 'Link naar je huidige selectie delen of kopiëren', async () => {
+  const share = button(SHARE_ICON, 'Link naar je huidige selectie delen of kopiëren', async () => {
     const diff = Object.fromEntries(items.filter(a => a.on !== defaultOn(a)).map(a => [a.key, a.on]));
     const url = `${location.origin}${location.pathname}?${tab}=${encodeURIComponent(btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(diff)))))}#${tab}`;
     try { await (navigator.share ? navigator.share({ title: 'VFR3D-selectie', url }) : navigator.clipboard.writeText(url)); } catch (e) { if (e.name !== 'AbortError') prompt('Kopieer deze link', url); return; }
-    share.textContent = '✓'; setTimeout(() => share.textContent = '🔗', 1500);
+    flash(share, SHARE_ICON);
   });
   // opened from a share link: becomes Mijn selectie and is shown at once
   const shared = new URLSearchParams(location.search).get(tab);
