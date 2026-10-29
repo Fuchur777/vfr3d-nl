@@ -17,7 +17,7 @@ jobs:
           node .github/notam-vorm.mjs > vorm.md
           open=$(gh issue list --state open --search 'in:title "NOTAMs om na te kijken"' --json number --jq '.[0].number')
           if [ -s vorm.md ] && [ -z "$open" ]; then
-            gh issue create --title "NOTAMs om na te kijken" --body-file vorm.md
+            gh issue create --title "NOTAMs om na te kijken" --body "$(cat vorm.md; printf '\n\ncc @%s' "$GITHUB_REPOSITORY_OWNER")"
           elif [ -s vorm.md ] && [ "$(gh issue view "$open" --json body --jq .body)" != "$(cat vorm.md)" ]; then
             gh issue edit "$open" --body-file vorm.md
             gh issue comment "$open" --body-file vorm.md

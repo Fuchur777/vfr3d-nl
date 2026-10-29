@@ -17,7 +17,7 @@ jobs:
           node .github/status-check.mjs > red.md
           open=$(gh issue list --state open --search 'in:title "Verouderde data"' --json number --jq '.[0].number')
           if [ -s red.md ] && [ -z "$open" ]; then
-            gh issue create --title "Verouderde data op vfr3d.nl" --body-file red.md
+            gh issue create --title "Verouderde data op vfr3d.nl" --body "$(cat red.md; printf '\n\ncc @%s' "$GITHUB_REPOSITORY_OWNER")"
           elif [ ! -s red.md ] && [ -n "$open" ]; then
             gh issue close "$open" --comment "Alles weer actueel."
           fi

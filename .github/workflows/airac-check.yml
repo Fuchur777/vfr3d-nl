@@ -26,7 +26,7 @@ jobs:
             for airac in $now $(( now + 28 )); do
               if [ "$(gh issue list --state all --search "in:title \"AIRAC $(day $airac)\"" --json number --jq length)" = 0 ]; then
                 node .github/airac-check.mjs > body.md
-                gh issue create --title "AIRAC $(day $airac): AIP nakijken" --body-file body.md
+                gh issue create --title "AIRAC $(day $airac): AIP nakijken" --body "$(cat body.md; printf '\n\ncc @%s' "$GITHUB_REPOSITORY_OWNER")"
               fi
             done
           fi
