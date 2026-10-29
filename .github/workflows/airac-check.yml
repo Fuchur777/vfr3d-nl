@@ -1,25 +1,45 @@
 name: AIRAC-check
-# Every 28 days (AIRAC cycle, counted from 2026-10-01) open an issue with what changed
+# The AIP changes per AIRAC (every 28 days, counted from 2026-10-01) and is published at least 28 days ahead, so there is
+# always an issue for the AIRAC in force and for the next one (Frank 2026-10-29: check before it takes effect).
+# Closing such an issue means "checked"; data/airac.json then says until when the Sporting Areas are current.
 on:
   schedule:
     - cron: '0 6 * * *'
   workflow_dispatch:
+  issues:
+    types: [closed, reopened]
 permissions:
-  contents: read
+  contents: write
   issues: write
+concurrency: airac
 jobs:
   check:
+    if: github.event_name != 'issues' || contains(github.event.issue.title, 'AIRAC')
     runs-on: ubuntu-latest
     steps:
-      - name: Is today an AIRAC date?
-        id: airac
-        run: |
-          echo "today=$(( ($(date -u +%s) / 86400 - $(date -u -d 2026-10-01 +%s) / 86400) % 28 == 0 ))" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v5
-        if: steps.airac.outputs.today == '1' || github.event_name == 'workflow_dispatch'
-      - if: steps.airac.outputs.today == '1' || github.event_name == 'workflow_dispatch'
-        run: |
-          node .github/airac-check.mjs > body.md
-          gh issue create --title "AIRAC $(date -u +%d-%m-%Y): AIP nakijken" --body-file body.md
+      - run: |
+          day() { date -u -d "@$(( $1 * 86400 ))" +%d-%m-%Y; }
+          base=$(( $(date -u -d 2026-10-01 +%s) / 86400 )) today=$(( $(date -u +%s) / 86400 ))
+          now=$(( base + (today - base) / 28 * 28 ))
+          if [ "$GITHUB_EVENT_NAME" != issues ]; then
+            for airac in $now $(( now + 28 )); do
+              if [ "$(gh issue list --state all --search "in:title \"AIRAC $(day $airac)\"" --json number --jq length)" = 0 ]; then
+                node .github/airac-check.mjs > body.md
+                gh issue create --title "AIRAC $(day $airac): AIP nakijken" --body-file body.md
+              fi
+            done
+          fi
+          # the newest AIRAC whose issue is closed; before the first issue, the app's data is ENR 5.5 of AIRAC 2026-10-01
+          checked=$(gh issue list --state closed --search 'in:title "AIP nakijken"' --limit 100 --json title \
+            --jq '[.[].title | capture("AIRAC (?<d>\\d\\d)-(?<m>\\d\\d)-(?<y>\\d{4})") | "\(.y)-\(.m)-\(.d)"] | max // empty')
+          checked=${checked:-2026-10-01}
+          jq -n --arg airac "$checked" --arg tot "$(date -u -d "$checked +28 days" +%Y-%m-%dT00:00:00Z)" \
+            '{nagekeken: $airac, geldigTot: $tot}' > data/airac.json
+          git add data/airac.json
+          git diff --cached --quiet && exit 0
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m "AIRAC $checked nagekeken"
+          git pull --rebase origin main
+          git push
         env:
           GH_TOKEN: ${{ github.token }}

@@ -1,4 +1,4 @@
-// On every AIRAC date: compare LVNL's open winch-site points (ArcGIS Aerodrome_data, layers 10 Glider
+// For every AIRAC issue (the AIRAC in force and the next one): compare LVNL's open winch-site points (ArcGIS Aerodrome_data, layers 10 Glider
 // and 11 Hangglider) with lier-*.geojson and print a Markdown checklist for a GitHub issue.
 // The eAIP itself blocks automated requests, so heights and SUPs stay a manual check.
 import { readFileSync } from 'node:fs';
