@@ -28,6 +28,8 @@
   #layers input[type=range] { width: 100%; }
   #layers select, #layers input[type=search], #layers input[type=number], #layers button:not(#tabs button):not(#classes button) { background: #111820; color: #d8e0e6; border: 1px solid #34414d; border-radius: 5px; padding: 4px 8px; font: inherit; }
   #classes { display: flex; gap: 4px; flex-wrap: wrap; }
+  #layers button:not(#tabs button):not(#classes button):enabled:hover { border-color: #ffc24b; cursor: pointer; }
+  #layers button:not(#tabs button):not(#classes button):enabled:active { border-color: #ffc24b; background: #ffc24b33; }
   .sel { display: flex; gap: 4px; } .sel button { width: 28px; height: 24px; padding: 0; font-size: 14px; display: inline-grid; place-items: center; }
   #classes button { width: 24px; height: 22px; padding: 0; color: #fff; border: 0; border-radius: 4px; font-weight: bold; cursor: pointer; }
   .badge { display: inline-block; width: 14px; margin-right: 4px; color: #fff; border-radius: 3px; text-align: center; font-size: 11px; font-weight: bold; }
@@ -169,7 +171,7 @@
 import { fuaKey, designators, aboutAirspace, namedIn, frees, ownCircle, eHeight } from './notam-regels.js?v=28-10-2026c'; // ?v: a cached older copy would lack new exports and stop the whole page; change it with notam-regels.js
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '29-10-2026h';
+const CODE_VERSION = '29-10-2026i';
 const disclaimer = document.getElementById('disclaimer'), codeDate = CODE_VERSION;
 let showHelp = () => {}; // set once the viewer exists
 let accepted = (() => { try { return localStorage.getItem('vfr3d-disclaimer') === codeDate; } catch {} })();
@@ -649,7 +651,7 @@ const supRows = (t, text) => `<tr><th>Klasse (AIP SUP 03/2022)</th><td style="wh
 // infobox: only the fields a pilot needs, in this order
 // a limit with its unit and reference on one line (Frank 2026-10-17): "FL 95", "1500 FT MSL", "SFC"
 const limit = (v, unit, ref) => ref === 'SFC' || ref === 'GND' && !v ? ref : unit === 'FL' ? `FL ${v}` : [v, unit, ref].filter(x => x != null && x !== '').join(' ');
-const describe = p => '<table class="cesium-infoBox-defaultTable">' + ['UpperLimit', 'LowerLimit', 'Type', 'Class', 'Designator', 'Actief', 'Van', 'Tot', 'Schema', 'Tekst']
+const describe = p => '<table class="cesium-infoBox-defaultTable">' + ['UpperLimit', 'LowerLimit', 'Type', 'Class', 'Designator', 'Name', 'Actief', 'Van', 'Tot', 'Schema', 'Tekst']
   .filter(k => p[k] != null && p[k] !== '').map(k => `<tr><th>${k}</th><td${k === 'Tekst' || k === 'Actief' ? ' style="white-space: pre-wrap; word-break: break-word"' : ''}>${String(k === 'Van' || k === 'Tot' ? when(p[k])
     : k === 'UpperLimit' ? limit(p.UpperLimit, p.UpperLimitUnit, p.UpperLimitReference) : k === 'LowerLimit' ? limit(p.LowerLimit, p.LowerLimitUnit, p.LowerLimitReference) : p[k]).replace(/&/g, '&amp;').replace(/</g, '&lt;')}</td></tr>`).join('') + '</table>';
 const byLabel = new Map();
