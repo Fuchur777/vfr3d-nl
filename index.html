@@ -169,7 +169,7 @@
 import { fuaKey, designators, aboutAirspace, namedIn, frees, ownCircle, eHeight } from './notam-regels.js?v=28-10-2026c'; // ?v: a cached older copy would lack new exports and stop the whole page; change it with notam-regels.js
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '29-10-2026f';
+const CODE_VERSION = '29-10-2026g';
 const disclaimer = document.getElementById('disclaimer'), codeDate = CODE_VERSION;
 let showHelp = () => {}; // set once the viewer exists
 let accepted = (() => { try { return localStorage.getItem('vfr3d-disclaimer') === codeDate; } catch {} })();
@@ -690,7 +690,7 @@ LAYERS.forEach(([, label, colour, show], i) => {
     e.polygon.material = color.withAlpha(0.25);
     // also on volumes built here (FUA, extra NOTAM shapes), which lack the GeoJSON loader's outline
     e.polygon.outline = true;
-    e.polygon.outlineColor = color;
+    e.polygon.outlineColor = color.withAlpha(0.25); // same as the fill, so the vertical lines blend in (Frank 2026-10-29)
     // a MultiPolygon becomes several entities; list it once
     e.baseDescription = e.description.getValue();
     if (!items.has(key)) items.set(key, { key, cls, show, name: e.name, colour: CLASS_COLOURS[cls] ?? own, entities: [],
@@ -819,7 +819,7 @@ function refresh() {
     const c = Cesium.Color.fromCssColorString(CLASS_COLOURS[cls]);
     Object.assign(e, { cls, name: e.name.replace(/^\[.\]/, `[${cls}]`) });
     e.polygon.material = c.withAlpha(0.25);
-    e.polygon.outlineColor = c;
+    e.polygon.outlineColor = c.withAlpha(0.25);
     // on a class change, follow the class buttons: on when the other airspace of the new class is on
     // except at page load, where a saved choice wins
     if (i === 0 && cls !== a.cls && (a.loaded || saved[a.key] === undefined)) a.on = airspaces.some(b => !b.rule && b.cls === cls && b.on);
@@ -1070,7 +1070,7 @@ async function loadFlight(target) {
       e.description = describe(p);
       e.polygon.material = color.withAlpha(0.25);
       e.polygon.outline = true;
-      e.polygon.outlineColor = color;
+      e.polygon.outlineColor = color.withAlpha(0.25); // same as the fill, so the vertical lines blend in (Frank 2026-10-29)
     }
   });
   const count = ds => new Set(ds?.entities.values.map(e => e.name)).size;
