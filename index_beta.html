@@ -887,7 +887,8 @@ for (const [id, list] of [['expand', '#tree'], ['expandToday', '#today']]) docum
   b.textContent = open ? 'Alles inklappen' : 'Alles uitklappen';
 };
 // Standaard and Mijn selectie on Luchtruim and Vandaag (Frank 2026-10-29): back to the default choice, or to one saved in this browser
-const selButtons = (id, items, defaultOn, key) => {
+// a share link carries Mijn selectie as the differences from the default (?luchtruim=… or ?vandaag=…), base64 of the JSON
+const selButtons = (id, items, defaultOn, key, tab) => {
   const button = (textContent, title, onclick) => Object.assign(document.createElement('button'), { type: 'button', textContent, title, onclick });
   const mine = () => { try { return JSON.parse(localStorage.getItem(key)); } catch { return null; } };
   const set = on => { for (const a of items) a.on = on(a); refresh(); };
@@ -896,11 +897,25 @@ const selButtons = (id, items, defaultOn, key) => {
     try { localStorage.setItem(key, JSON.stringify(Object.fromEntries(items.map(a => [a.key, a.on])))); } catch { return; }
     restore.disabled = false; save.textContent = '✓'; setTimeout(() => save.textContent = '💾', 1500);
   });
+  const share = button('🔗', 'Link naar je huidige selectie delen of kopiëren', async () => {
+    const diff = Object.fromEntries(items.filter(a => a.on !== defaultOn(a)).map(a => [a.key, a.on]));
+    const url = `${location.origin}${location.pathname}?${tab}=${encodeURIComponent(btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(diff)))))}#${tab}`;
+    try { await (navigator.share ? navigator.share({ title: 'VFR3D-selectie', url }) : navigator.clipboard.writeText(url)); } catch (e) { if (e.name !== 'AbortError') prompt('Kopieer deze link', url); return; }
+    share.textContent = '✓'; setTimeout(() => share.textContent = '🔗', 1500);
+  });
+  // opened from a share link: becomes Mijn selectie and is shown at once
+  const shared = new URLSearchParams(location.search).get(tab);
+  if (shared) try {
+    const diff = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(shared), c => c.charCodeAt(0))));
+    localStorage.setItem(key, JSON.stringify(Object.fromEntries(items.map(a => [a.key, diff[a.key] ?? defaultOn(a)]))));
+    set(a => diff[a.key] ?? defaultOn(a));
+    history.replaceState(null, '', location.pathname + location.hash);
+  } catch {}
   restore.disabled = !mine();
-  document.getElementById(id).append(button('↺', 'Terug naar de standaardselectie', () => set(defaultOn)), restore, save);
+  document.getElementById(id).append(button('↺', 'Terug naar de standaardselectie', () => set(defaultOn)), restore, save, share);
 };
-selButtons('selLuchtruim', airspaces, a => a.show || /^[A-D]$/.test(a.cls), 'vfr3d-mijn-selectie');
-selButtons('selVandaag', today, a => a.show && !NOTAMS_OFF.includes(a.soort), 'vfr3d-mijn-selectie-vandaag');
+selButtons('selLuchtruim', airspaces, a => a.show || /^[A-D]$/.test(a.cls), 'vfr3d-mijn-selectie', 'luchtruim');
+selButtons('selVandaag', today, a => a.show && !NOTAMS_OFF.includes(a.soort), 'vfr3d-mijn-selectie-vandaag', 'vandaag');
 // search hides non-matching airspaces and opens the types that contain a match
 const search = document.getElementById('search');
 document.getElementById('layers').onsubmit = e => e.preventDefault();
