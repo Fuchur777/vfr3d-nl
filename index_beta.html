@@ -174,7 +174,7 @@
 import { fuaKey, designators, aboutAirspace, namedIn, frees, ownCircle, eHeight } from './notam-regels.js?v=28-10-2026c'; // ?v: a cached older copy would lack new exports and stop the whole page; change it with notam-regels.js
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '30-10-2026i';
+const CODE_VERSION = '30-10-2026j';
 // drag the side panel's right edge to change its width (Frank 2026-10-30), remembered in this browser
 const grip = document.getElementById('grip'), setMenu = w => document.documentElement.style.setProperty('--menu', `${Math.min(Math.max(w, 220), 600)}px`);
 try { setMenu(+localStorage.getItem('vfr3d-menu') || 290); } catch {}
@@ -666,6 +666,7 @@ const TMZ = { EHAATMZA: ['FL55', 'FL45'], EHAATMZB1: ['FL55', 'FL45'], EHAATMZB2
   EHAATMZG1: [null, 'FL45'], EHLETMZ3: ['1500', '1500'], EHLETMZ4: ['2500', '2500'], EHLETMZ5: ['FL45', 'FL45'], EHBKTMZ: ['1500', '1500'],
   EHBKTMZ1: ['1500', '1500'], EHRDTMZ: ['2500', '2500'] };
 const tmzDay = s => !s.hol && !['Sat', 'Sun'].includes(s.weekday) && s.hour >= 9 && s.hour < 17;
+const maldenFree = s => s.hol || ['Sat', 'Sun'].includes(s.weekday) || s.weekday === 'Fri' && s.hour >= 17 || s.weekday === 'Mon' && s.hour < 9;
 const tmzLimit = v => v.startsWith('FL') ? [+v.slice(2), 'FL', 'STD'] : [+v, 'FT', 'MSL'];
 const tmzShow = v => v.startsWith('FL') ? `FL ${v.slice(2)}` : `${v} FT MSL`;
 const tmzNote = ([first]) => first ? `${tmzShow(first)} buiten ma-vr 09-17 LT` : 'alleen ma-vr 09-17 LT';
@@ -675,10 +676,12 @@ const ctrState = () => airspaces.filter(a => a.key.startsWith('CTR|')).map(a => 
 function tmzLimits() {
   const s = simDay(showAt()), ctrs = new Map(airspaces.filter(a => a.key.startsWith('CTR|')).map(a => [a.entities[0].limits.Designator, a]));
   for (const a of airspaces) for (const e of a.entities) {
-    if (!a.tmz && !e.base.CTR) continue;
+    if (!a.tmz && !e.base.CTR && !e.base.Malden && !e.base.SchipholTma) continue;
     // the rule only moves LVNL's 1200 ft lower limit, not e.g. TMZ Maastricht's part from FL095 (EHBKTMZ2 has no rule anyway)
     const ruled = a.tmz && !tmzDay(s) && e.base.LowerLimitUnit === 'FT' && e.base.LowerLimit === 1200, off = ruled && !a.tmz[0];
     let p = { ...e.base, ...(ruled && !off ? Object.fromEntries(['LowerLimit', 'LowerLimitUnit', 'LowerLimitReference'].map((k, i) => [k, tmzLimit(a.tmz[0])[i]])) : {}) };
+    // Malden area: exempted from TMZ D from Friday 16:00 (15:00) until Monday 08:00 (07:00) UTC, i.e. 17:00-09:00 LT, and on holidays
+    if (e.base.Malden && maldenFree(s)) p = { ...p, LowerLimit: 45, LowerLimitUnit: 'FL', LowerLimitReference: 'STD' };
     // CTRs are excluded from TMZs: the part over a CTR starts on top of it while that CTR is switched on; off (a military CTR
     // that is closed) it is drawn as published (Frank 2026-10-30)
     const ctr = ctrs.get(e.base.CTR), c = ctr?.on && ctr.entities[0].limits, m = (v, u, r) => metres(v, u, r);
@@ -687,6 +690,8 @@ function tmzLimits() {
     e.limits = p;
     e.empty = off || m(p.LowerLimit, p.LowerLimitUnit, p.LowerLimitReference) >= m(p.UpperLimit, p.UpperLimitUnit, p.UpperLimitReference);
     e.description = describe(p).replace('</table>', (a.tmz ? `<tr><th>Ondergrens (EH-6-TMZ)</th><td style="white-space: pre-wrap">${tmzText(a.tmz)}</td></tr>` : '')
+      + (e.base.Malden ? '<tr><th>Malden area</th><td>Vrijgesteld van TMZ D (2500 FT MSL tot FL 45) van vrijdag 17:00 tot maandag 09:00 LT en op feestdagen</td></tr>' : '')
+      + (e.base.SchipholTma ? '<tr><th>Schiphol TMA 7/8</th><td>Uitgesloten van deze TMZ (noot 5), die hier tot 1300 FT MSL loopt</td></tr>' : '')
       + (ctr ? `<tr><th>CTR</th><td>Boven ${ctr.name.replace(/^\[.\] /, '')} begint de TMZ boven de CTR zolang die aan staat</td></tr>` : '') + '</table>');
   }
 }
