@@ -16,6 +16,8 @@ jobs:
       - uses: actions/checkout@v5
       - run: |
           node .github/lvnl-data.mjs || failed=1
+          # TMZs split at the CTRs (CTRs are excluded from TMZs), for the app
+          pip install -q shapely && python3 .github/tmz-ctr.py || failed=1
           git add data/lvnl
           git diff --cached --quiet && exit ${failed:-0}
           git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m "LVNL-luchtruim bijgewerkt ($(jq -r '.lastEditDate / 1000 | strftime("%Y-%m-%d")' data/lvnl/meta.json))"

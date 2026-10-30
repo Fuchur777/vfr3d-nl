@@ -174,7 +174,7 @@
 import { fuaKey, designators, aboutAirspace, namedIn, frees, ownCircle, eHeight } from './notam-regels.js?v=28-10-2026c'; // ?v: a cached older copy would lack new exports and stop the whole page; change it with notam-regels.js
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '30-10-2026g';
+const CODE_VERSION = '30-10-2026h';
 // drag the side panel's right edge to change its width (Frank 2026-10-30), remembered in this browser
 const grip = document.getElementById('grip'), setMenu = w => document.documentElement.style.setProperty('--menu', `${Math.min(Math.max(w, 220), 600)}px`);
 try { setMenu(+localStorage.getItem('vfr3d-menu') || 290); } catch {}
@@ -375,7 +375,8 @@ const sources = await Promise.all(LAYERS.map(([id, label]) =>
   (id === NOTAMS ? fetch(NOTAMS, { cache: 'no-cache' }).then(r => r.json()).then(j => (notamsFetched = j.opgehaald, notamsActueel = j.actueel, showFout('NOTAMs', j.fout), Cesium.GeoJsonDataSource.load(j)))
     // LVNL airspace: the copy in data/lvnl (kept current by the LVNL-luchtruim GitHub Action), else LVNL itself
     : typeof id === 'string' ? Cesium.GeoJsonDataSource.load(id)
-    : Cesium.GeoJsonDataSource.load(`data/lvnl/${id}.geojson`).catch(() => Cesium.GeoJsonDataSource.load(`${LVNL}/${id}/query?where=1%3D1&outFields=*&outSR=4326&f=geojson`)))
+    // TMZs (8): split at the CTRs by .github/tmz-ctr.py
+    : Cesium.GeoJsonDataSource.load(`data/lvnl/${id === 8 ? 'tmz-ctr' : id}.geojson`).catch(() => Cesium.GeoJsonDataSource.load(`${LVNL}/${id}/query?where=1%3D1&outFields=*&outSR=4326&f=geojson`)))
     .catch(e => console.error(label, e))));
 
 // NOTAM and FUA times are UTC; show Dutch local time (Intl handles summer/winter time) with Zulu, e.g. "do 15 okt 09:30 LT (07:30Z)"
@@ -661,11 +662,21 @@ const upperBand = t => [...(weekend(t) && !inW(t) ? ['E', 'E (vrijdag 17:00 tot 
 const TMZ = { EHAATMZC1: 65, EHAATMZC2: 55 };
 const tmzDay = s => !s.hol && !['Sat', 'Sun'].includes(s.weekday) && s.hour >= 9 && s.hour < 17;
 const tmzText = fl => `Ondergrens ma-vr 09:00-17:00 LT (niet op feestdagen): 1200 FT MSL, voor zweefvliegers, deltavliegers en schermvliegers FL 45.\nVerder (ook za, zo en feestdagen): FL ${fl}. CTR's horen niet bij de TMZ.`;
+const ctrState = () => airspaces.filter(a => a.key.startsWith('CTR|')).map(a => +a.on).join('');
 function tmzLimits() {
-  const s = simDay(showAt());
-  for (const a of airspaces) if (a.tmz) for (const e of a.entities) {
-    e.limits = { ...e.base, ...(tmzDay(s) ? {} : { LowerLimit: a.tmz, LowerLimitUnit: 'FL', LowerLimitReference: 'STD' }) };
-    e.description = describe(e.limits).replace('</table>', `<tr><th>Ondergrens (EH-6-TMZ)</th><td style="white-space: pre-wrap">${tmzText(a.tmz)}</td></tr></table>`);
+  const s = simDay(showAt()), ctrs = new Map(airspaces.filter(a => a.key.startsWith('CTR|')).map(a => [a.entities[0].limits.Designator, a]));
+  for (const a of airspaces) for (const e of a.entities) {
+    if (!a.tmz && !e.base.CTR) continue;
+    let p = { ...e.base, ...(a.tmz && !tmzDay(s) ? { LowerLimit: a.tmz, LowerLimitUnit: 'FL', LowerLimitReference: 'STD' } : {}) };
+    // CTRs are excluded from TMZs: the part over a CTR starts on top of it while that CTR is switched on; off (a military CTR
+    // that is closed) it is drawn as published (Frank 2026-10-30)
+    const ctr = ctrs.get(e.base.CTR), c = ctr?.on && ctr.entities[0].limits, m = (v, u, r) => metres(v, u, r);
+    if (c && m(c.UpperLimit, c.UpperLimitUnit, c.UpperLimitReference) > m(p.LowerLimit, p.LowerLimitUnit, p.LowerLimitReference))
+      p = { ...p, LowerLimit: c.UpperLimit, LowerLimitUnit: c.UpperLimitUnit, LowerLimitReference: c.UpperLimitReference };
+    e.limits = p;
+    e.empty = m(p.LowerLimit, p.LowerLimitUnit, p.LowerLimitReference) >= m(p.UpperLimit, p.UpperLimitUnit, p.UpperLimitReference);
+    e.description = describe(p).replace('</table>', (a.tmz ? `<tr><th>Ondergrens (EH-6-TMZ)</th><td style="white-space: pre-wrap">${tmzText(a.tmz)}</td></tr>` : '')
+      + (ctr ? `<tr><th>CTR</th><td>Boven ${ctr.name.replace(/^\[.\] /, '')} begint de TMZ boven de CTR zolang die aan staat</td></tr>` : '') + '</table>');
   }
 }
 const SUP = [
@@ -845,7 +856,11 @@ notamFl.onchange = dedup.onchange = () => refresh();
 const flOf = p => p.UpperLimitReference === 'SFC' ? 0 : p.UpperLimitUnit === 'FL' ? p.UpperLimit : p.UpperLimit * (p.UpperLimitUnit === 'M' ? 3.28 : 1) / 100;
 const belowNotamFl = e => e.limits.Type === 'NOTAM' && notamFl.value && flOf(e.limits) < +notamFl.value;
 let savedSelection; // written to localStorage only when it changes
+let lastCtr; // CTRs on/off: a TMZ part over a CTR changes height with it
 function refresh() {
+  const ctrNow = ctrState();
+  if (lastCtr !== undefined && ctrNow !== lastCtr) { lastCtr = ctrNow; return updateHeights(); }
+  lastCtr = ctrNow;
   const t = showAt(), live = liveAt();
   // airspace that changes class during the day (AIP SUP 03/2022): class, colour, badge and infobox for moment t
   for (const a of airspaces) if (a.rule) for (const [i, e] of a.entities.entries()) {
@@ -872,7 +887,7 @@ function refresh() {
     a.box.checked = a.on;
     for (const e of a.entities) e.show = a.on && !!a.today === (openTab === 'vandaag') && belowMaxFl(e)
       && (!e.windows || e.windows.some(([s, u]) => s <= live && live < u)) && !coveredByFua(e, live)
-      && !belowNotamFl(e);
+      && !belowNotamFl(e) && !e.empty;
   }
   showFlightDay();
   for (const a of today) { const [c, text] = status(a); a.status.className = 'status ' + c; a.status.textContent = text; }
