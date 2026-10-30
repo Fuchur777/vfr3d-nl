@@ -171,7 +171,7 @@
 import { fuaKey, designators, aboutAirspace, namedIn, frees, ownCircle, eHeight } from './notam-regels.js?v=28-10-2026c'; // ?v: a cached older copy would lack new exports and stop the whole page; change it with notam-regels.js
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '30-10-2026c';
+const CODE_VERSION = '30-10-2026d';
 const disclaimer = document.getElementById('disclaimer'), codeDate = CODE_VERSION;
 let showHelp = () => {}; // set once the viewer exists
 let accepted = (() => { try { return localStorage.getItem('vfr3d-disclaimer') === codeDate; } catch {} })();
@@ -653,9 +653,8 @@ const supRows = (t, text) => `<tr><th>Klasse (AIP SUP 03/2022)</th><td style="wh
 // infobox: only the fields a pilot needs, in this order
 // a limit with its unit and reference on one line (Frank 2026-10-17): "FL 95", "1500 FT MSL", "SFC"
 const limit = (v, unit, ref) => ref === 'SFC' || ref === 'GND' && !v ? ref : unit === 'FL' ? `FL ${v}` : [v, unit, ref].filter(x => x != null && x !== '').join(' ');
-// titles and the side panel show the name only, without the designator (unless there is no name) and without the limits that
-// tell the split Nieuw Milligen parts apart; the table still lists both (Frank 2026-10-30)
-const title = p => String(p.Name || p.Designator || '').replace(/ FL\d+-FL\d+$/, '');
+// titles and the side panel show the name only, the designator just when there is no name; the table still lists it (Frank 2026-10-30)
+const title = p => p.Name || p.Designator || '';
 const describe = p => '<table class="cesium-infoBox-defaultTable">' + ['Name', 'Class', 'UpperLimit', 'LowerLimit', 'Designator', 'Type', 'Actief', 'Van', 'Tot', 'Schema', 'Tekst']
   .filter(k => p[k] != null && p[k] !== '').map(k => `<tr><th>${k}</th><td${k === 'Tekst' || k === 'Actief' ? ' style="white-space: pre-wrap; word-break: break-word"' : ''}>${String(k === 'Van' || k === 'Tot' ? when(p[k])
     : k === 'UpperLimit' ? limit(p.UpperLimit, p.UpperLimitUnit, p.UpperLimitReference) : k === 'LowerLimit' ? limit(p.LowerLimit, p.LowerLimitUnit, p.LowerLimitReference) : p[k]).replace(/&/g, '&amp;').replace(/</g, '&lt;')}</td></tr>`).join('') + '</table>';
