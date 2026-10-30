@@ -174,7 +174,7 @@
 import { fuaKey, designators, aboutAirspace, namedIn, frees, ownCircle, eHeight } from './notam-regels.js?v=28-10-2026c'; // ?v: a cached older copy would lack new exports and stop the whole page; change it with notam-regels.js
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '30-10-2026f';
+const CODE_VERSION = '30-10-2026g';
 // drag the side panel's right edge to change its width (Frank 2026-10-30), remembered in this browser
 const grip = document.getElementById('grip'), setMenu = w => document.documentElement.style.setProperty('--menu', `${Math.min(Math.max(w, 220), 600)}px`);
 try { setMenu(+localStorage.getItem('vfr3d-menu') || 290); } catch {}
@@ -552,9 +552,9 @@ const atTime = document.getElementById('atTime'), atDay = document.getElementByI
 atTime.value = Math.floor((now - dayStart) / 900000) * 15;
 atDay.value = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Amsterdam', weekday: 'short' }).format(now);
 const atOut = () => document.getElementById('atOut').value = when(showAt(), false);
-atTime.oninput = () => { atOut(); refresh(); };
+atTime.oninput = () => { atOut(); updateHeights(); };
 atOut();
-atDay.onchange = atHol.onchange = () => refresh();
+atDay.onchange = atHol.onchange = () => updateHeights();
 const liveTime = document.getElementById('liveTime'), liveAt = () => now + liveTime.value * 60000;
 // the whole day: from 00:00 LT today to 06:00 LT tomorrow, starting at now (0)
 liveTime.min = -Math.floor((now - dayStart) / 900000) * 15;
@@ -602,6 +602,8 @@ document.getElementById('lxnavAirspace').onclick = () => {
       const [cls, , note] = a.rule({ weekday: 'Wed', hour: 20, hol: false }, p), [, text] = a.rule({ weekday: 'Sat', hour: 12, hol: false }, p);
       return cubItem(a, e, `${name} (${note})`, `Klasse ${cls} (AIP SUP 03/2022)\n${text}`, max, cls);
     }
+    // TMZ C1/C2: the lowest lower limit (1200 ft MSL, weekdays 09-17 LT), when it is higher in the name
+    if (a.tmz) return cubItem(a, Object.create(e, { limits: { value: e.base } }), `${name} (FL${a.tmz} buiten ma-vr 09-17 LT)`, tmzText(a.tmz), max);
     const cls = e.cls ?? a.cls;
     return cubItem(a, e, name, cls ? `Klasse ${cls}` : '', max);
   })), 'luchtruim', 'vfr3d.nl Luchtruim (c) LVNL CC BY 4.0. AIP Netherlands leidend. Niet voor navigatie.', 'Er staat geen luchtruim aan.');
@@ -654,6 +656,18 @@ const weekend = ({ weekday, hour, hol }) => hol || weekday === 'Sat' || weekday 
 // [class now, rule text, short note on when the lower class E applies (for the .cub name)]
 const lowerBand = t => [...(inW(t) ? ['D', 'D tot 22:00 LT, daarna E'] : ['E', 'E, klasse D van 18:00 tot 22:00 LT']), 'E buiten 18-22 LT'];
 const upperBand = t => [...(weekend(t) && !inW(t) ? ['E', 'E (vrijdag 17:00 tot maandag 00:00 LT en feestdagen), klasse D van 18:00 tot 22:00 LT'] : ['D', 'D']), 'E vr17-ma00 LT, fd, niet 18-22'];
+// EH-6-TMZ (AIRAC 29-10-2026): the lower limit of TMZ C1 and C2 depends on the time. Notes 1-3; 0800-1600 UTC (0700-1500 summer) is 09:00-17:00 LT.
+// Drawn at 1200 ft MSL on weekdays 09-17 LT (powered aircraft; non-motorised from FL045), else at FL065 (C1) or FL055 (C2) (Frank 2026-10-30)
+const TMZ = { EHAATMZC1: 65, EHAATMZC2: 55 };
+const tmzDay = s => !s.hol && !['Sat', 'Sun'].includes(s.weekday) && s.hour >= 9 && s.hour < 17;
+const tmzText = fl => `Ondergrens ma-vr 09:00-17:00 LT (niet op feestdagen): 1200 FT MSL, voor zweefvliegers, deltavliegers en schermvliegers FL 45.\nVerder (ook za, zo en feestdagen): FL ${fl}. CTR's horen niet bij de TMZ.`;
+function tmzLimits() {
+  const s = simDay(showAt());
+  for (const a of airspaces) if (a.tmz) for (const e of a.entities) {
+    e.limits = { ...e.base, ...(tmzDay(s) ? {} : { LowerLimit: a.tmz, LowerLimitUnit: 'FL', LowerLimitReference: 'STD' }) };
+    e.description = describe(e.limits).replace('</table>', `<tr><th>Ondergrens (EH-6-TMZ)</th><td style="white-space: pre-wrap">${tmzText(a.tmz)}</td></tr></table>`);
+  }
+}
 const SUP = [
   [/LELYSTAD TMA ?[345]\b|NIEUW MILLIGEN TMA ?B\b/, t => lowerBand(t)],
   // two bands: FL065–FL095 follows note 3, FL055–FL065 follows W (the LVNL volume is split at FL065)
@@ -702,7 +716,7 @@ LAYERS.forEach(([, label, colour, show], i) => {
     const own = label.startsWith('NOTAMs') && relaxing(p) ? NOTAM_GREEN : colour;
     const color = Cesium.Color.fromCssColorString(CLASS_COLOURS[cls] ?? own);
     e.name = `${cls ? `[${cls}] ` : ''}${title(p)}`;
-    e.limits = p;
+    e.limits = e.base = p;
     e.description = describe(p);
     e.polygon.material = color.withAlpha(0.25);
     e.polygon.outline = false; // no edge lines: on phones they showed as dense vertical stripes (Frank 2026-10-29)
@@ -711,7 +725,7 @@ LAYERS.forEach(([, label, colour, show], i) => {
     if (!items.has(key)) items.set(key, { key, cls, show, name: e.name, colour: CLASS_COLOURS[cls] ?? own, entities: [],
       // SUP 03/2022 covers FL055–FL095 in Nieuw Milligen (Lelystad from 1500 ft): volumes from FL095 up (e.g. EHMCC2B, class B)
       // and Nieuw Milligen's lower parts up to FL055 (EHMCBE, EHMCC2E, EHMCEE, always class E) keep their LVNL class (local pilot 2026-10-29)
-      rule: !(p.LowerLimitUnit === 'FL' && p.LowerLimit >= 95) && !(p.UpperLimitUnit === 'FL' && p.UpperLimit <= 55) && SUP.find(([re]) => re.test(`${p.Designator} ${p.Name}`.toUpperCase()))?.[1] });
+      tmz: TMZ[p.Designator], rule: !(p.LowerLimitUnit === 'FL' && p.LowerLimit >= 95) && !(p.UpperLimitUnit === 'FL' && p.UpperLimit <= 55) && SUP.find(([re]) => re.test(`${p.Designator} ${p.Name}`.toUpperCase()))?.[1] });
     items.get(key).entities.push(e);
   }
 });
@@ -962,6 +976,7 @@ const scale = document.getElementById('scale');
 // every height change rebuilds that volume, so only set heights that really change (a new QNH only moves FL limits)
 const setHeight = (polygon, key, value) => polygon[key]?.getValue() !== value && (polygon[key] = value);
 function updateHeights() {
+  tmzLimits();
   document.getElementById('scaleOut').value = scale.value;
   for (const source of [...sources, ...flightDay].filter(Boolean)) for (const e of [...source.entities.values]) {
     if (!e.polygon) continue;
