@@ -13,7 +13,9 @@
   html, body { margin: 0; height: 100%; overflow: hidden; font: 13px system-ui, sans-serif; }
   body { display: flex; }
   /* panel: dark "cockpit" style, tabs Kaart / Luchtruim / Vlucht, disclaimer always visible at the bottom */
-  #layers { order: -1; width: 290px; flex: none; display: flex; flex-direction: column; box-sizing: border-box; background: #1b232b; color: #d8e0e6; border-right: 1px solid #0b0f13; color-scheme: dark; accent-color: #ffc24b; }
+  #layers { order: -1; width: var(--menu, 290px); position: relative; flex: none; display: flex; flex-direction: column; box-sizing: border-box; background: #1b232b; color: #d8e0e6; border-right: 1px solid #0b0f13; color-scheme: dark; accent-color: #ffc24b; }
+  #grip { position: absolute; z-index: 5; top: 0; bottom: 0; right: -4px; width: 8px; cursor: col-resize; touch-action: none; }
+  #grip:hover, #grip:active { background: #ffc24b55; }
   #map { flex: 1; position: relative; isolation: isolate; } /* keeps the loading screen under the phone menu */
   #tabs { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid #2f3b46; flex: none; }
   #tabs button { background: none; border: 0; color: #8a9aa8; font: 500 13px system-ui, sans-serif; padding: 10px 0; cursor: pointer; }
@@ -37,6 +39,7 @@
   /* phones: the panel slides in over the map behind a hamburger button */
   #menu { display: none; }
   @media (max-width: 700px) {
+    #grip { display: none; }
     #layers { position: fixed; z-index: 20; top: 0; bottom: 0; left: 0; width: min(290px, 85vw); transform: translateX(-100%); transition: transform .2s; }
     body.menu-open #layers { transform: none; box-shadow: 0 0 24px #0008; }
     #menu { display: block; position: fixed; z-index: 21; top: 8px; left: 8px; width: 40px; height: 40px; border: 0; border-radius: 6px; background: #1b232b; color: #ffc24b; font-size: 22px; cursor: pointer; }
@@ -123,7 +126,7 @@
 <body>
 <div id="map"><div id="loading"><img src="icon.svg" alt=""><span>Luchtruim laden…</span></div></div>
 <button type="button" id="menu" aria-label="Menu" aria-expanded="false">☰</button>
-<form id="layers">
+<form id="layers"><div id="grip" title="Sleep om de breedte aan te passen"></div>
 <div id="tabs" role="tablist"><button type="button" role="tab" data-tab="kaart">Kaart</button><button type="button" role="tab" data-tab="luchtruim">Luchtruim</button><button type="button" role="tab" data-tab="vandaag">Vandaag</button><button type="button" role="tab" data-tab="vlucht">Vlucht</button></div>
 <section id="kaart" role="tabpanel"><label>Onderlaag <select id="base"><option>Satelliet</option><option>Kaart</option><option selected>ICAO-kaart</option></select></label><div id="tileError" style="color: #ff8787"></div><h3>Hoogte</h3><label>Verticale schaal <output id="scaleOut">10</output>×<br><input id="scale" type="range" min="1" max="20" step="0.5" value="10"></label><label>Verberg luchtruim boven <select id="maxFl"><option value="10">FL 10</option><option value="15">FL 15</option><option value="20">FL 20</option><option value="25">FL 25</option><option value="30">FL 30</option><option value="35">FL 35</option><option value="40">FL 40</option><option value="45">FL 45</option><option value="50">FL 50</option><option value="55">FL 55</option><option value="60">FL 60</option><option value="65">FL 65</option><option value="70">FL 70</option><option value="75">FL 75</option><option value="80">FL 80</option><option value="85">FL 85</option><option value="90">FL 90</option><option value="95" selected>FL 95</option><option value="100">FL 100</option><option value="105">FL 105</option><option value="110">FL 110</option><option value="115">FL 115</option><option value="120">FL 120</option><option value="125">FL 125</option><option value="130">FL 130</option><option value="135">FL 135</option><option value="140">FL 140</option><option value="145">FL 145</option><option value="150">FL 150</option></select></label><p class="credits">Luchtruim © LVNL (CC BY 4.0). Activeringen (FUA) © EUROCONTROL. Vormen België/Luxemburg en Duitsland © openAIP (CC BY-NC 4.0). De AIP Netherlands van LVNL is leidend.</p><p><a href="luchtruim.html">Luchtruim in Nederland uitgelegd</a></p><button type="button" id="showDisclaimer" style="width: 100%">Disclaimer en updates</button></section>
 <section id="luchtruim" role="tabpanel"><label><input id="all" type="checkbox"> <b>Alle luchtruimen</b></label><div id="classes"></div><div style="display:flex;justify-content:space-between;align-items:center"><button type="button" id="expand">Alles uitklappen</button><span class="sel" id="selLuchtruim"></span></div><input id="search" type="search" placeholder="Zoek luchtruim op naam" style="width:100%;box-sizing:border-box"><div id="tree"></div><button type="button" id="lxnavAirspace" title="SeeYou CUB-bestand met het aangevinkte luchtruim, voor LXNAV en SeeYou" style="width: 100%; margin-top: 8px">Download als .cub</button></section>
@@ -171,7 +174,15 @@
 import { fuaKey, designators, aboutAirspace, namedIn, frees, ownCircle, eHeight } from './notam-regels.js?v=28-10-2026c'; // ?v: a cached older copy would lack new exports and stop the whole page; change it with notam-regels.js
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '30-10-2026e';
+const CODE_VERSION = '30-10-2026f';
+// drag the side panel's right edge to change its width (Frank 2026-10-30), remembered in this browser
+const grip = document.getElementById('grip'), setMenu = w => document.documentElement.style.setProperty('--menu', `${Math.min(Math.max(w, 220), 600)}px`);
+try { setMenu(+localStorage.getItem('vfr3d-menu') || 290); } catch {}
+grip.onpointerdown = ev => {
+  grip.setPointerCapture(ev.pointerId);
+  grip.onpointermove = e => setMenu(e.clientX);
+  grip.onpointerup = () => { grip.onpointermove = null; try { localStorage.setItem('vfr3d-menu', document.getElementById('layers').offsetWidth); } catch {} };
+};
 const disclaimer = document.getElementById('disclaimer'), codeDate = CODE_VERSION;
 let showHelp = () => {}; // set once the viewer exists
 let accepted = (() => { try { return localStorage.getItem('vfr3d-disclaimer') === codeDate; } catch {} })();
