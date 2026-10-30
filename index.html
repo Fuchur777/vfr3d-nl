@@ -175,7 +175,7 @@
 import { fuaKey, designators, aboutAirspace, namedIn, frees, ownCircle, eHeight } from './notam-regels.js?v=28-10-2026c'; // ?v: a cached older copy would lack new exports and stop the whole page; change it with notam-regels.js
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '30-10-2026j';
+const CODE_VERSION = '30-10-2026k';
 // drag the side panel's right edge to change its width (Frank 2026-10-30), remembered in this browser
 const grip = document.getElementById('grip'), setMenu = w => document.documentElement.style.setProperty('--menu', `${Math.min(Math.max(w, 220), 600)}px`);
 try { setMenu(+localStorage.getItem('vfr3d-menu') || 290); } catch {}
@@ -601,8 +601,8 @@ document.getElementById('lxnavAirspace').onclick = () => {
     const p = e.limits, name = [p.Designator, p.Name].filter(Boolean).join(' ') || a.name, max = metres(p.UpperLimit, p.UpperLimitUnit, p.UpperLimitReference) > top + 1 ? cut : undefined;
     // time-dependent TMAs (AIP SUP 03/2022): the strictest class (D, 18-22 LT on a weekday), and when E applies in the name (Frank 2026-10-16)
     if (a.rule) {
-      const [cls, , note] = a.rule({ weekday: 'Wed', hour: 20, hol: false }, p), [, text] = a.rule({ weekday: 'Sat', hour: 12, hol: false }, p);
-      return cubItem(a, e, `${name} (${note})`, `Klasse ${cls} (AIP SUP 03/2022)\n${text}`, max, cls);
+      const [cls, , note, src = 'AIP SUP 03/2022'] = a.rule({ weekday: 'Wed', hour: 20, hol: false }, p), [, text] = a.rule({ weekday: 'Sat', hour: 12, hol: false }, p);
+      return cubItem(a, e, `${name} (${note})`, `Klasse ${cls} (${src})\n${text}`, max, cls);
     }
     // TMZs with a time rule: the lowest lower limit (1200 ft MSL, weekdays 09-17 LT), when it is higher (or not active) in the name
     if (a.tmz) return cubItem(a, Object.create(e, { limits: { value: e.base } }), `${name} (${tmzNote(a.tmz)})`, tmzText(a.tmz), max);
@@ -696,13 +696,17 @@ function tmzLimits() {
       + (ctr ? `<tr><th>CTR</th><td>Boven ${ctr.name.replace(/^\[.\] /, '')} begint de TMZ boven de CTR zolang die aan staat</td></tr>` : '') + '</table>');
   }
 }
+// Nieuw Milligen TMA C1 (ENR 2.1, not in the SUP): class B from FL065, but E up to and including FL095 from FRI 1600 (1500) to
+// SUN 2300 (2200) UTC, i.e. Friday 17:00 to Monday 00:00 LT, and on holidays (H24) (Frank 2026-10-30). The 4th element names the source
+const c1Band = t => [...(weekend(t) ? ['E', 'E van vrijdag 17:00 tot maandag 00:00 LT en op feestdagen, anders B'] : ['B', 'B, maar E van vrijdag 17:00 tot maandag 00:00 LT en op feestdagen']), 'E vr17-ma00 LT, fd', 'AIP ENR 2.1'];
 const SUP = [
   [/LELYSTAD TMA ?[345]\b|NIEUW MILLIGEN TMA ?B\b/, t => lowerBand(t)],
   // two bands: FL065–FL095 follows note 3, FL055–FL065 follows W (the LVNL volume is split at FL065)
   [/NIEUW MILLIGEN TMA ?(C2|E)\b/, (t, p) => p.UpperLimitUnit === 'FL' && p.UpperLimit <= 65 ? lowerBand(t) : upperBand(t)],
+  [/NIEUW MILLIGEN TMA ?C1 FL065-FL095/, t => c1Band(t)],
 ];
-const supRows = (t, text) => `<tr><th>Klasse (AIP SUP 03/2022)</th><td style="white-space: pre-wrap">${text}</td></tr>`
-  + `<tr><th>Radio</th><td>${inW(t) ? 'Lelystad Arrival 134.530' : 'Dutch MIL Info 132.350 (FIS)'}</td></tr>`;
+const supRows = (t, text, src) => `<tr><th>Klasse (${src ?? 'AIP SUP 03/2022'})</th><td style="white-space: pre-wrap">${text}</td></tr>`
+  + (src ? '' : `<tr><th>Radio</th><td>${inW(t) ? 'Lelystad Arrival 134.530' : 'Dutch MIL Info 132.350 (FIS)'}</td></tr>`);
 // infobox: only the fields a pilot needs, in this order
 // a limit with its unit and reference on one line (Frank 2026-10-17): "FL 95", "1500 FT MSL", "SFC"
 const limit = (v, unit, ref) => ref === 'SFC' || ref === 'GND' && !v ? ref : unit === 'FL' ? `FL ${v}` : [v, unit, ref].filter(x => x != null && x !== '').join(' ');
@@ -727,6 +731,13 @@ LAYERS.forEach(([, label, colour, show], i) => {
     // each part is its own item, so it follows the class buttons on its own (Frank 2026-10-29)
     e.properties = new Cesium.PropertyBag({ ...p, LowerLimit: 65, Name: `${p.Name} FL065-FL095` });
     source.entities.add({ polygon: { hierarchy: e.polygon.hierarchy.getValue() }, properties: { ...p, UpperLimit: 65, Name: `${p.Name} FL055-FL065` } });
+  }
+  // Nieuw Milligen TMA C1: FL065–FL095 is class E in the weekend, LVNL has one class B volume FL065–FL195: split it at FL095 (Frank 2026-10-30)
+  for (const e of [...source.entities.values]) {
+    const p = e.properties?.getValue();
+    if (!/NIEUW MILLIGEN TMA ?C1\b/.test(`${p?.Name}`.toUpperCase()) || p.LowerLimitUnit !== 'FL' || p.LowerLimit >= 95 || p.UpperLimit <= 95) continue;
+    e.properties = new Cesium.PropertyBag({ ...p, LowerLimit: 95, Name: `${p.Name} FL095-FL195` });
+    source.entities.add({ polygon: { hierarchy: e.polygon.hierarchy.getValue() }, properties: { ...p, UpperLimit: 95, Name: `${p.Name} FL065-FL095` } });
   }
   for (const e of [...source.entities.values]) {
     const p = e.properties.getValue();
@@ -881,9 +892,9 @@ function refresh() {
   const t = showAt(), live = liveAt();
   // airspace that changes class during the day (AIP SUP 03/2022): class, colour, badge and infobox for moment t
   for (const a of airspaces) if (a.rule) for (const [i, e] of a.entities.entries()) {
-    const [cls, text] = a.rule(simDay(t), e.limits);
+    const [cls, text, , src] = a.rule(simDay(t), e.limits);
     // the Class row shows the SUP class at this moment, not LVNL's fixed class (Frank 2026-10-29)
-    e.description = e.baseDescription.replace(/(<th>Class<\/th><td>)[^<]*/, `$1${cls}`).replace('</table>', supRows(simDay(t), text) + '</table>');
+    e.description = e.baseDescription.replace(/(<th>Class<\/th><td>)[^<]*/, `$1${cls}`).replace('</table>', supRows(simDay(t), text, src) + '</table>');
     if (e.cls === cls) continue;
     const c = Cesium.Color.fromCssColorString(CLASS_COLOURS[cls]);
     Object.assign(e, { cls, name: e.name.replace(/^\[.\]/, `[${cls}]`) });
