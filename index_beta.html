@@ -171,7 +171,7 @@
 import { fuaKey, designators, aboutAirspace, namedIn, frees, ownCircle, eHeight } from './notam-regels.js?v=28-10-2026c'; // ?v: a cached older copy would lack new exports and stop the whole page; change it with notam-regels.js
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '30-10-2026d';
+const CODE_VERSION = '30-10-2026e';
 const disclaimer = document.getElementById('disclaimer'), codeDate = CODE_VERSION;
 let showHelp = () => {}; // set once the viewer exists
 let accepted = (() => { try { return localStorage.getItem('vfr3d-disclaimer') === codeDate; } catch {} })();
@@ -707,6 +707,13 @@ LAYERS.forEach(([, label, colour, show], i) => {
 const TODAY = ['NOTAMs', 'Vandaag actief (FUA)'], today = [], todayGroups = [];
 const NOTAMS_OFF = ['Drones/UAS', 'Windturbines', 'Kranen', 'Militair', 'Lasershow', 'Obstakelverlichting'];
 byLabel.forEach((items, label) => {
+  // a name that occurs more than once in a type gets its designator in brackets, so the items can be told apart (Frank 2026-10-30)
+  const plain = a => a.name.replace(/^\[.\] /, ''), names = [...items.values()].map(plain);
+  for (const a of items.values()) if (names.filter(n => n === plain(a)).length > 1) {
+    const d = ` (${a.entities[0].limits.Designator})`;
+    a.name += d;
+    for (const e of a.entities) e.name += d;
+  }
   if (TODAY.includes(label) || label.includes('|')) {
     for (const a of items.values()) {
       // NOTAM kind from the Worker ('Soort'); kinds of little use to standard VFR traffic start off
