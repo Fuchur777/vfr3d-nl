@@ -174,7 +174,7 @@
 import { fuaKey, designators, aboutAirspace, namedIn, frees, ownCircle, eHeight } from './notam-regels.js?v=28-10-2026c'; // ?v: a cached older copy would lack new exports and stop the whole page; change it with notam-regels.js
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '30-10-2026h';
+const CODE_VERSION = '30-10-2026i';
 // drag the side panel's right edge to change its width (Frank 2026-10-30), remembered in this browser
 const grip = document.getElementById('grip'), setMenu = w => document.documentElement.style.setProperty('--menu', `${Math.min(Math.max(w, 220), 600)}px`);
 try { setMenu(+localStorage.getItem('vfr3d-menu') || 290); } catch {}
@@ -603,8 +603,8 @@ document.getElementById('lxnavAirspace').onclick = () => {
       const [cls, , note] = a.rule({ weekday: 'Wed', hour: 20, hol: false }, p), [, text] = a.rule({ weekday: 'Sat', hour: 12, hol: false }, p);
       return cubItem(a, e, `${name} (${note})`, `Klasse ${cls} (AIP SUP 03/2022)\n${text}`, max, cls);
     }
-    // TMZ C1/C2: the lowest lower limit (1200 ft MSL, weekdays 09-17 LT), when it is higher in the name
-    if (a.tmz) return cubItem(a, Object.create(e, { limits: { value: e.base } }), `${name} (FL${a.tmz} buiten ma-vr 09-17 LT)`, tmzText(a.tmz), max);
+    // TMZs with a time rule: the lowest lower limit (1200 ft MSL, weekdays 09-17 LT), when it is higher (or not active) in the name
+    if (a.tmz) return cubItem(a, Object.create(e, { limits: { value: e.base } }), `${name} (${tmzNote(a.tmz)})`, tmzText(a.tmz), max);
     const cls = e.cls ?? a.cls;
     return cubItem(a, e, name, cls ? `Klasse ${cls}` : '', max);
   })), 'luchtruim', 'vfr3d.nl Luchtruim (c) LVNL CC BY 4.0. AIP Netherlands leidend. Niet voor navigatie.', 'Er staat geen luchtruim aan.');
@@ -657,24 +657,35 @@ const weekend = ({ weekday, hour, hol }) => hol || weekday === 'Sat' || weekday 
 // [class now, rule text, short note on when the lower class E applies (for the .cub name)]
 const lowerBand = t => [...(inW(t) ? ['D', 'D tot 22:00 LT, daarna E'] : ['E', 'E, klasse D van 18:00 tot 22:00 LT']), 'E buiten 18-22 LT'];
 const upperBand = t => [...(weekend(t) && !inW(t) ? ['E', 'E (vrijdag 17:00 tot maandag 00:00 LT en feestdagen), klasse D van 18:00 tot 22:00 LT'] : ['D', 'D']), 'E vr17-ma00 LT, fd, niet 18-22'];
-// EH-6-TMZ (AIRAC 29-10-2026): the lower limit of TMZ C1 and C2 depends on the time. Notes 1-3; 0800-1600 UTC (0700-1500 summer) is 09:00-17:00 LT.
-// Drawn at 1200 ft MSL on weekdays 09-17 LT (powered aircraft; non-motorised from FL045), else at FL065 (C1) or FL055 (C2) (Frank 2026-10-30)
-const TMZ = { EHAATMZC1: 65, EHAATMZC2: 55 };
+// EH-6-TMZ (AIRAC 29-10-2026, ICAO chart 2026): most TMZs have a lower limit that depends on the time, notes 1-4; 0800-1600 UTC
+// (0700-1500 summer) is 09:00-17:00 LT. Per designator [note 1: outside weekdays 09-17 LT, note 2: weekdays 09-17 LT for gliders,
+// hang gliders and paragliders]; note 3 (weekdays 09-17 LT, everyone else) is 1200 ft MSL, LVNL's own lower limit, which the app draws then.
+// No note 1 (TMZ G1, note 4): only active on weekdays 09-17 LT (Frank 2026-10-30)
+const TMZ = { EHAATMZA: ['FL55', 'FL45'], EHAATMZB1: ['FL55', 'FL45'], EHAATMZB2: ['FL55', 'FL45'], EHAATMZC1: ['FL65', 'FL45'], EHAATMZC2: ['FL55', 'FL45'],
+  EHAATMZD: ['2500', '2500'], EHTMZD1: ['2500', '2500'], EHTMZD2: ['2500', '2500'], EHAATMZE: ['FL55', 'FL45'], EHGGTMZ: ['1500', '1500'],
+  EHAATMZG1: [null, 'FL45'], EHLETMZ3: ['1500', '1500'], EHLETMZ4: ['2500', '2500'], EHLETMZ5: ['FL45', 'FL45'], EHBKTMZ: ['1500', '1500'],
+  EHBKTMZ1: ['1500', '1500'], EHRDTMZ: ['2500', '2500'] };
 const tmzDay = s => !s.hol && !['Sat', 'Sun'].includes(s.weekday) && s.hour >= 9 && s.hour < 17;
-const tmzText = fl => `Ondergrens ma-vr 09:00-17:00 LT (niet op feestdagen): 1200 FT MSL, voor zweefvliegers, deltavliegers en schermvliegers FL 45.\nVerder (ook za, zo en feestdagen): FL ${fl}. CTR's horen niet bij de TMZ.`;
+const tmzLimit = v => v.startsWith('FL') ? [+v.slice(2), 'FL', 'STD'] : [+v, 'FT', 'MSL'];
+const tmzShow = v => v.startsWith('FL') ? `FL ${v.slice(2)}` : `${v} FT MSL`;
+const tmzNote = ([first]) => first ? `${tmzShow(first)} buiten ma-vr 09-17 LT` : 'alleen ma-vr 09-17 LT';
+const tmzText = ([first, second]) => `Ma-vr 09:00-17:00 LT (niet op feestdagen): ondergrens 1200 FT MSL, voor zweefvliegers, deltavliegers en schermvliegers ${tmzShow(second)}.\n`
+  + (first ? `Verder (ook za, zo en feestdagen): ${tmzShow(first)}.` : 'Verder (ook za, zo en feestdagen) niet actief.') + " CTR's horen niet bij de TMZ.";
 const ctrState = () => airspaces.filter(a => a.key.startsWith('CTR|')).map(a => +a.on).join('');
 function tmzLimits() {
   const s = simDay(showAt()), ctrs = new Map(airspaces.filter(a => a.key.startsWith('CTR|')).map(a => [a.entities[0].limits.Designator, a]));
   for (const a of airspaces) for (const e of a.entities) {
     if (!a.tmz && !e.base.CTR) continue;
-    let p = { ...e.base, ...(a.tmz && !tmzDay(s) ? { LowerLimit: a.tmz, LowerLimitUnit: 'FL', LowerLimitReference: 'STD' } : {}) };
+    // the rule only moves LVNL's 1200 ft lower limit, not e.g. TMZ Maastricht's part from FL095 (EHBKTMZ2 has no rule anyway)
+    const ruled = a.tmz && !tmzDay(s) && e.base.LowerLimitUnit === 'FT' && e.base.LowerLimit === 1200, off = ruled && !a.tmz[0];
+    let p = { ...e.base, ...(ruled && !off ? Object.fromEntries(['LowerLimit', 'LowerLimitUnit', 'LowerLimitReference'].map((k, i) => [k, tmzLimit(a.tmz[0])[i]])) : {}) };
     // CTRs are excluded from TMZs: the part over a CTR starts on top of it while that CTR is switched on; off (a military CTR
     // that is closed) it is drawn as published (Frank 2026-10-30)
     const ctr = ctrs.get(e.base.CTR), c = ctr?.on && ctr.entities[0].limits, m = (v, u, r) => metres(v, u, r);
     if (c && m(c.UpperLimit, c.UpperLimitUnit, c.UpperLimitReference) > m(p.LowerLimit, p.LowerLimitUnit, p.LowerLimitReference))
       p = { ...p, LowerLimit: c.UpperLimit, LowerLimitUnit: c.UpperLimitUnit, LowerLimitReference: c.UpperLimitReference };
     e.limits = p;
-    e.empty = m(p.LowerLimit, p.LowerLimitUnit, p.LowerLimitReference) >= m(p.UpperLimit, p.UpperLimitUnit, p.UpperLimitReference);
+    e.empty = off || m(p.LowerLimit, p.LowerLimitUnit, p.LowerLimitReference) >= m(p.UpperLimit, p.UpperLimitUnit, p.UpperLimitReference);
     e.description = describe(p).replace('</table>', (a.tmz ? `<tr><th>Ondergrens (EH-6-TMZ)</th><td style="white-space: pre-wrap">${tmzText(a.tmz)}</td></tr>` : '')
       + (ctr ? `<tr><th>CTR</th><td>Boven ${ctr.name.replace(/^\[.\] /, '')} begint de TMZ boven de CTR zolang die aan staat</td></tr>` : '') + '</table>');
   }
