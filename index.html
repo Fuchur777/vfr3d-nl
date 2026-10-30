@@ -14,7 +14,9 @@
   html, body { margin: 0; height: 100%; overflow: hidden; font: 13px system-ui, sans-serif; }
   body { display: flex; }
   /* panel: dark "cockpit" style, tabs Kaart / Luchtruim / Vlucht, disclaimer always visible at the bottom */
-  #layers { order: -1; width: 290px; flex: none; display: flex; flex-direction: column; box-sizing: border-box; background: #1b232b; color: #d8e0e6; border-right: 1px solid #0b0f13; color-scheme: dark; accent-color: #ffc24b; }
+  #layers { order: -1; width: var(--menu, 290px); position: relative; flex: none; display: flex; flex-direction: column; box-sizing: border-box; background: #1b232b; color: #d8e0e6; border-right: 1px solid #0b0f13; color-scheme: dark; accent-color: #ffc24b; }
+  #grip { position: absolute; z-index: 5; top: 0; bottom: 0; right: -4px; width: 8px; cursor: col-resize; touch-action: none; }
+  #grip:hover, #grip:active { background: #ffc24b55; }
   #map { flex: 1; position: relative; isolation: isolate; } /* keeps the loading screen under the phone menu */
   #tabs { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid #2f3b46; flex: none; }
   #tabs button { background: none; border: 0; color: #8a9aa8; font: 500 13px system-ui, sans-serif; padding: 10px 0; cursor: pointer; }
@@ -38,6 +40,7 @@
   /* phones: the panel slides in over the map behind a hamburger button */
   #menu { display: none; }
   @media (max-width: 700px) {
+    #grip { display: none; }
     #layers { position: fixed; z-index: 20; top: 0; bottom: 0; left: 0; width: min(290px, 85vw); transform: translateX(-100%); transition: transform .2s; }
     body.menu-open #layers { transform: none; box-shadow: 0 0 24px #0008; }
     #menu { display: block; position: fixed; z-index: 21; top: 8px; left: 8px; width: 40px; height: 40px; border: 0; border-radius: 6px; background: #1b232b; color: #ffc24b; font-size: 22px; cursor: pointer; }
@@ -124,7 +127,7 @@
 <body>
 <div id="map"><div id="loading"><img src="icon.svg" alt=""><span>Luchtruim laden…</span></div></div>
 <button type="button" id="menu" aria-label="Menu" aria-expanded="false">☰</button>
-<form id="layers">
+<form id="layers"><div id="grip" title="Sleep om de breedte aan te passen"></div>
 <div id="tabs" role="tablist"><button type="button" role="tab" data-tab="kaart">Kaart</button><button type="button" role="tab" data-tab="luchtruim">Luchtruim</button><button type="button" role="tab" data-tab="vandaag">Vandaag</button><button type="button" role="tab" data-tab="vlucht">Vlucht</button></div>
 <section id="kaart" role="tabpanel"><label>Onderlaag <select id="base"><option>Satelliet</option><option>Kaart</option><option selected>ICAO-kaart</option></select></label><div id="tileError" style="color: #ff8787"></div><h3>Hoogte</h3><label>Verticale schaal <output id="scaleOut">10</output>×<br><input id="scale" type="range" min="1" max="20" step="0.5" value="10"></label><label>Verberg luchtruim boven <select id="maxFl"><option value="10">FL 10</option><option value="15">FL 15</option><option value="20">FL 20</option><option value="25">FL 25</option><option value="30">FL 30</option><option value="35">FL 35</option><option value="40">FL 40</option><option value="45">FL 45</option><option value="50">FL 50</option><option value="55">FL 55</option><option value="60">FL 60</option><option value="65">FL 65</option><option value="70">FL 70</option><option value="75">FL 75</option><option value="80">FL 80</option><option value="85">FL 85</option><option value="90">FL 90</option><option value="95" selected>FL 95</option><option value="100">FL 100</option><option value="105">FL 105</option><option value="110">FL 110</option><option value="115">FL 115</option><option value="120">FL 120</option><option value="125">FL 125</option><option value="130">FL 130</option><option value="135">FL 135</option><option value="140">FL 140</option><option value="145">FL 145</option><option value="150">FL 150</option></select></label><p class="credits">Luchtruim © LVNL (CC BY 4.0). Activeringen (FUA) © EUROCONTROL. Vormen België/Luxemburg en Duitsland © openAIP (CC BY-NC 4.0). De AIP Netherlands van LVNL is leidend.</p><p><a href="luchtruim.html">Luchtruim in Nederland uitgelegd</a></p><button type="button" id="showDisclaimer" style="width: 100%">Disclaimer en updates</button></section>
 <section id="luchtruim" role="tabpanel"><label><input id="all" type="checkbox"> <b>Alle luchtruimen</b></label><div id="classes"></div><div style="display:flex;justify-content:space-between;align-items:center"><button type="button" id="expand">Alles uitklappen</button><span class="sel" id="selLuchtruim"></span></div><input id="search" type="search" placeholder="Zoek luchtruim op naam" style="width:100%;box-sizing:border-box"><div id="tree"></div><button type="button" id="lxnavAirspace" title="SeeYou CUB-bestand met het aangevinkte luchtruim, voor LXNAV en SeeYou" style="width: 100%; margin-top: 8px">Download als .cub</button></section>
@@ -172,7 +175,15 @@
 import { fuaKey, designators, aboutAirspace, namedIn, frees, ownCircle, eHeight } from './notam-regels.js?v=28-10-2026c'; // ?v: a cached older copy would lack new exports and stop the whole page; change it with notam-regels.js
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '29-10-2026m';
+const CODE_VERSION = '30-10-2026j';
+// drag the side panel's right edge to change its width (Frank 2026-10-30), remembered in this browser
+const grip = document.getElementById('grip'), setMenu = w => document.documentElement.style.setProperty('--menu', `${Math.min(Math.max(w, 220), 600)}px`);
+try { setMenu(+localStorage.getItem('vfr3d-menu') || 290); } catch {}
+grip.onpointerdown = ev => {
+  grip.setPointerCapture(ev.pointerId);
+  grip.onpointermove = e => setMenu(e.clientX);
+  grip.onpointerup = () => { grip.onpointermove = null; try { localStorage.setItem('vfr3d-menu', document.getElementById('layers').offsetWidth); } catch {} };
+};
 const disclaimer = document.getElementById('disclaimer'), codeDate = CODE_VERSION;
 let showHelp = () => {}; // set once the viewer exists
 let accepted = (() => { try { return localStorage.getItem('vfr3d-disclaimer') === codeDate; } catch {} })();
@@ -365,7 +376,8 @@ const sources = await Promise.all(LAYERS.map(([id, label]) =>
   (id === NOTAMS ? fetch(NOTAMS, { cache: 'no-cache' }).then(r => r.json()).then(j => (notamsFetched = j.opgehaald, notamsActueel = j.actueel, showFout('NOTAMs', j.fout), Cesium.GeoJsonDataSource.load(j)))
     // LVNL airspace: the copy in data/lvnl (kept current by the LVNL-luchtruim GitHub Action), else LVNL itself
     : typeof id === 'string' ? Cesium.GeoJsonDataSource.load(id)
-    : Cesium.GeoJsonDataSource.load(`data/lvnl/${id}.geojson`).catch(() => Cesium.GeoJsonDataSource.load(`${LVNL}/${id}/query?where=1%3D1&outFields=*&outSR=4326&f=geojson`)))
+    // TMZs (8): split at the CTRs by .github/tmz-ctr.py
+    : Cesium.GeoJsonDataSource.load(`data/lvnl/${id === 8 ? 'tmz-ctr' : id}.geojson`).catch(() => Cesium.GeoJsonDataSource.load(`${LVNL}/${id}/query?where=1%3D1&outFields=*&outSR=4326&f=geojson`)))
     .catch(e => console.error(label, e))));
 
 // NOTAM and FUA times are UTC; show Dutch local time (Intl handles summer/winter time) with Zulu, e.g. "do 15 okt 09:30 LT (07:30Z)"
@@ -542,9 +554,9 @@ const atTime = document.getElementById('atTime'), atDay = document.getElementByI
 atTime.value = Math.floor((now - dayStart) / 900000) * 15;
 atDay.value = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Amsterdam', weekday: 'short' }).format(now);
 const atOut = () => document.getElementById('atOut').value = when(showAt(), false);
-atTime.oninput = () => { atOut(); refresh(); };
+atTime.oninput = () => { atOut(); updateHeights(); };
 atOut();
-atDay.onchange = atHol.onchange = () => refresh();
+atDay.onchange = atHol.onchange = () => updateHeights();
 const liveTime = document.getElementById('liveTime'), liveAt = () => now + liveTime.value * 60000;
 // the whole day: from 00:00 LT today to 06:00 LT tomorrow, starting at now (0)
 liveTime.min = -Math.floor((now - dayStart) / 900000) * 15;
@@ -592,6 +604,8 @@ document.getElementById('lxnavAirspace').onclick = () => {
       const [cls, , note] = a.rule({ weekday: 'Wed', hour: 20, hol: false }, p), [, text] = a.rule({ weekday: 'Sat', hour: 12, hol: false }, p);
       return cubItem(a, e, `${name} (${note})`, `Klasse ${cls} (AIP SUP 03/2022)\n${text}`, max, cls);
     }
+    // TMZs with a time rule: the lowest lower limit (1200 ft MSL, weekdays 09-17 LT), when it is higher (or not active) in the name
+    if (a.tmz) return cubItem(a, Object.create(e, { limits: { value: e.base } }), `${name} (${tmzNote(a.tmz)})`, tmzText(a.tmz), max);
     const cls = e.cls ?? a.cls;
     return cubItem(a, e, name, cls ? `Klasse ${cls}` : '', max);
   })), 'luchtruim', 'vfr3d.nl Luchtruim (c) LVNL CC BY 4.0. AIP Netherlands leidend. Niet voor navigatie.', 'Er staat geen luchtruim aan.');
@@ -644,6 +658,44 @@ const weekend = ({ weekday, hour, hol }) => hol || weekday === 'Sat' || weekday 
 // [class now, rule text, short note on when the lower class E applies (for the .cub name)]
 const lowerBand = t => [...(inW(t) ? ['D', 'D tot 22:00 LT, daarna E'] : ['E', 'E, klasse D van 18:00 tot 22:00 LT']), 'E buiten 18-22 LT'];
 const upperBand = t => [...(weekend(t) && !inW(t) ? ['E', 'E (vrijdag 17:00 tot maandag 00:00 LT en feestdagen), klasse D van 18:00 tot 22:00 LT'] : ['D', 'D']), 'E vr17-ma00 LT, fd, niet 18-22'];
+// EH-6-TMZ (AIRAC 29-10-2026, ICAO chart 2026): most TMZs have a lower limit that depends on the time, notes 1-4; 0800-1600 UTC
+// (0700-1500 summer) is 09:00-17:00 LT. Per designator [note 1: outside weekdays 09-17 LT, note 2: weekdays 09-17 LT for gliders,
+// hang gliders and paragliders]; note 3 (weekdays 09-17 LT, everyone else) is 1200 ft MSL, LVNL's own lower limit, which the app draws then.
+// No note 1 (TMZ G1, note 4): only active on weekdays 09-17 LT (Frank 2026-10-30)
+const TMZ = { EHAATMZA: ['FL55', 'FL45'], EHAATMZB1: ['FL55', 'FL45'], EHAATMZB2: ['FL55', 'FL45'], EHAATMZC1: ['FL65', 'FL45'], EHAATMZC2: ['FL55', 'FL45'],
+  EHAATMZD: ['2500', '2500'], EHTMZD1: ['2500', '2500'], EHTMZD2: ['2500', '2500'], EHAATMZE: ['FL55', 'FL45'], EHGGTMZ: ['1500', '1500'],
+  EHAATMZG1: [null, 'FL45'], EHLETMZ3: ['1500', '1500'], EHLETMZ4: ['2500', '2500'], EHLETMZ5: ['FL45', 'FL45'], EHBKTMZ: ['1500', '1500'],
+  EHBKTMZ1: ['1500', '1500'], EHRDTMZ: ['2500', '2500'] };
+const tmzDay = s => !s.hol && !['Sat', 'Sun'].includes(s.weekday) && s.hour >= 9 && s.hour < 17;
+const maldenFree = s => s.hol || ['Sat', 'Sun'].includes(s.weekday) || s.weekday === 'Fri' && s.hour >= 17 || s.weekday === 'Mon' && s.hour < 9;
+const tmzLimit = v => v.startsWith('FL') ? [+v.slice(2), 'FL', 'STD'] : [+v, 'FT', 'MSL'];
+const tmzShow = v => v.startsWith('FL') ? `FL ${v.slice(2)}` : `${v} FT MSL`;
+const tmzNote = ([first]) => first ? `${tmzShow(first)} buiten ma-vr 09-17 LT` : 'alleen ma-vr 09-17 LT';
+const tmzText = ([first, second]) => `Ma-vr 09:00-17:00 LT (niet op feestdagen): ondergrens 1200 FT MSL, voor zweefvliegers, deltavliegers en schermvliegers ${tmzShow(second)}.\n`
+  + (first ? `Verder (ook za, zo en feestdagen): ${tmzShow(first)}.` : 'Verder (ook za, zo en feestdagen) niet actief.') + " CTR's horen niet bij de TMZ.";
+const ctrState = () => airspaces.filter(a => a.key.startsWith('CTR|')).map(a => +a.on).join('');
+function tmzLimits() {
+  const s = simDay(showAt()), ctrs = new Map(airspaces.filter(a => a.key.startsWith('CTR|')).map(a => [a.entities[0].limits.Designator, a]));
+  for (const a of airspaces) for (const e of a.entities) {
+    if (!a.tmz && !e.base.CTR && !e.base.Malden && !e.base.SchipholTma) continue;
+    // the rule only moves LVNL's 1200 ft lower limit, not e.g. TMZ Maastricht's part from FL095 (EHBKTMZ2 has no rule anyway)
+    const ruled = a.tmz && !tmzDay(s) && e.base.LowerLimitUnit === 'FT' && e.base.LowerLimit === 1200, off = ruled && !a.tmz[0];
+    let p = { ...e.base, ...(ruled && !off ? Object.fromEntries(['LowerLimit', 'LowerLimitUnit', 'LowerLimitReference'].map((k, i) => [k, tmzLimit(a.tmz[0])[i]])) : {}) };
+    // Malden area: exempted from TMZ D from Friday 16:00 (15:00) until Monday 08:00 (07:00) UTC, i.e. 17:00-09:00 LT, and on holidays
+    if (e.base.Malden && maldenFree(s)) p = { ...p, LowerLimit: 45, LowerLimitUnit: 'FL', LowerLimitReference: 'STD' };
+    // CTRs are excluded from TMZs: the part over a CTR starts on top of it while that CTR is switched on; off (a military CTR
+    // that is closed) it is drawn as published (Frank 2026-10-30)
+    const ctr = ctrs.get(e.base.CTR), c = ctr?.on && ctr.entities[0].limits, m = (v, u, r) => metres(v, u, r);
+    if (c && m(c.UpperLimit, c.UpperLimitUnit, c.UpperLimitReference) > m(p.LowerLimit, p.LowerLimitUnit, p.LowerLimitReference))
+      p = { ...p, LowerLimit: c.UpperLimit, LowerLimitUnit: c.UpperLimitUnit, LowerLimitReference: c.UpperLimitReference };
+    e.limits = p;
+    e.empty = off || m(p.LowerLimit, p.LowerLimitUnit, p.LowerLimitReference) >= m(p.UpperLimit, p.UpperLimitUnit, p.UpperLimitReference);
+    e.description = describe(p).replace('</table>', (a.tmz ? `<tr><th>Ondergrens (EH-6-TMZ)</th><td style="white-space: pre-wrap">${tmzText(a.tmz)}</td></tr>` : '')
+      + (e.base.Malden ? '<tr><th>Malden area</th><td>Vrijgesteld van TMZ D (2500 FT MSL tot FL 45) van vrijdag 17:00 tot maandag 09:00 LT en op feestdagen</td></tr>' : '')
+      + (e.base.SchipholTma ? '<tr><th>Schiphol TMA 7/8</th><td>Uitgesloten van deze TMZ (noot 5), die hier tot 1300 FT MSL loopt</td></tr>' : '')
+      + (ctr ? `<tr><th>CTR</th><td>Boven ${ctr.name.replace(/^\[.\] /, '')} begint de TMZ boven de CTR zolang die aan staat</td></tr>` : '') + '</table>');
+  }
+}
 const SUP = [
   [/LELYSTAD TMA ?[345]\b|NIEUW MILLIGEN TMA ?B\b/, t => lowerBand(t)],
   // two bands: FL065–FL095 follows note 3, FL055–FL065 follows W (the LVNL volume is split at FL065)
@@ -654,7 +706,9 @@ const supRows = (t, text) => `<tr><th>Klasse (AIP SUP 03/2022)</th><td style="wh
 // infobox: only the fields a pilot needs, in this order
 // a limit with its unit and reference on one line (Frank 2026-10-17): "FL 95", "1500 FT MSL", "SFC"
 const limit = (v, unit, ref) => ref === 'SFC' || ref === 'GND' && !v ? ref : unit === 'FL' ? `FL ${v}` : [v, unit, ref].filter(x => x != null && x !== '').join(' ');
-const describe = p => '<table class="cesium-infoBox-defaultTable">' + ['UpperLimit', 'LowerLimit', 'Type', 'Class', 'Designator', 'Name', 'Actief', 'Van', 'Tot', 'Schema', 'Tekst']
+// titles and the side panel show the name only, the designator just when there is no name; the table still lists it (Frank 2026-10-30)
+const title = p => p.Name || p.Designator || '';
+const describe = p => '<table class="cesium-infoBox-defaultTable">' + ['Name', 'Class', 'UpperLimit', 'LowerLimit', 'Designator', 'Type', 'Actief', 'Van', 'Tot', 'Schema', 'Tekst']
   .filter(k => p[k] != null && p[k] !== '').map(k => `<tr><th>${k}</th><td${k === 'Tekst' || k === 'Actief' ? ' style="white-space: pre-wrap; word-break: break-word"' : ''}>${String(k === 'Van' || k === 'Tot' ? when(p[k])
     : k === 'UpperLimit' ? limit(p.UpperLimit, p.UpperLimitUnit, p.UpperLimitReference) : k === 'LowerLimit' ? limit(p.LowerLimit, p.LowerLimitUnit, p.LowerLimitReference) : p[k]).replace(/&/g, '&amp;').replace(/</g, '&lt;')}</td></tr>`).join('') + '</table>';
 const byLabel = new Map();
@@ -689,8 +743,8 @@ LAYERS.forEach(([, label, colour, show], i) => {
     const key = `${label}|${p.Designator}|${p.Name}`;
     const own = label.startsWith('NOTAMs') && relaxing(p) ? NOTAM_GREEN : colour;
     const color = Cesium.Color.fromCssColorString(CLASS_COLOURS[cls] ?? own);
-    e.name = `${cls ? `[${cls}] ` : ''}${[p.Designator, p.Name].filter(Boolean).join(' ')}`;
-    e.limits = p;
+    e.name = `${cls ? `[${cls}] ` : ''}${title(p)}`;
+    e.limits = e.base = p;
     e.description = describe(p);
     e.polygon.material = color.withAlpha(0.25);
     e.polygon.outline = false; // no edge lines: on phones they showed as dense vertical stripes (Frank 2026-10-29)
@@ -699,13 +753,20 @@ LAYERS.forEach(([, label, colour, show], i) => {
     if (!items.has(key)) items.set(key, { key, cls, show, name: e.name, colour: CLASS_COLOURS[cls] ?? own, entities: [],
       // SUP 03/2022 covers FL055–FL095 in Nieuw Milligen (Lelystad from 1500 ft): volumes from FL095 up (e.g. EHMCC2B, class B)
       // and Nieuw Milligen's lower parts up to FL055 (EHMCBE, EHMCC2E, EHMCEE, always class E) keep their LVNL class (local pilot 2026-10-29)
-      rule: !(p.LowerLimitUnit === 'FL' && p.LowerLimit >= 95) && !(p.UpperLimitUnit === 'FL' && p.UpperLimit <= 55) && SUP.find(([re]) => re.test(`${p.Designator} ${p.Name}`.toUpperCase()))?.[1] });
+      tmz: TMZ[p.Designator], rule: !(p.LowerLimitUnit === 'FL' && p.LowerLimit >= 95) && !(p.UpperLimitUnit === 'FL' && p.UpperLimit <= 55) && SUP.find(([re]) => re.test(`${p.Designator} ${p.Name}`.toUpperCase()))?.[1] });
     items.get(key).entities.push(e);
   }
 });
 const TODAY = ['NOTAMs', 'Vandaag actief (FUA)'], today = [], todayGroups = [];
 const NOTAMS_OFF = ['Drones/UAS', 'Windturbines', 'Kranen', 'Militair', 'Lasershow', 'Obstakelverlichting'];
 byLabel.forEach((items, label) => {
+  // a name that occurs more than once in a type gets its designator in brackets, so the items can be told apart (Frank 2026-10-30)
+  const plain = a => a.name.replace(/^\[.\] /, ''), names = [...items.values()].map(plain);
+  for (const a of items.values()) if (names.filter(n => n === plain(a)).length > 1) {
+    const d = ` (${a.entities[0].limits.Designator})`;
+    a.name += d;
+    for (const e of a.entities) e.name += d;
+  }
   if (TODAY.includes(label) || label.includes('|')) {
     for (const a of items.values()) {
       // NOTAM kind from the Worker ('Soort'); kinds of little use to standard VFR traffic start off
@@ -812,7 +873,11 @@ notamFl.onchange = dedup.onchange = () => refresh();
 const flOf = p => p.UpperLimitReference === 'SFC' ? 0 : p.UpperLimitUnit === 'FL' ? p.UpperLimit : p.UpperLimit * (p.UpperLimitUnit === 'M' ? 3.28 : 1) / 100;
 const belowNotamFl = e => e.limits.Type === 'NOTAM' && notamFl.value && flOf(e.limits) < +notamFl.value;
 let savedSelection; // written to localStorage only when it changes
+let lastCtr; // CTRs on/off: a TMZ part over a CTR changes height with it
 function refresh() {
+  const ctrNow = ctrState();
+  if (lastCtr !== undefined && ctrNow !== lastCtr) { lastCtr = ctrNow; return updateHeights(); }
+  lastCtr = ctrNow;
   const t = showAt(), live = liveAt();
   // airspace that changes class during the day (AIP SUP 03/2022): class, colour, badge and infobox for moment t
   for (const a of airspaces) if (a.rule) for (const [i, e] of a.entities.entries()) {
@@ -823,7 +888,7 @@ function refresh() {
     const c = Cesium.Color.fromCssColorString(CLASS_COLOURS[cls]);
     Object.assign(e, { cls, name: e.name.replace(/^\[.\]/, `[${cls}]`) });
     e.polygon.material = c.withAlpha(0.25);
-    for (const r of e.rings ?? []) r.polyline.material = c.withAlpha(0.25);
+    for (const r of e.rings ?? []) r.polyline.material = c.withAlpha(0.75);
     // on a class change, follow the class buttons: on when the other airspace of the new class is on
     // except at page load, where a saved choice wins
     if (i === 0 && cls !== a.cls && (a.loaded || saved[a.key] === undefined)) a.on = airspaces.some(b => !b.rule && b.cls === cls && b.on);
@@ -839,7 +904,7 @@ function refresh() {
     a.box.checked = a.on;
     for (const e of a.entities) e.show = a.on && !!a.today === (openTab === 'vandaag') && belowMaxFl(e)
       && (!e.windows || e.windows.some(([s, u]) => s <= live && live < u)) && !coveredByFua(e, live)
-      && !belowNotamFl(e);
+      && !belowNotamFl(e) && !e.empty;
   }
   showFlightDay();
   for (const a of today) { const [c, text] = status(a); a.status.className = 'status ' + c; a.status.textContent = text; }
@@ -943,6 +1008,7 @@ const scale = document.getElementById('scale');
 // every height change rebuilds that volume, so only set heights that really change (a new QNH only moves FL limits)
 const setHeight = (polygon, key, value) => polygon[key]?.getValue() !== value && (polygon[key] = value);
 function updateHeights() {
+  tmzLimits();
   document.getElementById('scaleOut').value = scale.value;
   for (const source of [...sources, ...flightDay].filter(Boolean)) for (const e of [...source.entities.values]) {
     if (!e.polygon) continue;
@@ -953,8 +1019,8 @@ function updateHeights() {
     setHeight(e.polygon, 'height', lo);
     setHeight(e.polygon, 'extrudedHeight', hi);
     if (!moved && e.rings) continue;
-    // only the bottom and top edges as lines, 75% see-through (Frank 2026-10-29); they show and hide with their volume
-    e.rings ??= [0, 1].map(() => source.entities.add({ parent: e, polyline: { width: 1, arcType: Cesium.ArcType.NONE, material: e.polygon.material.color.getValue() } }));
+    // only the bottom and top edges as lines, 25% see-through (Frank 2026-10-29); they show and hide with their volume
+    e.rings ??= [0, 1].map(() => source.entities.add({ parent: e, polyline: { width: 1, arcType: Cesium.ArcType.NONE, material: e.polygon.material.color.getValue().withAlpha(0.75) } }));
     const ground = e.polygon.hierarchy.getValue().positions.map(c => Cesium.Cartographic.fromCartesian(c));
     [lo, hi].forEach((h, i) => e.rings[i].polyline.positions = [...ground, ground[0]].map(g => Cesium.Cartesian3.fromRadians(g.longitude, g.latitude, h)));
   }
@@ -1117,7 +1183,7 @@ async function loadFlight(target) {
       e.soort = ds.name === 'FUA' ? 'FUA' : p.Soort ?? 'Overige activiteit';
       e.key = `${ds.name === 'FUA' ? 'Vandaag actief (FUA)' : 'NOTAMs'}|${p.Designator}|${p.Name}`;
       e.windows = p.Vensters ?? [[Date.parse(p.Van), p.Tot === 'PERM' ? Infinity : Date.parse(p.Tot)]];
-      e.name = [p.Designator, p.Name].filter(Boolean).join(' ');
+      e.name = title(p);
       e.description = describe(p);
       e.polygon.material = color.withAlpha(0.25);
       e.polygon.outline = false;
