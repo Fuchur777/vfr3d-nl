@@ -45,3 +45,33 @@ export function textCircle(text) {
 
 // the NOTAM's own shape is that circle (the Worker draws it)
 export const ownCircle = t => !!textCircle(t);
+
+// Shapes from the E line that the Worker leaves as the Q line's circle (whole NM, Frank 2026-11-04), as rings of [lon, lat]:
+// - "0.2NM EITHER SIDE OF A LINE: 514132N 0043203E - 513938N 0043320E - …": a strip along the line, one capsule per segment
+// - one or two loose points ("CRANE ERECTED BTN 521811.1N 0044734.1E AND 521805.9N 0044743.7E"): a 0.1 NM circle per point
+// null when neither applies (no points, three or more loose points, or a radius the Worker already draws)
+const POINT = /(\d{2})(\d{2})(\d{2}(?:[.,]\d+)?)?([NS])\s*(\d{3})(\d{2})(\d{2}(?:[.,]\d+)?)?([EW])/g;
+const lonLat = m => {
+  const num = s => s ? +s.replace(',', '.') : 0;
+  return [(+m[5] + m[6] / 60 + num(m[7]) / 3600) * (m[8] === 'W' ? -1 : 1), (+m[1] + m[2] / 60 + num(m[3]) / 3600) * (m[4] === 'S' ? -1 : 1)];
+};
+// half circle (or full) of radius r NM around c, from angle a to b (radians, 0 = east, counter-clockwise)
+const arc = ([lon, lat], r, a, b, n = 12) => Array.from({ length: n + 1 }, (_, i) => {
+  const t = a + (b - a) * i / n;
+  return [lon + r * Math.cos(t) / 60 / Math.cos(lat * Math.PI / 180), lat + r * Math.sin(t) / 60];
+});
+export function textShapes(text) {
+  const e = eLine(text);
+  if (textCircle(text)) return null;
+  const strip = e.match(/(\d+(?:[.,]\d+)?)\s*(NM|KM|M)\s+EITHER\s+SIDE\s+OF\s+(?:A\s+)?LINE:?([\s\S]*)/);
+  if (strip) {
+    const w = +strip[1].replace(',', '.') / { M: 1852, KM: 1.852, NM: 1 }[strip[2]], pts = [...strip[3].matchAll(POINT)].map(lonLat);
+    if (pts.length < 2) return null;
+    return pts.slice(1).map((b, i) => {
+      const a = pts[i], k = Math.cos(a[1] * Math.PI / 180), h = Math.atan2(b[1] - a[1], (b[0] - a[0]) * k);
+      return [...arc(b, w, h - Math.PI / 2, h + Math.PI / 2), ...arc(a, w, h + Math.PI / 2, h + Math.PI * 1.5)];
+    });
+  }
+  const pts = [...e.matchAll(POINT)].map(lonLat);
+  return pts.length && pts.length <= 2 ? pts.map(p => arc(p, 0.1, 0, 2 * Math.PI, 24)) : null;
+}
