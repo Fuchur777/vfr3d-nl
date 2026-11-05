@@ -24,7 +24,7 @@ const vfr = notams.filter(({ t }) => /\b(CLOSED|CLSD) FOR VFR\b/.test(t));
 const list = l => l.map(({ p }) => `### ${p.Designator} (${p.Soort ?? 'onbekend'})\n\`\`\`\n${p.Tekst}\n\`\`\``).join('\n\n');
 const parts = [
   noShape.length && `## Zonder vorm\nDeze NOTAMs tekent vfr3d.nl als cirkel, omdat er geen LVNL-gebied in de tekst gevonden is.\n\n${list(noShape)}`,
-  own.length && `## Eigen vorm uit de tekst (beta)\nDeze NOTAMs tekent beta niet als cirkel uit de Q-regel maar met de punten uit de E-regel: een strook langs een lijn, 0,1 NM rond losse punten, of het gebied tussen de punten. Klopt de vorm?\n\n${list(own)}`,
+  own.length && `## Eigen vorm uit de tekst\nDeze NOTAMs tekent vfr3d.nl niet als cirkel uit de Q-regel maar met de punten uit de E-regel: een strook langs een lijn, 0,1 NM rond losse punten, of het gebied tussen de punten. Klopt de vorm?\n\n${list(own)}`,
   vfr.length && `## Gesloten voor VFR\nvfr3d.nl kleurt deze groen (het omliggende luchtruim geldt). Klopt dat?\n\n${list(vfr)}`,
   doubt.length && `## Twijfel rood of groen\nDe Q-code en de E-regel zeggen iets anders over of het luchtruim vrijkomt; vfr3d.nl kleurt ze daarom rood.\n\n${list(doubt)}`,
 ].filter(Boolean);
