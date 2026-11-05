@@ -171,10 +171,10 @@
 <dialog id="help"><form method="dialog" class="buttons"><button>Begrepen</button></form></dialog>
 <script src="https://cdn.jsdelivr.net/npm/cesium@1.145.0/Build/Cesium/Cesium.js"></script>
 <script type="module">
-import { fuaKey, designators, aboutAirspace, namedIn, frees, ownCircle, eHeight, textShapes } from './notam-regels.js?v=04-11-2026a'; // ?v: a cached older copy would lack new exports and stop the whole page; change it with notam-regels.js
+import { fuaKey, designators, aboutAirspace, namedIn, frees, ownCircle, eHeight, textShapes } from './notam-regels.js?v=05-11-2026a'; // ?v: a cached older copy would lack new exports and stop the whole page; change it with notam-regels.js
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '04-11-2026a';
+const CODE_VERSION = '05-11-2026a';
 // drag the side panel's right edge to change its width (Frank 2026-10-30), remembered in this browser
 const grip = document.getElementById('grip'), setMenu = w => document.documentElement.style.setProperty('--menu', `${Math.min(Math.max(w, 220), 600)}px`);
 try { setMenu(+localStorage.getItem('vfr3d-menu') || 290); } catch {}
