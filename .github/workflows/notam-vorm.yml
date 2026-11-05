@@ -1,9 +1,9 @@
 name: NOTAM-vorm
-# Every morning after the 06:00 LT NOTAM fetch: NOTAMs about airspace without an LVNL shape, or in doubt about red or green, go into an issue; GitHub mails it to the repo owner.
+# Daily just after 12:00 LT (11:05 UTC; GitHub often starts it later; Frank 2026-11-05): NOTAMs about airspace without an LVNL shape, or in doubt about red or green, go into an issue; GitHub mails it to the repo owner.
 # A changed list is posted as a comment (mails again); the issue closes once nothing is left to check.
 on:
   schedule:
-    - cron: '30 5 * * *'
+    - cron: '5 11 * * *'
   workflow_dispatch:
 permissions:
   contents: read
