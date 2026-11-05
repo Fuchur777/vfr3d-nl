@@ -3,12 +3,12 @@
 // (app/Services/Notams/NmsClient.php).
 // Secrets NMS_CLIENT_ID and NMS_CLIENT_SECRET are set in the Cloudflare dashboard, never in this file.
 // A KV namespace bound as NOTAMS keeps the results; a Cron Trigger every 5 minutes fetches them three
-// times a day (06:00, 18:00 and 22:00 LT), one circle per run because the FAA allows 1 request per 3 min.
+// times a day (00:00 for the NOTAMs published at midnight (Frank 2026-11-05), 06:00, 18:00 and 22:00 LT), one circle per run because the FAA allows 1 request per 3 min.
 // ?land=EB,EL picks countries by ICAO prefix; the Netherlands (EH) by default.
 // Every fetch is also kept per Dutch calendar day for a year; ?datum=2026-10-15 gives that day's NOTAMs.
 
 const API = 'https://api-nms.aim.faa.gov';
-const SLOTS = [6, 18, 22];
+const SLOTS = [0, 6, 18, 22];
 // circles of at most 100 NM (the API maximum) that cover each country
 const CIRCLES = [
   [52.2, 5.3], // Netherlands
@@ -105,7 +105,7 @@ function lt(t) {
   return `${d.toLocaleString('nl-NL', { timeZone: 'Europe/Amsterdam', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} LT (${d.toISOString().slice(11, 16).replace(':', '')}Z)`;
 }
 
-// the latest 06:00, 18:00 or 22:00 Amsterdam time before now: step back whole hours until the Amsterdam hour is a slot,
+// the latest 00:00, 06:00, 18:00 or 22:00 Amsterdam time before now: step back whole hours until the Amsterdam hour is a slot,
 // so the clock change nights come out right too
 function lastSlot(now) {
   const hourLT = t => +new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Amsterdam', hour: 'numeric', hourCycle: 'h23' }).format(t);
