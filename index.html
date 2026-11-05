@@ -172,10 +172,10 @@
 <dialog id="help"><form method="dialog" class="buttons"><button>Begrepen</button></form></dialog>
 <script src="https://cdn.jsdelivr.net/npm/cesium@1.145.0/Build/Cesium/Cesium.js"></script>
 <script type="module">
-import { fuaKey, designators, aboutAirspace, namedIn, frees, ownCircle, eHeight } from './notam-regels.js?v=28-10-2026c'; // ?v: a cached older copy would lack new exports and stop the whole page; change it with notam-regels.js
+import { fuaKey, designators, aboutAirspace, namedIn, frees, ownCircle, eHeight, textShapes } from './notam-regels.js?v=05-11-2026a'; // ?v: a cached older copy would lack new exports and stop the whole page; change it with notam-regels.js
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '05-11-2026b';
+const CODE_VERSION = '05-11-2026c';
 // drag the side panel's right edge to change its width (Frank 2026-10-30), remembered in this browser
 const grip = document.getElementById('grip'), setMenu = w => document.documentElement.style.setProperty('--menu', `${Math.min(Math.max(w, 220), 600)}px`);
 try { setMenu(+localStorage.getItem('vfr3d-menu') || 290); } catch {}
@@ -429,12 +429,20 @@ function notamShapes(ds, shapes) {
     // a designator with an LVNL shape wins; the name only when there is none (EHR4A VLIEHORS is R4A, not all R4 areas named VLIEHORS)
     const byKey = designators(tekst).flatMap(k => shapes.get(k) ?? []);
     const lvnl = byKey.length ? byKey : aboutAirspace(tekst) ? [...new Set(namedIn([...byName.keys()], tekst).flatMap(n => byName.get(n)))] : [];
+    // no airspace named: the E line's own points or strip instead of the Q line's whole-NM circle (A2538/26, M5336/26; Frank 2026-11-04)
+    const own = e.polygon && !lvnl.length && textShapes(tekst);
     // a circle given in the E line is the NOTAM's own shape (e.g. 500 m within EHTSA56), not the whole airspace
-    if (!e.polygon || !lvnl.length || ownCircle(tekst)) continue;
-    // a NOTAM the FAA gives as several areas gets its LVNL shapes once, not once per FAA area
+    if (!e.polygon || !(lvnl.length || own) || ownCircle(tekst)) continue;
+    // a NOTAM the FAA gives as several areas gets its own shapes once, not once per FAA area
     const nr = e.properties.Designator?.getValue();
     if (done.has(nr)) { ds.entities.remove(e); continue; }
     done.add(nr);
+    if (own) {
+      const ring = r => new Cesium.PolygonHierarchy(Cesium.Cartesian3.fromDegreesArray(r.flat()));
+      e.polygon.hierarchy = ring(own[0]);
+      for (const r of own.slice(1)) ds.entities.add({ polygon: { hierarchy: ring(r) }, properties: e.properties.getValue() });
+      continue;
+    }
     // each volume knows its own airspace, so a FUA for that area can stand in for it (and only for it)
     e.polygon.hierarchy = lvnl[0].polygon.hierarchy.getValue();
     e.gebied = fuaKey(lvnl[0].properties.Designator?.getValue());
