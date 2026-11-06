@@ -177,7 +177,7 @@
 import { fuaKey, designators, aboutAirspace, namedIn, frees, ownCircle, eHeight, textShapes } from './notam-regels.js?v=05-11-2026a'; // ?v: a cached older copy would lack new exports and stop the whole page; change it with notam-regels.js
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '06-11-2026f';
+const CODE_VERSION = '06-11-2026g';
 // drag the side panel's right edge to change its width (Frank 2026-10-30), remembered in this browser
 const grip = document.getElementById('grip'), setMenu = w => document.documentElement.style.setProperty('--menu', `${Math.min(Math.max(w, 220), 600)}px`);
 try { setMenu(+localStorage.getItem('vfr3d-menu') || 290); } catch {}
@@ -228,21 +228,18 @@ const LAYERS = [
 const CLASS_COLOURS = {};
 // colour schemes on the Kaart tab (Frank 2026-11-06), plus own schemeColours per kind; choice in localStorage 'vfr3d-kleuren' {schema, eigen}
 const SCHEMES = {
-  vfr: ['Toestemming (VFR)', { A: '#a61e4d', B: '#e64980', C: '#f76707', D: '#fcc419', E: '#868e96', F: '#adb5bd', G: '#ced4da',
-    'Danger (D)': '#ff8787', 'Restricted (R)': '#e03131', 'Prohibited (P)': '#1a1a1a', ATZ: '#15aabf', 'TMZ/RTMZ': '#364fc7', RMZ: '#b197fc', TRA: '#1c7ed6',
-    TSA: '#74c0fc', Parachutespringen: '#8d5524', Zweefvliegen: '#0ca678', Paragliden: '#a9e34b', TFZ: '#2b8a3e' }],
+  icao: ['ICAO', { A: '#A32D2D', B: '#993C1D', C: '#185FA5', D: '#378ADD', E: '#534AB7', F: '#888780', G: '#3B6D11',
+    'Danger (D)': '#f783ac', 'Restricted (R)': '#f3e5ab', 'Prohibited (P)': '#1a1a1a', ATZ: '#ae3ec9', 'TMZ/RTMZ': '#7048e8', RMZ: '#9775fa', TRA: '#f76707',
+    TSA: '#fab005', Parachutespringen: '#3bc9db', Zweefvliegen: '#0ca678', Paragliden: '#a9e34b', TFZ: '#2f9e44' }],
   regenboog: ['Regenboog', { A: '#e03131', B: '#f76707', C: '#fcc419', D: '#2f9e44', E: '#74c0fc', F: '#868e96', G: '#adb5bd',
     'Danger (D)': '#1c7ed6', 'Restricted (R)': '#7048e8', 'Prohibited (P)': '#1a1a1a', ATZ: '#15aabf', 'TMZ/RTMZ': '#364fc7', RMZ: '#b197fc', TRA: '#f06595',
     TSA: '#ae3ec9', Parachutespringen: '#8d5524', Zweefvliegen: '#0ca678', Paragliden: '#a9e34b', TFZ: '#2b8a3e' }],
-  live: ['ICAO (zoals nu live)', { A: '#A32D2D', B: '#993C1D', C: '#185FA5', D: '#378ADD', E: '#534AB7', F: '#888780', G: '#3B6D11',
-    'Danger (D)': '#f783ac', 'Restricted (R)': '#f3e5ab', 'Prohibited (P)': '#1a1a1a', ATZ: '#ae3ec9', 'TMZ/RTMZ': '#7048e8', RMZ: '#9775fa', TRA: '#f76707',
-    TSA: '#fab005', Parachutespringen: '#3bc9db', Zweefvliegen: '#0ca678', Paragliden: '#a9e34b', TFZ: '#2f9e44' }],
 };
 let colourChoice = {};
 try { colourChoice = JSON.parse(localStorage.getItem('vfr3d-kleuren')) ?? {}; } catch {}
 // 'eigen' is the visitor's own saved scheme, a full colour set that stays selectable next to the others (Frank 2026-11-06)
-const scheme = SCHEMES[colourChoice.schema] || colourChoice.schema === 'eigen' && colourChoice.eigen ? colourChoice.schema : 'vfr';
-const schemeColours = scheme === 'eigen' ? { ...SCHEMES.vfr[1], ...colourChoice.eigen } : SCHEMES[scheme][1];
+const scheme = SCHEMES[colourChoice.schema] || colourChoice.schema === 'eigen' && colourChoice.eigen ? colourChoice.schema : 'icao';
+const schemeColours = scheme === 'eigen' ? { ...SCHEMES.icao[1], ...colourChoice.eigen } : SCHEMES[scheme][1];
 for (const k of 'ABCDEFG') CLASS_COLOURS[k] = schemeColours[k];
 for (const l of LAYERS) l[2] = schemeColours[l[1]] ?? l[2];
 // a change is saved and the page reloads, so every layer, badge and button is drawn in the new colours
@@ -507,7 +504,7 @@ function fuaSource(fua, shapeSources) {
 const notamIndex = LAYERS.findIndex(([id]) => id === NOTAMS);
 if (sources[notamIndex]) notamShapes(sources[notamIndex], shapeMap(sources.filter((_, i) => i !== notamIndex)));
 if (fua?.gebieden) {
-  LAYERS.push(['fua', 'Vandaag actief (FUA)', '#e03131', true]);
+  LAYERS.push(['fua', 'Vandaag actief (FUA)', '#15aabf', true]);
   sources.push(fuaSource(fua, sources));
 }
 const abroad = await abroadFetch;
@@ -515,7 +512,7 @@ for (const [land, notams, fuaLand, shapes] of abroad) {
   LAYERS.push([NOTAMS, `NOTAMs|${land}`, '#e8590c', false]);
   sources.push(notams);
   if (fuaLand?.gebieden) {
-    LAYERS.push(['fua', `FUA|${land}`, '#e03131', false]);
+    LAYERS.push(['fua', `FUA|${land}`, '#15aabf', false]);
     sources.push(fuaSource(fuaLand, [shapes]));
   }
 }
@@ -1233,7 +1230,7 @@ async function loadFlight(target) {
     viewer.dataSources.add(ds);
     for (const e of [...ds.entities.values]) {
       const p = e.limits = e.properties.getValue();
-      const color = Cesium.Color.fromCssColorString(ds.name === 'FUA' ? '#e03131' : relaxing(p) ? NOTAM_GREEN : '#e8590c');
+      const color = Cesium.Color.fromCssColorString(ds.name === 'FUA' ? '#15aabf' : relaxing(p) ? NOTAM_GREEN : '#e8590c');
       if (!e.polygon) { ds.entities.remove(e); continue; }
       // on/off follows the Vandaag choices: the same NOTAM or area, else its kind
       e.soort = ds.name === 'FUA' ? 'FUA' : p.Soort ?? 'Overige activiteit';
