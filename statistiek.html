@@ -33,19 +33,32 @@
 // Public GoatCounter counter endpoint; needs "Allow adding visitor counts on your website" in GoatCounter settings
 const paginas = [['3D-kaart', '/'], ['Uitleg luchtruim', '/luchtruim.html'], ['Totaal', 'TOTAL']];
 const rijen = document.getElementById('rijen');
+// GoatCounter rate-limits bursts (429), so ask one count at a time and retry a refused one
+const wacht = ms => new Promise(r => setTimeout(r, ms));
+let rij = Promise.resolve();
+const teller = q => {
+  const p = rij.then(async () => {
+    for (let poging = 0; poging < 4; poging++) {
+      await wacht(poging ? 2000 * poging : 250);
+      const r = await fetch('https://fuchur777.goatcounter.com/counter/' + q);
+      if (r.status !== 429) return r.ok ? r.json() : { count: '0' };
+    }
+    throw new Error('429');
+  });
+  rij = p.catch(() => {});
+  return p;
+};
 for (const [naam, pad] of paginas) {
   const td = rijen.insertRow().insertCell(); td.textContent = naam;
   const n = td.parentNode.insertCell(); n.textContent = '…';
-  fetch('https://fuchur777.goatcounter.com/counter/' + encodeURIComponent(pad) + '.json')
-    .then(r => r.ok ? r.json() : { count: '0' })
+  teller(encodeURIComponent(pad) + '.json')
     .then(d => n.textContent = d.count, () => n.textContent = '–');
 }
 
 // Views per day: the counter only takes a start date (hours >= start), so a day is the difference of two running totals
 const dagen = [];
 for (let t = Date.UTC(2026, 9, 15); t <= Date.now(); t += 864e5) dagen.push(new Date(t).toISOString().slice(0, 10));
-Promise.all(dagen.map(d => fetch('https://fuchur777.goatcounter.com/counter/TOTAL.json?start=' + d)
-  .then(r => r.ok ? r.json() : { count: '0' }).then(j => +j.count.replace(/\D/g, ''))))
+Promise.all(dagen.map(d => teller('TOTAL.json?start=' + d).then(j => +j.count.replace(/\D/g, ''))))
   .then(vanaf => {
     const per = vanaf.map((v, i) => v - (vanaf[i + 1] ?? 0)), max = Math.max(1, ...per), w = 720 / per.length;
     document.getElementById('grafiek').innerHTML = per.map((v, i) => {
