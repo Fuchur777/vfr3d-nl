@@ -129,7 +129,7 @@
 <form id="layers"><div id="grip" title="Sleep om de breedte aan te passen"></div>
 <div id="tabs" role="tablist"><button type="button" role="tab" data-tab="kaart">Kaart</button><button type="button" role="tab" data-tab="luchtruim">Luchtruim</button><button type="button" role="tab" data-tab="vandaag">Vandaag</button><button type="button" role="tab" data-tab="vlucht">Vlucht</button></div>
 <section id="kaart" role="tabpanel"><label>Onderlaag <select id="base"><option>Satelliet</option><option>Kaart</option><option selected>ICAO-kaart</option></select></label><div id="tileError" style="color: #ff8787"></div><h3>Hoogte</h3><label>Verticale schaal <output id="scaleOut">10</output>×<br><input id="scale" type="range" min="1" max="20" step="0.5" value="10"></label><label>Verberg luchtruim boven <select id="maxFl"><option value="10">FL 10</option><option value="15">FL 15</option><option value="20">FL 20</option><option value="25">FL 25</option><option value="30">FL 30</option><option value="35">FL 35</option><option value="40">FL 40</option><option value="45">FL 45</option><option value="50">FL 50</option><option value="55">FL 55</option><option value="60">FL 60</option><option value="65">FL 65</option><option value="70">FL 70</option><option value="75">FL 75</option><option value="80">FL 80</option><option value="85">FL 85</option><option value="90">FL 90</option><option value="95" selected>FL 95</option><option value="100">FL 100</option><option value="105">FL 105</option><option value="110">FL 110</option><option value="115">FL 115</option><option value="120">FL 120</option><option value="125">FL 125</option><option value="130">FL 130</option><option value="135">FL 135</option><option value="140">FL 140</option><option value="145">FL 145</option><option value="150">FL 150</option></select></label><p class="credits">Luchtruim © LVNL (CC BY 4.0). Activeringen (FUA) © EUROCONTROL. Vormen België/Luxemburg en Duitsland © openAIP (CC BY-NC 4.0). De AIP Netherlands van LVNL is leidend.</p><p><a href="luchtruim.html">Luchtruim in Nederland uitgelegd</a></p><button type="button" id="showDisclaimer" style="width: 100%">Disclaimer en updates</button></section>
-<section id="luchtruim" role="tabpanel"><div class="hint">Warme kleuren (rood, oranje, geel, roze, bruin, zwart): VFR alleen met klaring of toestemming, of niet. Koele kleuren (blauw, groen, paars, grijs): VFR vrij, soms met een voorwaarde zoals transponder of radio.</div><label><input id="all" type="checkbox"> <b>Alle luchtruimen</b></label><div id="classes"></div><div style="display:flex;justify-content:space-between;align-items:center"><button type="button" id="expand">Alles uitklappen</button><span class="sel" id="selLuchtruim"></span></div><input id="search" type="search" placeholder="Zoek luchtruim op naam" style="width:100%;box-sizing:border-box"><div id="tree"></div><button type="button" id="lxnavAirspace" title="SeeYou CUB-bestand met het aangevinkte luchtruim, voor LXNAV en SeeYou" style="width: 100%; margin-top: 8px">Download als .cub</button></section>
+<section id="luchtruim" role="tabpanel"><label><input id="all" type="checkbox"> <b>Alle luchtruimen</b></label><div id="classes"></div><div style="display:flex;justify-content:space-between;align-items:center"><button type="button" id="expand">Alles uitklappen</button><span class="sel" id="selLuchtruim"></span></div><input id="search" type="search" placeholder="Zoek luchtruim op naam" style="width:100%;box-sizing:border-box"><div id="tree"></div><button type="button" id="lxnavAirspace" title="SeeYou CUB-bestand met het aangevinkte luchtruim, voor LXNAV en SeeYou" style="width: 100%; margin-top: 8px">Download als .cub</button></section>
 <section id="vandaag" role="tabpanel"><div class="hint">FUA-activaties en NOTAMs van vandaag 00:00 tot 06:00 LT morgen. NOTAMs worden om 00:00, 06:00, 18:00 en 22:00 LT opgehaald. Klik op een naam om erheen te vliegen.</div><div id="fout" style="color: #ff8787; white-space: pre-line"></div><label>Verberg NOTAMs onder <select id="notamFl"><option value="">uit</option><option value="10">FL 10</option><option value="15">FL 15</option><option value="20">FL 20</option><option value="25">FL 25</option><option value="30">FL 30</option><option value="35">FL 35</option><option value="40">FL 40</option><option value="45">FL 45</option><option value="50">FL 50</option><option value="55">FL 55</option><option value="60">FL 60</option><option value="65">FL 65</option><option value="70">FL 70</option><option value="75">FL 75</option><option value="80">FL 80</option><option value="85">FL 85</option><option value="90">FL 90</option><option value="95">FL 95</option><option value="100">FL 100</option><option value="105">FL 105</option><option value="110">FL 110</option><option value="115">FL 115</option><option value="120">FL 120</option><option value="125">FL 125</option><option value="130">FL 130</option><option value="135">FL 135</option><option value="140">FL 140</option><option value="145">FL 145</option><option value="150">FL 150</option></select></label><label title="Is een gebied vandaag zowel FUA als NOTAM: de kaart toont de FUA zolang die actief is, anders de NOTAM; de download bevat dan alleen de NOTAM, met de tijden in de omschrijving"><input type="checkbox" class="toggle" id="dedup" checked> Ontdubbel FUA/NOTAM</label><label id="greenRow" style="display: none" title="Alle NOTAMs die luchtruim vrijgeven (groen) tegelijk aan of uit"><input type="checkbox" class="toggle" id="green"> Vrijgegeven luchtruim tonen</label><div style="display:flex;justify-content:space-between;align-items:center"><button type="button" id="expandToday">Alles uitklappen</button><span class="sel" id="selVandaag"></span></div><div id="today"></div><button type="button" id="lxnav" title="SeeYou CUB-bestand met de aangevinkte FUA en NOTAMs, voor LXNAV en SeeYou">Download als .cub</button></section>
 <section id="vlucht" role="tabpanel">
 <label id="drop"><input id="igc" type="file" accept=".igc,.gpx,.kml,.kmz">
@@ -174,7 +174,7 @@
 import { fuaKey, designators, aboutAirspace, namedIn, frees, ownCircle, eHeight, textShapes } from './notam-regels.js?v=05-11-2026a'; // ?v: a cached older copy would lack new exports and stop the whole page; change it with notam-regels.js
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '06-11-2026b';
+const CODE_VERSION = '06-11-2026c';
 // drag the side panel's right edge to change its width (Frank 2026-10-30), remembered in this browser
 const grip = document.getElementById('grip'), setMenu = w => document.documentElement.style.setProperty('--menu', `${Math.min(Math.max(w, 220), 600)}px`);
 try { setMenu(+localStorage.getItem('vfr3d-menu') || 290); } catch {}
@@ -207,23 +207,24 @@ const LAYERS = [
   [15, 'CTR', '#185FA5', false],
   [14, 'TMA', '#185FA5', false],
   [13, 'CTA', '#185FA5', false],
-  [7, 'ATZ', '#22b8cf', false],
-  [8, 'TMZ/RTMZ', '#5f3dc4', false],
-  [10, 'RMZ', '#74c0fc', false],
-  [5, 'TRA', '#c2255c', false],
-  [3, 'TSA', '#f06595', false],
-  [6, 'Parachutespringen', '#0b7285', false],
-  [11, 'Zweefvliegen', '#12b886', false],
-  ['lier-zweefvliegen.geojson', 'Zweefvliegen', '#12b886', false], // winch sites from ENR 5.5, files next to index.html
+  [7, 'ATZ', '#15aabf', false],
+  [8, 'TMZ/RTMZ', '#364fc7', false],
+  [10, 'RMZ', '#b197fc', false],
+  [5, 'TRA', '#f06595', false],
+  [3, 'TSA', '#ae3ec9', false],
+  [6, 'Parachutespringen', '#8d5524', false],
+  [11, 'Zweefvliegen', '#0ca678', false],
+  ['lier-zweefvliegen.geojson', 'Zweefvliegen', '#0ca678', false], // winch sites from ENR 5.5, files next to index.html
   ['lier-paragliden.geojson', 'Paragliden', '#a9e34b', false],
   ['tfz.geojson', 'TFZ', '#2b8a3e', false], // Transponder Free Zones, Regeling luchtverkeersdienstverlening bijlage 4 (Frank 2026-10-29), off by default
-  [17, 'Danger (D)', '#b5651d', true],
-  [18, 'Restricted (R)', '#5c1a33', true],
+  [17, 'Danger (D)', '#1c7ed6', true],
+  [18, 'Restricted (R)', '#7048e8', true],
   [19, 'Prohibited (P)', '#1a1a1a', true],
-  [NOTAMS, 'NOTAMs', '#f76707', true], // FAA NMS via Frank's Cloudflare Worker (worker/notams.js)
+  [NOTAMS, 'NOTAMs', '#e8590c', true], // FAA NMS via Frank's Cloudflare Worker (worker/notams.js)
 ];
-// warm: VFR only with clearance or permission, or not at all; cool: VFR free, possibly with a condition (Frank 2026-11-06)
-const CLASS_COLOURS = { A: '#9c1b1b', B: '#e03131', C: '#f76707', D: '#fcc419', E: '#1c7ed6', F: '#868e96', G: '#51cf66' };
+// rainbow, so the seven kinds shown by default (A-D, D/R/P areas) stand apart; what VFR may do is in the infobox (Frank 2026-11-06)
+const CLASS_COLOURS = { A: '#e03131', B: '#f76707', C: '#fcc419', D: '#2f9e44', E: '#74c0fc', F: '#868e96', G: '#adb5bd' };
+const VFR = { A: 'Niet toegestaan', B: 'Alleen met klaring', C: 'Alleen met klaring', D: 'Alleen met klaring', E: 'Vrij, zonder klaring', F: 'Vrij, zonder klaring', G: 'Vrij, zonder klaring' };
 
 // light mode everywhere (Frank, 2026-10-15): WebGL 1 and no atmosphere, sky or lighting. Safari on macOS 27 draws no imagery
 // under WebGL 2 and an Android phone lost its WebGL context; none of it matters for an airspace map
@@ -475,7 +476,7 @@ if (fua?.gebieden) {
 }
 const abroad = await abroadFetch;
 for (const [land, notams, fuaLand, shapes] of abroad) {
-  LAYERS.push([NOTAMS, `NOTAMs|${land}`, '#f76707', false]);
+  LAYERS.push([NOTAMS, `NOTAMs|${land}`, '#e8590c', false]);
   sources.push(notams);
   if (fuaLand?.gebieden) {
     LAYERS.push(['fua', `FUA|${land}`, '#e03131', false]);
@@ -720,7 +721,7 @@ const supRows = (t, text, src) => `<tr><th>Klasse (${src ?? 'AIP SUP 03/2022'})<
 const limit = (v, unit, ref) => ref === 'SFC' || ref === 'GND' && !v ? ref : unit === 'FL' ? `FL ${v}` : [v, unit, ref].filter(x => x != null && x !== '').join(' ');
 // titles and the side panel show the name only, the designator just when there is no name; the table still lists it (Frank 2026-10-30)
 const title = p => p.Name || p.Designator || '';
-const describe = p => '<table class="cesium-infoBox-defaultTable">' + ['Name', 'Class', 'UpperLimit', 'LowerLimit', 'Designator', 'Type', 'Actief', 'Van', 'Tot', 'Schema', 'Tekst']
+const describe = p => (p = { ...p, VFR: VFR[p.Class] }, '<table class="cesium-infoBox-defaultTable">') + ['Name', 'Class', 'VFR', 'UpperLimit', 'LowerLimit', 'Designator', 'Type', 'Actief', 'Van', 'Tot', 'Schema', 'Tekst']
   .filter(k => p[k] != null && p[k] !== '').map(k => `<tr><th>${k}</th><td${k === 'Tekst' || k === 'Actief' ? ' style="white-space: pre-wrap; word-break: break-word"' : ''}>${String(k === 'Van' || k === 'Tot' ? when(p[k])
     : k === 'UpperLimit' ? limit(p.UpperLimit, p.UpperLimitUnit, p.UpperLimitReference) : k === 'LowerLimit' ? limit(p.LowerLimit, p.LowerLimitUnit, p.LowerLimitReference) : p[k]).replace(/&/g, '&amp;').replace(/</g, '&lt;')}</td></tr>`).join('') + '</table>';
 const byLabel = new Map();
@@ -902,7 +903,7 @@ function refresh() {
   for (const a of airspaces) if (a.rule) for (const [i, e] of a.entities.entries()) {
     const [cls, text, , src] = a.rule(simDay(t), e.limits);
     // the Class row shows the SUP class at this moment, not LVNL's fixed class (Frank 2026-10-29)
-    e.description = e.baseDescription.replace(/(<th>Class<\/th><td>)[^<]*/, `$1${cls}`).replace('</table>', supRows(simDay(t), text, src) + '</table>');
+    e.description = e.baseDescription.replace(/(<th>Class<\/th><td>)[^<]*/, `$1${cls}`).replace(/(<th>VFR<\/th><td>)[^<]*/, `$1${VFR[cls]}`).replace('</table>', supRows(simDay(t), text, src) + '</table>');
     if (e.cls === cls) continue;
     const c = Cesium.Color.fromCssColorString(CLASS_COLOURS[cls]);
     Object.assign(e, { cls, name: e.name.replace(/^\[.\]/, `[${cls}]`) });
@@ -1196,7 +1197,7 @@ async function loadFlight(target) {
     viewer.dataSources.add(ds);
     for (const e of [...ds.entities.values]) {
       const p = e.limits = e.properties.getValue();
-      const color = Cesium.Color.fromCssColorString(ds.name === 'FUA' ? '#e03131' : relaxing(p) ? NOTAM_GREEN : '#f76707');
+      const color = Cesium.Color.fromCssColorString(ds.name === 'FUA' ? '#e03131' : relaxing(p) ? NOTAM_GREEN : '#e8590c');
       if (!e.polygon) { ds.entities.remove(e); continue; }
       // on/off follows the Vandaag choices: the same NOTAM or area, else its kind
       e.soort = ds.name === 'FUA' ? 'FUA' : p.Soort ?? 'Overige activiteit';
