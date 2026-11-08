@@ -17,7 +17,6 @@ const OPENAIP = 'https://api.core.openaip.net/api/airspaces';
 const ISO = { EH: 'NL', EB: 'BE', EL: 'LU', ED: 'DE' };
 // openAIP type numbers: restricted, danger, prohibited, TRA, TSA, other, alert, warning
 const TYPES = { 1: 'R', 2: 'D', 3: 'P', 8: 'TRA', 9: 'TSA', 0: 'Overig', 17: 'Alert', 18: 'Warning' };
-const WEEK = 7 * 24 * 3600e3;
 
 export default {
   async fetch(request, env, ctx) {
@@ -179,24 +178,22 @@ function parse({ header, table }) {
   };
 }
 
-// one country per cache entry, kept a week; airspace changes per AIRAC (28 days) at most
+// the whole answer per ?land= kept a week in KV and sent as stored text, so a visit costs no parsing; airspace changes
+// per AIRAC (28 days) at most. (The Cache API used before does nothing on workers.dev, so every visit fetched and parsed openAIP.)
 async function areas(url, env, ctx) {
   const countries = (url.searchParams.get('land') ?? 'EH').toUpperCase().split(',').filter(c => ISO[c]);
-  try {
-    const all = await Promise.all(countries.map(async country => {
-      const key = new Request(new URL(`/gebieden-2-${country}.json`, url));
-      const cached = await caches.default.match(key);
-      if (Date.now() - Date.parse(cached?.headers.get('Date')) < WEEK) {
-        return cached.json();
-      }
-      const features = await openaip(env, ISO[country], country);
-      ctx.waitUntil(caches.default.put(key, Response.json(features, { headers: { ...HEADERS, 'Cache-Control': 'public, s-maxage=604800', Date: new Date().toUTCString() } })));
-      return features;
-    }));
-    return Response.json({ type: 'FeatureCollection', bron: 'openAIP (CC BY-NC)', features: all.flat() }, { headers: HEADERS });
-  } catch (error) {
-    return Response.json({ fout: String(error) }, { status: 502, headers: HEADERS });
+  const key = `gebieden:${countries.join(',')}`, headers = { ...HEADERS, 'Content-Type': 'application/json' };
+  let body = await env.FUA.get(key);
+  if (!body) {
+    try {
+      const all = await Promise.all(countries.map(country => openaip(env, ISO[country], country)));
+      body = JSON.stringify({ type: 'FeatureCollection', bron: 'openAIP (CC BY-NC)', features: all.flat() });
+    } catch (error) {
+      return Response.json({ fout: String(error) }, { status: 502, headers: HEADERS });
+    }
+    ctx.waitUntil(env.FUA.put(key, body, { expirationTtl: 7 * 24 * 3600 }).catch(() => {}));
   }
+  return new Response(body, { headers });
 }
 
 // the country's airspaces in openAIP, in the same shape as the LVNL layers

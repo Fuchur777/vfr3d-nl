@@ -42,6 +42,10 @@ const KINDS = [
   ['Parachutespringen', /\bPARACHUT|\bPJE\b/],
 ];
 
+// the answers of the last 5 minutes per query, kept in this isolate's memory: a visit then costs no KV parsing or
+// schedule working out, which went over the free plan's CPU limit (Cloudflare 2026-11-08)
+const memo = new Map();
+
 export default {
   async fetch(request, env, ctx) {
     if (!env.NOTAMS) {
@@ -51,6 +55,10 @@ export default {
     // ?staat shows when each circle was last fetched and why one failed
     if (url.searchParams.has('staat')) {
       return Response.json(await env.NOTAMS.get('staat', 'json'), { headers: HEADERS });
+    }
+    const kept = request.method === 'GET' && memo.get(url.search);
+    if (kept && Date.now() - kept.t < 300e3) {
+      return new Response(kept.body, { headers: { ...HEADERS, 'Content-Type': 'application/json' } });
     }
     const prefixes = (url.searchParams.get('land') ?? 'EH').toUpperCase().split(',');
     const circles = [...new Set(prefixes.flatMap(p => COUNTRIES[p] ?? []))];
@@ -77,13 +85,16 @@ export default {
     // 'actueel' says whether these NOTAMs are current (the app's update date and the Status-check Action read it)
     const fout = circles.map((i, k) => !stored[k] && state.fout?.[i]).filter(Boolean);
     const fetched = stored.length && stored.every(Boolean) ? Math.min(...stored.map(c => c.opgehaald)) : undefined;
-    return Response.json({
+    const body = JSON.stringify({
       type: 'FeatureCollection',
       opgehaald: fetched && new Date(fetched).toISOString(),
       fout: fout.length ? fout.join('; ') : undefined,
       actueel: date || !circles.length ? undefined : current(fetched, circles.map(i => state.fout?.[i]).filter(Boolean)),
       features: [...features.values()],
-    }, { headers: HEADERS });
+    });
+    if (memo.size > 50) memo.clear();
+    memo.set(url.search, { t: Date.now(), body });
+    return new Response(body, { headers: { ...HEADERS, 'Content-Type': 'application/json' } });
   },
   async scheduled(event, env, ctx) {
     ctx.waitUntil(step(env));
