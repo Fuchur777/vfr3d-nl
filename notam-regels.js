@@ -49,7 +49,7 @@ export const ownCircle = t => !!textCircle(t);
 // Shapes from the E line that the Worker leaves as the Q line's circle (whole NM, Frank 2026-11-04), as rings of [lon, lat]:
 // - "0.2NM EITHER SIDE OF A LINE: 514132N 0043203E - 513938N 0043320E - …": a strip along the line, one capsule per segment
 // - loose points ("CRANE ERECTED BTN 521811.1N 0044734.1E AND 521805.9N 0044743.7E", any number): a 0.1 NM circle per point
-// - three or more points joined by '-' (WI AREA 520000N 0040000E - …): that area
+// - three or more points joined by '-' or 'BACK TO' (WI AREA 520000N 0040000E - … BACK TO 520000N 0040000E): that area
 // null when none applies: no points, a radius the Worker already draws, or points partly joined by '-' (e.g. an area with an arc)
 const POINT = /(\d{2})(\d{2})(\d{2}(?:[.,]\d+)?)?([NS])\s*(\d{3})(\d{2})(\d{2}(?:[.,]\d+)?)?([EW])/g;
 const lonLat = m => {
@@ -75,7 +75,7 @@ export function textShapes(text) {
   }
   const pts = [...e.matchAll(POINT)];
   if (!pts.length) return null;
-  const dash = pts.slice(1).map((m, i) => e.slice(pts[i].index + pts[i][0].length, m.index).includes('-'));
+  const dash = pts.slice(1).map((m, i) => /-|\bBACK\s+TO\b/.test(e.slice(pts[i].index + pts[i][0].length, m.index)));
   if (pts.length >= 3 && dash.every(d => d)) return [pts.map(lonLat)];
   return dash.some(d => d) ? null : pts.map(m => arc(lonLat(m), 0.1, 0, 2 * Math.PI, 24));
 }
