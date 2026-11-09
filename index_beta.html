@@ -124,6 +124,11 @@
 .toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: #fff; transition: left .15s; }
 .toggle:checked { background: #15aabf; }
 .toggle:checked::after { left: 14px; }
+/* labels on the drawn airspace and the FL axis, HTML over the map */
+#tags { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.tag { position: absolute; left: 0; top: 0; display: none; white-space: nowrap; font: 11.5px/1.25 system-ui, sans-serif; color: #1c2024; padding: 2px 6px 2px 5px; border-radius: 4px; background: rgba(255, 255, 255, .9); border-left: 4px solid; box-shadow: 0 1px 3px #0003; }
+.tag span { color: #60646c; font-variant-numeric: tabular-nums; }
+.tag.tick { background: none; box-shadow: none; border: 0; padding: 0; font-weight: 650; text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff; }
 </style>
 </head>
 <body>
@@ -131,7 +136,7 @@
 <button type="button" id="menu" aria-label="Menu" aria-expanded="false">☰</button>
 <form id="layers"><div id="grip" title="Sleep om de breedte aan te passen"></div>
 <div id="tabs" role="tablist"><button type="button" role="tab" data-tab="kaart">Kaart</button><button type="button" role="tab" data-tab="luchtruim">Luchtruim</button><button type="button" role="tab" data-tab="vandaag">Vandaag</button><button type="button" role="tab" data-tab="vlucht">Vlucht</button></div>
-<section id="kaart" role="tabpanel"><label>Onderlaag <select id="base"><option>Satelliet</option><option>Kaart</option><option selected>ICAO-kaart</option></select></label><div id="tileError" style="color: #ff8787"></div><h3>Hoogte</h3><label>Verticale schaal <output id="scaleOut">10</output>×<br><input id="scale" type="range" min="1" max="20" step="0.5" value="10"></label><label>Verberg luchtruim boven <select id="maxFl"><option value="10">FL 10</option><option value="15">FL 15</option><option value="20">FL 20</option><option value="25">FL 25</option><option value="30">FL 30</option><option value="35">FL 35</option><option value="40">FL 40</option><option value="45">FL 45</option><option value="50">FL 50</option><option value="55">FL 55</option><option value="60">FL 60</option><option value="65">FL 65</option><option value="70">FL 70</option><option value="75">FL 75</option><option value="80">FL 80</option><option value="85">FL 85</option><option value="90">FL 90</option><option value="95" selected>FL 95</option><option value="100">FL 100</option><option value="105">FL 105</option><option value="110">FL 110</option><option value="115">FL 115</option><option value="120">FL 120</option><option value="125">FL 125</option><option value="130">FL 130</option><option value="135">FL 135</option><option value="140">FL 140</option><option value="145">FL 145</option><option value="150">FL 150</option></select></label><h3>Kleuren</h3><label>Schema <select id="schema"></select></label><details><summary>Eigen kleuren</summary><div id="eigen"></div><button type="button" id="saveColours">Bewaar eigen kleuren</button></details><p class="credits">Luchtruim © LVNL (CC BY 4.0). Activeringen (FUA) © EUROCONTROL. Vormen België/Luxemburg en Duitsland © openAIP (CC BY-NC 4.0). De AIP Netherlands van LVNL is leidend.</p><p><a href="luchtruim.html">Luchtruim in Nederland uitgelegd</a></p><button type="button" id="showDisclaimer" style="width: 100%">Disclaimer en updates</button></section>
+<section id="kaart" role="tabpanel"><label>Onderlaag <select id="base"><option>Satelliet</option><option>Kaart</option><option selected>ICAO-kaart</option></select></label><div id="tileError" style="color: #ff8787"></div><h3>Hoogte</h3><label>Verticale schaal <output id="scaleOut">10</output>×<br><input id="scale" type="range" min="1" max="20" step="0.5" value="10"></label><label>Verberg luchtruim boven <select id="maxFl"><option value="10">FL 10</option><option value="15">FL 15</option><option value="20">FL 20</option><option value="25">FL 25</option><option value="30">FL 30</option><option value="35">FL 35</option><option value="40">FL 40</option><option value="45">FL 45</option><option value="50">FL 50</option><option value="55">FL 55</option><option value="60">FL 60</option><option value="65">FL 65</option><option value="70">FL 70</option><option value="75">FL 75</option><option value="80">FL 80</option><option value="85">FL 85</option><option value="90">FL 90</option><option value="95" selected>FL 95</option><option value="100">FL 100</option><option value="105">FL 105</option><option value="110">FL 110</option><option value="115">FL 115</option><option value="120">FL 120</option><option value="125">FL 125</option><option value="130">FL 130</option><option value="135">FL 135</option><option value="140">FL 140</option><option value="145">FL 145</option><option value="150">FL 150</option></select></label><label><input type="checkbox" class="toggle" id="tagsOn" checked> Labels</label><label><input type="checkbox" class="toggle" id="axisOn" checked> FL-as</label><h3>Kleuren</h3><label>Schema <select id="schema"></select></label><details><summary>Eigen kleuren</summary><div id="eigen"></div><button type="button" id="saveColours">Bewaar eigen kleuren</button></details><p class="credits">Luchtruim © LVNL (CC BY 4.0). Activeringen (FUA) © EUROCONTROL. Vormen België/Luxemburg en Duitsland © openAIP (CC BY-NC 4.0). De AIP Netherlands van LVNL is leidend.</p><p><a href="luchtruim.html">Luchtruim in Nederland uitgelegd</a></p><button type="button" id="showDisclaimer" style="width: 100%">Disclaimer en updates</button></section>
 <section id="luchtruim" role="tabpanel"><label><input id="all" type="checkbox"> <b>Alle luchtruimen</b></label><div id="classes"></div><div style="display:flex;justify-content:space-between;align-items:center"><button type="button" id="expand">Alles uitklappen</button><span class="sel" id="selLuchtruim"></span></div><input id="search" type="search" placeholder="Zoek luchtruim op naam" style="width:100%;box-sizing:border-box"><div id="tree"></div><button type="button" id="lxnavAirspace" title="SeeYou CUB-bestand met het aangevinkte luchtruim, voor LXNAV en SeeYou" style="width: 100%; margin-top: 8px">Download als .cub</button></section>
 <section id="vandaag" role="tabpanel"><div class="hint">FUA-activaties en NOTAMs van vandaag 00:00 tot 06:00 LT morgen. NOTAMs worden om 00:00, 06:00, 18:00 en 22:00 LT opgehaald. Klik op een naam om erheen te vliegen.</div><div id="fout" style="color: #ff8787; white-space: pre-line"></div><label>Verberg NOTAMs onder <select id="notamFl"><option value="">uit</option><option value="10">FL 10</option><option value="15">FL 15</option><option value="20">FL 20</option><option value="25">FL 25</option><option value="30">FL 30</option><option value="35">FL 35</option><option value="40">FL 40</option><option value="45">FL 45</option><option value="50">FL 50</option><option value="55">FL 55</option><option value="60">FL 60</option><option value="65">FL 65</option><option value="70">FL 70</option><option value="75">FL 75</option><option value="80">FL 80</option><option value="85">FL 85</option><option value="90">FL 90</option><option value="95">FL 95</option><option value="100">FL 100</option><option value="105">FL 105</option><option value="110">FL 110</option><option value="115">FL 115</option><option value="120">FL 120</option><option value="125">FL 125</option><option value="130">FL 130</option><option value="135">FL 135</option><option value="140">FL 140</option><option value="145">FL 145</option><option value="150">FL 150</option></select></label><label title="Is een gebied vandaag zowel FUA als NOTAM: de kaart toont de FUA zolang die actief is, anders de NOTAM; de download bevat dan alleen de NOTAM, met de tijden in de omschrijving"><input type="checkbox" class="toggle" id="dedup" checked> Ontdubbel FUA/NOTAM</label><label id="greenRow" style="display: none" title="Alle NOTAMs die luchtruim vrijgeven (groen) tegelijk aan of uit"><input type="checkbox" class="toggle" id="green"> Vrijgegeven luchtruim tonen</label><div style="display:flex;justify-content:space-between;align-items:center"><button type="button" id="expandToday">Alles uitklappen</button><span class="sel" id="selVandaag"></span></div><div id="today"></div><button type="button" id="lxnav" title="SeeYou CUB-bestand met de aangevinkte FUA en NOTAMs, voor LXNAV en SeeYou">Download als .cub</button></section>
 <section id="vlucht" role="tabpanel">
@@ -177,7 +182,7 @@
 import { fuaKey, designators, aboutAirspace, namedIn, frees, ownCircle, eHeight, textShapes } from './notam-regels.js?v=09-11-2026a'; // ?v: a cached older copy would lack new exports and stop the whole page; change it with notam-regels.js
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '06-11-2026g';
+const CODE_VERSION = '09-11-2026a';
 // drag the side panel's right edge to change its width (Frank 2026-10-30), remembered in this browser
 const grip = document.getElementById('grip'), setMenu = w => document.documentElement.style.setProperty('--menu', `${Math.min(Math.max(w, 220), 600)}px`);
 try { setMenu(+localStorage.getItem('vfr3d-menu') || 290); } catch {}
@@ -1325,6 +1330,89 @@ clock.onTick.addEventListener(() => {
   Cesium.Matrix4.inverse(Cesium.Transforms.eastNorthUpToFixedFrame(here), enu);
   Cesium.Matrix4.multiplyByPoint(enu, next, ahead);
   viewer.camera.setView({ destination: here, orientation: { heading: Math.atan2(ahead.x, ahead.y), pitch: Cesium.Math.toRadians(-10), roll: 0 } });
+});
+// labels on the drawn airspace and a FL axis (Frank 2026-11-09, after his Three.js example). HTML over the map, so a label gets
+// its colour as an edge and labels never overlap: CTR before TMA/CTA before the rest, a label in the way waits until you zoom in
+const tags = Object.assign(document.createElement('div'), { id: 'tags' });
+viewer.cesiumWidget.container.after(tags); // under Cesium's buttons and infobox
+const tagsOn = document.getElementById('tagsOn'), axisOn = document.getElementById('axisOn');
+const PRIO = { CTR: 1, TMA: 2, CTA: 2 };
+const tagEl = (o, cls) => (o.el ??= tags.appendChild(Object.assign(document.createElement('div'), { className: `tag ${cls}`, owner: o })));
+// the point inside the outline furthest from its edges (on a 9×9 grid), so the label sits over the area and not over a neighbour
+const anchor = e => e.anchor ??= (() => {
+  const r = ring(e), xs = r.map(p => p[0]), ys = r.map(p => p[1]), k = Math.cos(ys[0]);
+  const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+  let best = r[0], far = -1;
+  for (let i = 1; i < 10; i++) for (let j = 1; j < 10; j++) {
+    const p = [x0 + (x1 - x0) * i / 10, y0 + (y1 - y0) * j / 10];
+    if (!inRing(p, r)) continue;
+    let d = Infinity;
+    for (let n = 0; n < r.length; n++) {
+      const a = r[n], b = r[(n + 1) % r.length], dx = (b[0] - a[0]) * k, dy = b[1] - a[1];
+      const t = Math.max(0, Math.min(1, (((p[0] - a[0]) * k) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy || 1)));
+      d = Math.min(d, Math.hypot((p[0] - a[0]) * k - t * dx, p[1] - a[1] - t * dy));
+    }
+    if (d > far) [far, best] = [d, p];
+  }
+  return best;
+})();
+// FL axis: a line from the ground up to the FL filter, in the lower left of the view, moved after each camera move; heights with QNH and scale
+const TICKS = [[1500], [2500], [3000], [3500], [55, 'FL'], [65, 'FL'], [95, 'FL'], [125, 'FL'], [150, 'FL'], [195, 'FL']];
+let axisAt;
+const placeAxis = () => {
+  const c = viewer.scene.canvas, g = viewer.camera.pickEllipsoid(new Cesium.Cartesian2(c.clientWidth * .12, c.clientHeight * .85))
+    ?? viewer.camera.pickEllipsoid(new Cesium.Cartesian2(c.clientWidth / 2, c.clientHeight / 2));
+  axisAt = g && Cesium.Cartographic.fromCartesian(g);
+};
+viewer.camera.moveEnd.addEventListener(placeAxis)
+placeAxis();
+const axisPoint = m => Cesium.Cartesian3.fromRadians(axisAt.longitude, axisAt.latitude, m * scale.value);
+const axisData = new Cesium.CustomDataSource('FL-as');
+viewer.dataSources.add(axisData);
+axisData.entities.add({ polyline: { width: 2, arcType: Cesium.ArcType.NONE, material: Cesium.Color.fromCssColorString('#1c2024'),
+  positions: new Cesium.CallbackProperty(() => axisAt ? [axisPoint(0), axisPoint(metres(maxFl.value, 'FL'))] : [], false) } });
+const ticks = TICKS.map(([v, unit]) => ({ v, unit }));
+viewer.scene.postRender.addEventListener(() => {
+  const scene = viewer.scene, w = scene.canvas.clientWidth, h = scene.canvas.clientHeight, top = metres(maxFl.value, 'FL');
+  const axis = axisOn.checked && scene.mode === Cesium.SceneMode.SCENE3D && axisAt;
+  axisData.show = !!axis;
+  const occluder = scene.mode === Cesium.SceneMode.SCENE3D && new Cesium.EllipsoidalOccluder(Cesium.Ellipsoid.WGS84, viewer.camera.positionWC);
+  const list = [];
+  // the axis ticks first: the FL filter itself, then the limits below it that matter in NL
+  if (axis) for (const t of [Object.assign(ticks.top ??= { unit: 'FL' }, { v: +maxFl.value }), ...ticks.filter(t => metres(t.v, t.unit) < top - 30)]) {
+    const text = `— ${t.unit ? `FL ${t.v}` : `${t.v} ft`}`;
+    if (tagEl(t, 'tick').textContent !== text) Object.assign(t.el, { textContent: text }), t.w = 0;
+    list.push([t, 0, axisPoint(metres(t.v, t.unit)), true]);
+  }
+  if (tagsOn.checked) for (const e of [...airspaces, ...today].flatMap(a => a.entities).concat(flightDay.flatMap(ds => ds.entities.values))) {
+    if (!e.isShowing || !e.polygon) continue;
+    const [x, y] = anchor(e), lo = e.polygon.height?.getValue() ?? 0, hi = e.polygon.extrudedHeight?.getValue() ?? lo, p = e.limits;
+    const cls = e.name.match(/^\[(.)\]/)?.[1], text = [e.name.replace(/^\[.\] /, ''), `${cls ? `${cls} · ` : ''}${limit(p.LowerLimit, p.LowerLimitUnit, p.LowerLimitReference)} – ${limit(p.UpperLimit, p.UpperLimitUnit, p.UpperLimitReference)}`];
+    const t = e.tag ??= {};
+    if (t.text !== text.join()) {
+      tagEl(t, '').replaceChildren(Object.assign(document.createElement('b'), { textContent: text[0] }), ' ', Object.assign(document.createElement('span'), { textContent: text[1] }));
+      t.el.style.borderLeftColor = e.polygon.material.color.getValue().withAlpha(1).toCssColorString();
+      Object.assign(t, { text: text.join(), w: 0 });
+    }
+    list.push([t, PRIO[itemOf.get(e)?.key.split('|')[0]] ?? 3, Cesium.Cartesian3.fromRadians(x, y, (lo + hi) / 2)]);
+  }
+  // the ones shown last frame go first among equals, so labels do not flicker while turning the map
+  list.sort((a, b) => a[1] - (a[0].shown ? .5 : 0) - (b[1] - (b[0].shown ? .5 : 0)));
+  const placed = [], shown = new Set();
+  for (const [t, , pos, left] of list) {
+    if (occluder && !occluder.isPointVisible(pos)) continue;
+    const s = Cesium.SceneTransforms.worldToWindowCoordinates(scene, pos);
+    if (!s || s.x < -100 || s.x > w + 100 || s.y < -20 || s.y > h + 20) continue;
+    if (!t.w) { t.el.style.display = 'block'; t.w = t.el.offsetWidth; t.h = t.el.offsetHeight; }
+    const x = Math.round(left ? s.x : s.x - t.w / 2), y = Math.round(s.y - t.h / 2);
+    if (placed.some(([a, b, c, d]) => x < c && x + t.w > a && y < d && y + t.h > b)) continue;
+    placed.push([x - 2, y - 2, x + t.w + 2, y + t.h + 2]);
+    const transform = `translate(${x}px, ${y}px)`;
+    if (t.el.style.transform !== transform) t.el.style.transform = transform;
+    shown.add(t);
+  }
+  for (const [t] of list) t.shown = shown.has(t);
+  for (const el of tags.children) { const d = shown.has(el.owner) ? 'block' : 'none'; if (el.style.display !== d) el.style.display = d; }
 });
 updateHeights();
 </script>
