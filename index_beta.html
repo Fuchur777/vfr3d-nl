@@ -185,7 +185,7 @@
 import { fuaKey, designators, aboutAirspace, namedIn, frees, ownCircle, eHeight, textShapes } from './notam-regels.js?v=09-11-2026a'; // ?v: a cached older copy would lack new exports and stop the whole page; change it with notam-regels.js
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '13-11-2026d';
+const CODE_VERSION = '13-11-2026e';
 // drag the side panel's right edge to change its width (Frank 2026-10-30), remembered in this browser
 const grip = document.getElementById('grip'), setMenu = w => document.documentElement.style.setProperty('--menu', `${Math.min(Math.max(w, 220), 600)}px`);
 try { setMenu(+localStorage.getItem('vfr3d-menu') || 290); } catch {}
@@ -401,8 +401,8 @@ const metres = (value, unit, ref) =>
   ref === 'SFC' ? 0 : (unit === 'FL' ? value * 100 + (qnh.value - 1013.25) * 27.3 : unit === 'M' ? value / 0.3048 : value) * 0.3048;
 
 let notamsFetched, notamsActueel;
-// NOTAMs tab: today or tomorrow (?dag=1; Frank 2026-11-13); the other day reloads the page
-const dag = Math.min(1, Math.max(0, Math.trunc(+new URLSearchParams(location.search).get('dag')) || 0));
+// NOTAMs tab: today or tomorrow (Frank 2026-11-13); both are loaded, the buttons switch without reloading
+let dag = 0;
 // a Worker that could not fetch says why in 'fout' (and serves the last good data)
 const showFout = (bron, fout) => fout && (document.getElementById('fout').textContent += `${bron}: ${fout}\n`);
 // FUA and the neighbouring countries are fetched at the same time as the airspace
@@ -602,15 +602,14 @@ const badge = (cls, colour) => Object.assign(document.createElement('span'), { c
 // Vandaag stays live for NOTAMs and FUA, from now until 06:00 LT tomorrow. Both in 15-minute steps
 const amsOffset = d => new Date(d.toLocaleString('en-US', { timeZone: 'Europe/Amsterdam' })) - new Date(d.toLocaleString('en-US', { timeZone: 'UTC' }));
 const now = Date.now(), ltAt = h => { const lt = new Date(now + amsOffset(new Date(now))); lt.setUTCHours(h, 0, 0, 0); return lt - amsOffset(lt); }, dayStart = ltAt(0);
-// NOTAM + FUA: the chosen day from 00:00 LT to 06:00 LT the next day
-const vStart = ltAt(24 * dag), until = ltAt(24 * dag + 30);
+// NOTAMs tab: the chosen day from 00:00 LT to 06:00 LT the next day; loaded: today 00:00 LT to 06:00 LT the day after tomorrow
+let vStart, until, liveBase;
+const loadUntil = ltAt(54);
 const dayName = t => new Date(t).toLocaleDateString('nl-NL', { timeZone: 'Europe/Amsterdam', weekday: 'short', day: 'numeric', month: 'short' });
-for (const b of document.querySelectorAll('#dag button')) Object.assign(b, { title: dayName(ltAt(24 * b.dataset.dag + 12)),
-  onclick: () => +b.dataset.dag !== dag && location.assign(`${location.pathname}${+b.dataset.dag ? '?dag=1' : ''}#vandaag`) }).setAttribute('aria-pressed', +b.dataset.dag === dag);
+const dayButtons = document.querySelectorAll('#dag button');
+for (const b of dayButtons) Object.assign(b, { title: dayName(ltAt(24 * b.dataset.dag + 12)), onclick: () => { setDay(+b.dataset.dag); refresh(); } });
 // FUA of a later day is only known once the plan (EAUP) for that day is out, the day before
 const plannedDays = [fua?.datum, ...(fua?.volgende ?? []).map(p => p.datum)];
-Object.assign(document.getElementById('fuaOnbekend'), { hidden: !dag || plannedDays.includes(new Date(vStart).toLocaleDateString('sv', { timeZone: 'Europe/Amsterdam' })),
-  textContent: 'FUA voor morgen nog niet bekend.' });
 mark('vNotams', notamsActueel, NOTAMS);
 mark('vFua', fua?.actueel, FUA);
 const atTime = document.getElementById('atTime'), atDay = document.getElementById('atDay'), atHol = document.getElementById('atHol'), showAt = () => dayStart + atTime.value * 60000;
@@ -621,12 +620,20 @@ atTime.oninput = () => { atOut(); updateHeights(); };
 atOut();
 atDay.onchange = atHol.onchange = () => updateHeights();
 // the whole day: from 00:00 LT to 06:00 LT the next day, starting at now (0), on a later day at the same time of day
-const liveBase = now + vStart - dayStart, liveTime = document.getElementById('liveTime'), liveAt = () => liveBase + liveTime.value * 60000;
-liveTime.min = -Math.floor((liveBase - vStart) / 900000) * 15;
-liveTime.max = Math.floor((until - liveBase) / 60000);
+const liveTime = document.getElementById('liveTime'), liveAt = () => liveBase + liveTime.value * 60000;
 const liveOut = () => document.getElementById('liveOut').value = +liveTime.value || dag ? when(liveAt()) : 'nu';
 liveTime.oninput = () => { liveOut(); refresh(); };
-liveOut();
+function setDay(d) {
+  dag = d; vStart = ltAt(24 * d); until = ltAt(24 * d + 30); liveBase = now + vStart - dayStart;
+  liveTime.min = -Math.floor((liveBase - vStart) / 900000) * 15;
+  liveTime.max = Math.floor((until - liveBase) / 60000);
+  liveTime.value = 0;
+  liveOut();
+  for (const b of dayButtons) b.setAttribute('aria-pressed', +b.dataset.dag === d);
+  Object.assign(document.getElementById('fuaOnbekend'), { hidden: !d || plannedDays.includes(new Date(vStart).toLocaleDateString('sv', { timeZone: 'Europe/Amsterdam' })),
+    textContent: 'FUA voor morgen nog niet bekend.' });
+}
+setDay(0);
 // LXNAV: the checked items as a SeeYou CUB file (Naviter spec 2.0.2, github.com/naviter/seeyou_file_formats),
 // the airspace format LXNAV devices load. Little endian, radians, heights in metres with a reference per limit,
 // active period as packed UTC minutes since 2000. Vandaag: FUA and NOTAMs for the whole day whatever the time
@@ -652,9 +659,9 @@ const cubItem = (a, e, name, remarks, max, cls = e.cls ?? a.cls, w = e.windows ?
     from: w.length ? Math.min(...w.map(x => x[0])) : 0, to: w.length ? Math.max(...w.map(x => x[1])) : Infinity,
     left: f32(Math.min(...lo)), right: f32(Math.max(...lo)), bottom: f32(Math.min(...la)), top: f32(Math.max(...la)) };
 };
-document.getElementById('lxnav').onclick = () => writeCub(today.filter(inDownload).flatMap(a => a.entities
+document.getElementById('lxnav').onclick = () => writeCub(today.filter(a => inDay(a) && inDownload(a)).flatMap(a => a.entities
   // one item per active window, so the logger shows each one only while it is active
-  .filter(e => !belowNotamFl(e)).flatMap(e => (e.windows?.length ? e.windows.map(x => [x]) : [[]]).map(w => {
+  .filter(e => !belowNotamFl(e)).flatMap(e => (e.windows?.length ? e.windows.filter(([s, u]) => s <= until && u >= vStart).map(x => [x]) : [[]]).map(w => {
     const p = e.limits;
     const name = `${[p.Designator, a.soort === 'FUA' ? '' : p.Name].filter(Boolean).join(' ')} ${w.length ? `${w.map(([s, u]) => `${hhmm(s)}-${u === Infinity ? 'PERM' : hhmm(u)}`).join(', ')} LT` : ''}`.trim();
     const remarks = `${a.soort}\n${w.map(([s, u]) => `${when(s)} - ${u === Infinity ? 'PERM' : when(u)}`).join('\n')}\n${p.Tekst ?? p.Actief ?? ''}`.trim();
@@ -809,12 +816,12 @@ LAYERS.forEach(([, label, colour, show], i) => {
     // LVNL also publishes British danger areas over the North Sea (EGD...); not Dutch
     // only areas: skip British airspace and any point or line features
     if (/^EG/.test(p.Designator) || !e.polygon) { source.entities.remove(e); continue; }
-    // NOTAMs: only those active at some moment between 00:00 LT on the chosen day and 06:00 LT the next day
-    if (p.Van && (Date.parse(p.Van) > until || (p.Tot !== 'PERM' && Date.parse(p.Tot) < vStart))) { source.entities.remove(e); continue; }
+    // NOTAMs: only those active at some moment between 00:00 LT today and 06:00 LT the day after tomorrow (today and tomorrow)
+    if (p.Van && (Date.parse(p.Van) > loadUntil || (p.Tot !== 'PERM' && Date.parse(p.Tot) < dayStart))) { source.entities.remove(e); continue; }
     // time windows (ms) for NOTAMs and FUA; other airspace has none and is always there
     e.windows = p.Vensters ?? (p.Van && [[Date.parse(p.Van), p.Tot === 'PERM' ? Infinity : Date.parse(p.Tot)]]);
     // a schedule without a day in that range (e.g. SAT SUN on a Tuesday): not today's either (Frank 2026-10-27)
-    if (e.windows && !e.windows.some(([s, u]) => s <= until && u >= vStart)) { source.entities.remove(e); continue; }
+    if (e.windows && !e.windows.some(([s, u]) => s <= loadUntil && u >= dayStart)) { source.entities.remove(e); continue; }
     const cls = /^[A-G]$/.test(p.Class) ? p.Class : '';
     const key = `${label}|${p.Designator}|${p.Name}`;
     const own = label.startsWith('NOTAMs') && relaxing(p) ? NOTAM_GREEN : colour;
@@ -883,7 +890,7 @@ const dedup = document.getElementById('dedup');
 // all green NOTAMs (airspace given free) on or off at once (Frank 2026-10-27); the switch only shows when there are any today
 const green = document.getElementById('green'), greenItems = today.filter(a => a.soort !== 'FUA' && a.entities.some(e => relaxing(e.limits)));
 if (greenItems.length) document.getElementById('greenRow').style.display = '';
-green.onchange = () => setOn(greenItems, green.checked);
+green.onchange = () => setOn(shown(greenItems), green.checked);
 // FUA items per area; an area and its Z variant (EHTRA10A, EHTRA10AZ) are both kept
 const fuaKeyOf = a => fuaKey(a.entities[0].limits.Designator).replace(/Z$/, '');
 const dutchFuas = today.filter(a => a.soort === 'FUA' && !a.land), dutchNotams = today.filter(a => a.soort !== 'FUA' && !a.land);
@@ -896,6 +903,9 @@ const fuaNotams = f => dutchNotams.filter(n => n.entities.some(e => e.gebied ===
 const inDownload = a => !dedup.checked ? a.on : dutchFuas.includes(a) ? a.on && !fuaNotams(a).length
   : a.on || dutchNotams.includes(a) && dutchFuas.some(f => f.on && fuaNotams(f).includes(a));
 today.sort((x, y) => x.start - y.start);
+// an item of the chosen day; the other day's rows are hidden, and group boxes and counts only take the shown ones
+const inDay = a => !a.today || a.windows.some(([s, u]) => s <= until && u >= vStart);
+const shown = items => items.filter(inDay);
 const row = a => {
   const name = Object.assign(document.createElement('a'), { href: '#', textContent: a.name, onclick: ev => {
     ev.preventDefault();
@@ -909,14 +919,14 @@ const row = a => {
   const head = document.createElement('label');
   a.link = name;
   head.append(badge(' ', a.colour), name, a.status);
-  const row = Object.assign(document.createElement('div'), { className: 'today' });
+  const row = a.row = Object.assign(document.createElement('div'), { className: 'today' });
   row.append(a.box, head, Object.assign(document.createElement('small'), { textContent: `${bands.join(', ')}\n${times.join('\n')}` }));
   return row;
 };
 // a foldable group with a tri-state box and count, like the Luchtruim tree
 const todayGroup = (title, items, parent) => {
   const group = { items }, details = document.createElement('details'), summary = document.createElement('summary');
-  group.box = box(() => setOn(group.items, group.box.checked));
+  group.box = box(() => setOn(shown(group.items), group.box.checked));
   group.count = Object.assign(document.createElement('span'), { className: 'count' });
   summary.append(group.box, ` ${title} `, group.count);
   details.append(summary);
@@ -979,7 +989,8 @@ function refresh() {
   // the map follows the tab: Vandaag draws only NOTAMs and FUA, the other tabs only airspace; each keeps its own selection
   for (const a of [...airspaces, ...today]) {
     a.box.checked = a.on;
-    for (const e of a.entities) e.show = a.on && !!a.today === (openTab === 'vandaag') && belowMaxFl(e)
+    if (a.row) a.row.hidden = !inDay(a);
+    for (const e of a.entities) e.show = a.on && inDay(a) && !!a.today === (openTab === 'vandaag') && belowMaxFl(e)
       && (!e.windows || e.windows.some(([s, u]) => s <= live && live < u)) && !coveredByFua(e, live)
       && !belowNotamFl(e) && !e.empty;
   }
@@ -991,9 +1002,9 @@ function refresh() {
     b.indeterminate = n > 0 && n < list.length;
     return n;
   };
-  for (const g of [...groups, ...todayGroups]) g.count.textContent = `${tri(g.box, g.items)}/${g.items.length}`;
+  for (const g of [...groups, ...todayGroups]) g.count.textContent = `${tri(g.box, shown(g.items))}/${shown(g.items).length}`;
   tri(allBox, airspaces);
-  tri(green, greenItems);
+  tri(green, shown(greenItems));
   // a class button is grey when none of its airspaces is on
   for (const [b, cls, colour] of classButtons) b.style.background = airspaces.some(a => a.cls === cls && a.on) ? colour : '#bbb';
   const selection = JSON.stringify(Object.fromEntries([...airspaces, ...today].map(a => [a.key, a.on])));
