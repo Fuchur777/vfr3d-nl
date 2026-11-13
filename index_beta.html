@@ -135,10 +135,10 @@
 <div id="map"><div id="loading"><img src="icon.svg" alt=""><span>Luchtruim laden…</span></div></div>
 <button type="button" id="menu" aria-label="Menu" aria-expanded="false">☰</button>
 <form id="layers"><div id="grip" title="Sleep om de breedte aan te passen"></div>
-<div id="tabs" role="tablist"><button type="button" role="tab" data-tab="kaart">Kaart</button><button type="button" role="tab" data-tab="luchtruim">Luchtruim</button><button type="button" role="tab" data-tab="vandaag">Vandaag</button><button type="button" role="tab" data-tab="vlucht">Vlucht</button></div>
+<div id="tabs" role="tablist"><button type="button" role="tab" data-tab="kaart">Kaart</button><button type="button" role="tab" data-tab="luchtruim">Luchtruim</button><button type="button" role="tab" data-tab="vandaag">NOTAM + FUA</button><button type="button" role="tab" data-tab="vlucht">Vlucht</button></div>
 <section id="kaart" role="tabpanel"><label>Onderlaag <select id="base"><option>Satelliet</option><option>Kaart</option><option selected>ICAO-kaart</option></select></label><div id="tileError" style="color: #ff8787"></div><h3>Hoogte</h3><label>Verticale schaal <output id="scaleOut">10</output>×<br><input id="scale" type="range" min="1" max="20" step="0.5" value="10"></label><label>Verberg luchtruim boven <select id="maxFl"><option value="10">FL 10</option><option value="15">FL 15</option><option value="20">FL 20</option><option value="25">FL 25</option><option value="30">FL 30</option><option value="35">FL 35</option><option value="40">FL 40</option><option value="45">FL 45</option><option value="50">FL 50</option><option value="55">FL 55</option><option value="60">FL 60</option><option value="65">FL 65</option><option value="70">FL 70</option><option value="75">FL 75</option><option value="80">FL 80</option><option value="85">FL 85</option><option value="90">FL 90</option><option value="95" selected>FL 95</option><option value="100">FL 100</option><option value="105">FL 105</option><option value="110">FL 110</option><option value="115">FL 115</option><option value="120">FL 120</option><option value="125">FL 125</option><option value="130">FL 130</option><option value="135">FL 135</option><option value="140">FL 140</option><option value="145">FL 145</option><option value="150">FL 150</option></select></label><label><input type="checkbox" class="toggle" id="tagsOn"> Labels</label><label><input type="checkbox" class="toggle" id="axisOn"> FL-as</label><h3>Kleuren</h3><label>Schema <select id="schema"></select></label><details><summary>Eigen kleuren</summary><div id="eigen"></div><button type="button" id="saveColours">Bewaar eigen kleuren</button></details><p class="credits">Luchtruim © LVNL (CC BY 4.0). Activeringen (FUA) © EUROCONTROL. Vormen België/Luxemburg en Duitsland © openAIP (CC BY-NC 4.0). De AIP Netherlands van LVNL is leidend.</p><p><a href="luchtruim.html">Luchtruim in Nederland uitgelegd</a></p><button type="button" id="showDisclaimer" style="width: 100%">Disclaimer en updates</button></section>
 <section id="luchtruim" role="tabpanel"><label><input id="all" type="checkbox"> <b>Alle luchtruimen</b></label><div id="classes"></div><div style="display:flex;justify-content:space-between;align-items:center"><button type="button" id="expand">Alles uitklappen</button><span class="sel" id="selLuchtruim"></span></div><input id="search" type="search" placeholder="Zoek luchtruim op naam" style="width:100%;box-sizing:border-box"><div id="tree"></div><button type="button" id="lxnavAirspace" title="SeeYou CUB-bestand met het aangevinkte luchtruim, voor LXNAV en SeeYou" style="width: 100%; margin-top: 8px">Download als .cub</button></section>
-<section id="vandaag" role="tabpanel"><div class="hint">FUA-activaties en NOTAMs van vandaag 00:00 tot 06:00 LT morgen. NOTAMs worden om 00:00, 06:00, 18:00 en 22:00 LT opgehaald. Klik op een naam om erheen te vliegen.</div><div id="fout" style="color: #ff8787; white-space: pre-line"></div><label>Verberg NOTAMs onder <select id="notamFl"><option value="">uit</option><option value="10">FL 10</option><option value="15">FL 15</option><option value="20">FL 20</option><option value="25">FL 25</option><option value="30">FL 30</option><option value="35">FL 35</option><option value="40">FL 40</option><option value="45">FL 45</option><option value="50">FL 50</option><option value="55">FL 55</option><option value="60">FL 60</option><option value="65">FL 65</option><option value="70">FL 70</option><option value="75">FL 75</option><option value="80">FL 80</option><option value="85">FL 85</option><option value="90">FL 90</option><option value="95">FL 95</option><option value="100">FL 100</option><option value="105">FL 105</option><option value="110">FL 110</option><option value="115">FL 115</option><option value="120">FL 120</option><option value="125">FL 125</option><option value="130">FL 130</option><option value="135">FL 135</option><option value="140">FL 140</option><option value="145">FL 145</option><option value="150">FL 150</option></select></label><label title="Is een gebied vandaag zowel FUA als NOTAM: de kaart toont de FUA zolang die actief is, anders de NOTAM; de download bevat dan alleen de NOTAM, met de tijden in de omschrijving"><input type="checkbox" class="toggle" id="dedup" checked> Ontdubbel FUA/NOTAM</label><label id="greenRow" style="display: none" title="Alle NOTAMs die luchtruim vrijgeven (groen) tegelijk aan of uit"><input type="checkbox" class="toggle" id="green"> Vrijgegeven luchtruim tonen</label><div style="display:flex;justify-content:space-between;align-items:center"><button type="button" id="expandToday">Alles uitklappen</button><span class="sel" id="selVandaag"></span></div><div id="today"></div><button type="button" id="lxnav" title="SeeYou CUB-bestand met de aangevinkte FUA en NOTAMs, voor LXNAV en SeeYou">Download als .cub</button></section>
+<section id="vandaag" role="tabpanel"><label>Dag <select id="dag"><option value="0">Vandaag</option><option value="1">Morgen</option><option value="2">Overmorgen</option></select></label><div class="hint">FUA-activaties en NOTAMs van de gekozen dag 00:00 tot 06:00 LT de dag erna, voor zover nu bekend. NOTAMs worden om 00:00, 06:00, 18:00 en 22:00 LT opgehaald. Klik op een naam om erheen te vliegen.</div><div id="fout" style="color: #ff8787; white-space: pre-line"></div><div id="fuaOnbekend" style="color: #ffc24b" hidden></div><label>Verberg NOTAMs onder <select id="notamFl"><option value="">uit</option><option value="10">FL 10</option><option value="15">FL 15</option><option value="20">FL 20</option><option value="25">FL 25</option><option value="30">FL 30</option><option value="35">FL 35</option><option value="40">FL 40</option><option value="45">FL 45</option><option value="50">FL 50</option><option value="55">FL 55</option><option value="60">FL 60</option><option value="65">FL 65</option><option value="70">FL 70</option><option value="75">FL 75</option><option value="80">FL 80</option><option value="85">FL 85</option><option value="90">FL 90</option><option value="95">FL 95</option><option value="100">FL 100</option><option value="105">FL 105</option><option value="110">FL 110</option><option value="115">FL 115</option><option value="120">FL 120</option><option value="125">FL 125</option><option value="130">FL 130</option><option value="135">FL 135</option><option value="140">FL 140</option><option value="145">FL 145</option><option value="150">FL 150</option></select></label><label title="Is een gebied vandaag zowel FUA als NOTAM: de kaart toont de FUA zolang die actief is, anders de NOTAM; de download bevat dan alleen de NOTAM, met de tijden in de omschrijving"><input type="checkbox" class="toggle" id="dedup" checked> Ontdubbel FUA/NOTAM</label><label id="greenRow" style="display: none" title="Alle NOTAMs die luchtruim vrijgeven (groen) tegelijk aan of uit"><input type="checkbox" class="toggle" id="green"> Vrijgegeven luchtruim tonen</label><div style="display:flex;justify-content:space-between;align-items:center"><button type="button" id="expandToday">Alles uitklappen</button><span class="sel" id="selVandaag"></span></div><div id="today"></div><button type="button" id="lxnav" title="SeeYou CUB-bestand met de aangevinkte FUA en NOTAMs, voor LXNAV en SeeYou">Download als .cub</button></section>
 <section id="vlucht" role="tabpanel">
 <label id="drop"><input id="igc" type="file" accept=".igc,.gpx,.kml,.kmz">
   <span class="pick">✈ Kies een vluchtbestand</span>
@@ -182,7 +182,7 @@
 import { fuaKey, designators, aboutAirspace, namedIn, frees, ownCircle, eHeight, textShapes } from './notam-regels.js?v=09-11-2026a'; // ?v: a cached older copy would lack new exports and stop the whole page; change it with notam-regels.js
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '13-11-2026a';
+const CODE_VERSION = '13-11-2026b';
 // drag the side panel's right edge to change its width (Frank 2026-10-30), remembered in this browser
 const grip = document.getElementById('grip'), setMenu = w => document.documentElement.style.setProperty('--menu', `${Math.min(Math.max(w, 220), 600)}px`);
 try { setMenu(+localStorage.getItem('vfr3d-menu') || 290); } catch {}
@@ -398,6 +398,8 @@ const metres = (value, unit, ref) =>
   ref === 'SFC' ? 0 : (unit === 'FL' ? value * 100 + (qnh.value - 1013.25) * 27.3 : unit === 'M' ? value / 0.3048 : value) * 0.3048;
 
 let notamsFetched, notamsActueel;
+// NOTAM + FUA tab: today, tomorrow or the day after (?dag=1, ?dag=2; Frank 2026-11-13); another day reloads the page
+const dag = Math.min(2, Math.max(0, Math.trunc(+new URLSearchParams(location.search).get('dag')) || 0));
 // a Worker that could not fetch says why in 'fout' (and serves the last good data)
 const showFout = (bron, fout) => fout && (document.getElementById('fout').textContent += `${bron}: ${fout}\n`);
 // FUA and the neighbouring countries are fetched at the same time as the airspace
@@ -489,6 +491,8 @@ function notamShapes(ds, shapes) {
   }
   return ds;
 }
+// the current FUA plan with the plans for later days the Worker already has ('volgende')
+const withLater = f => f?.gebieden && { ...f, gebieden: [...f.gebieden, ...(f.volgende ?? []).flatMap(p => p.gebieden)] };
 function fuaSource(fua, shapeSources) {
   const shapes = shapeMap(shapeSources), byName = new Map(), ds = new Cesium.CustomDataSource('FUA');
   for (const g of fua.gebieden) byName.set(g.naam, [...(byName.get(g.naam) ?? []), g]);
@@ -510,7 +514,7 @@ const notamIndex = LAYERS.findIndex(([id]) => id === NOTAMS);
 if (sources[notamIndex]) notamShapes(sources[notamIndex], shapeMap(sources.filter((_, i) => i !== notamIndex)));
 if (fua?.gebieden) {
   LAYERS.push(['fua', 'Vandaag actief (FUA)', '#15aabf', true]);
-  sources.push(fuaSource(fua, sources));
+  sources.push(fuaSource(withLater(fua), sources));
 }
 const abroad = await abroadFetch;
 for (const [land, notams, fuaLand, shapes] of abroad) {
@@ -518,7 +522,7 @@ for (const [land, notams, fuaLand, shapes] of abroad) {
   sources.push(notams);
   if (fuaLand?.gebieden) {
     LAYERS.push(['fua', `FUA|${land}`, '#15aabf', false]);
-    sources.push(fuaSource(fuaLand, [shapes]));
+    sources.push(fuaSource(withLater(fuaLand), [shapes]));
   }
 }
 // loading screen: busy('text') shows it, busy() hides it
@@ -594,7 +598,17 @@ const badge = (cls, colour) => Object.assign(document.createElement('span'), { c
 // two times: Luchtruim simulates a day type for the SUP 03/2022 classes (00:00–24:00 LT, weekday, holiday);
 // Vandaag stays live for NOTAMs and FUA, from now until 06:00 LT tomorrow. Both in 15-minute steps
 const amsOffset = d => new Date(d.toLocaleString('en-US', { timeZone: 'Europe/Amsterdam' })) - new Date(d.toLocaleString('en-US', { timeZone: 'UTC' }));
-const now = Date.now(), ltAt = h => { const lt = new Date(now + amsOffset(new Date(now))); lt.setUTCHours(h, 0, 0, 0); return lt - amsOffset(lt); }, dayStart = ltAt(0), until = ltAt(30);
+const now = Date.now(), ltAt = h => { const lt = new Date(now + amsOffset(new Date(now))); lt.setUTCHours(h, 0, 0, 0); return lt - amsOffset(lt); }, dayStart = ltAt(0);
+// NOTAM + FUA: the chosen day from 00:00 LT to 06:00 LT the next day
+const vStart = ltAt(24 * dag), until = ltAt(24 * dag + 30);
+const dagSelect = document.getElementById('dag'), dayName = t => new Date(t).toLocaleDateString('nl-NL', { timeZone: 'Europe/Amsterdam', weekday: 'short', day: 'numeric', month: 'short' });
+for (const o of dagSelect.options) o.textContent += ` (${dayName(ltAt(24 * o.value + 12))})`;
+dagSelect.value = dag;
+dagSelect.onchange = () => location.assign(`${location.pathname}${+dagSelect.value ? `?dag=${dagSelect.value}` : ''}#vandaag`);
+// FUA of a later day is only known once the plan (EAUP) for that day is out, the day before
+const plannedDays = [fua?.datum, ...(fua?.volgende ?? []).map(p => p.datum)];
+Object.assign(document.getElementById('fuaOnbekend'), { hidden: !dag || plannedDays.includes(new Date(vStart).toLocaleDateString('sv', { timeZone: 'Europe/Amsterdam' })),
+  textContent: `FUA voor ${dayName(vStart)} nog niet bekend: Eurocontrol publiceert het plan (EAUP) pas de dag ervoor.` });
 mark('vNotams', notamsActueel, NOTAMS);
 mark('vFua', fua?.actueel, FUA);
 const atTime = document.getElementById('atTime'), atDay = document.getElementById('atDay'), atHol = document.getElementById('atHol'), showAt = () => dayStart + atTime.value * 60000;
@@ -604,11 +618,13 @@ const atOut = () => document.getElementById('atOut').value = when(showAt(), fals
 atTime.oninput = () => { atOut(); updateHeights(); };
 atOut();
 atDay.onchange = atHol.onchange = () => updateHeights();
-const liveTime = document.getElementById('liveTime'), liveAt = () => now + liveTime.value * 60000;
-// the whole day: from 00:00 LT today to 06:00 LT tomorrow, starting at now (0)
-liveTime.min = -Math.floor((now - dayStart) / 900000) * 15;
-liveTime.max = Math.floor((until - now) / 60000);
-liveTime.oninput = () => { document.getElementById('liveOut').value = +liveTime.value ? when(liveAt()) : 'nu'; refresh(); };
+// the whole day: from 00:00 LT to 06:00 LT the next day, starting at now (0), on a later day at the same time of day
+const liveBase = now + vStart - dayStart, liveTime = document.getElementById('liveTime'), liveAt = () => liveBase + liveTime.value * 60000;
+liveTime.min = -Math.floor((liveBase - vStart) / 900000) * 15;
+liveTime.max = Math.floor((until - liveBase) / 60000);
+const liveOut = () => document.getElementById('liveOut').value = +liveTime.value || dag ? when(liveAt()) : 'nu';
+liveTime.oninput = () => { liveOut(); refresh(); };
+liveOut();
 // LXNAV: the checked items as a SeeYou CUB file (Naviter spec 2.0.2, github.com/naviter/seeyou_file_formats),
 // the airspace format LXNAV devices load. Little endian, radians, heights in metres with a reference per limit,
 // active period as packed UTC minutes since 2000. Vandaag: FUA and NOTAMs for the whole day whatever the time
@@ -691,7 +707,7 @@ function writeCub(items, kind, title, none) {
     at += I; data += sizes[k];
   });
   for (const r of recs) for (const b of r) { u8.set(b, at); at += b.length; }
-  const link = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([buf])), download: `vfr3d-${kind}-${new Date(now).toLocaleDateString('sv', { timeZone: 'Europe/Amsterdam' })}.cub` });
+  const link = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([buf])), download: `vfr3d-${kind}-${new Date(kind === 'vandaag' ? vStart : now).toLocaleDateString('sv', { timeZone: 'Europe/Amsterdam' })}.cub` });
   link.click();
   setTimeout(() => URL.revokeObjectURL(link.href), 40000); // Safari still needs it just after click()
 }
@@ -791,12 +807,12 @@ LAYERS.forEach(([, label, colour, show], i) => {
     // LVNL also publishes British danger areas over the North Sea (EGD...); not Dutch
     // only areas: skip British airspace and any point or line features
     if (/^EG/.test(p.Designator) || !e.polygon) { source.entities.remove(e); continue; }
-    // NOTAMs: only those active at some moment between 00:00 LT today and 06:00 LT tomorrow
-    if (p.Van && (Date.parse(p.Van) > until || (p.Tot !== 'PERM' && Date.parse(p.Tot) < dayStart))) { source.entities.remove(e); continue; }
+    // NOTAMs: only those active at some moment between 00:00 LT on the chosen day and 06:00 LT the next day
+    if (p.Van && (Date.parse(p.Van) > until || (p.Tot !== 'PERM' && Date.parse(p.Tot) < vStart))) { source.entities.remove(e); continue; }
     // time windows (ms) for NOTAMs and FUA; other airspace has none and is always there
     e.windows = p.Vensters ?? (p.Van && [[Date.parse(p.Van), p.Tot === 'PERM' ? Infinity : Date.parse(p.Tot)]]);
     // a schedule without a day in that range (e.g. SAT SUN on a Tuesday): not today's either (Frank 2026-10-27)
-    if (e.windows && !e.windows.some(([s, u]) => s <= until && u >= dayStart)) { source.entities.remove(e); continue; }
+    if (e.windows && !e.windows.some(([s, u]) => s <= until && u >= vStart)) { source.entities.remove(e); continue; }
     const cls = /^[A-G]$/.test(p.Class) ? p.Class : '';
     const key = `${label}|${p.Designator}|${p.Name}`;
     const own = label.startsWith('NOTAMs') && relaxing(p) ? NOTAM_GREEN : colour;
@@ -856,8 +872,8 @@ byLabel.forEach((items, label) => {
 });
 
 // Vandaag tab: foldable FUA and NOTAMs sections (NOTAMs per kind), rows sorted by start time; each row on/off, the name flies the map there
-// not active now: the next window that starts today, else 'voorbij'
-const status = a => { const t = Date.now(), next = Math.min(...a.windows.map(([s]) => s).filter(s => s > t)); return a.windows.some(([s, u]) => s <= t && t < u) ? ['now', 'nu actief'] : next < Infinity ? ['later', `vanaf ${hhmm(next)} LT`] : ['past', 'voorbij']; };
+// not active now: the next window that starts today, else 'voorbij'; on a later day when it starts that day
+const status = a => { if (dag) return ['later', `vanaf ${hhmm(Math.max(vStart, Math.min(...a.windows.filter(([, u]) => u > vStart).map(([s]) => s))))} LT`]; const t = Date.now(), next = Math.min(...a.windows.map(([s]) => s).filter(s => s > t)); return a.windows.some(([s, u]) => s <= t && t < u) ? ['now', 'nu actief'] : next < Infinity ? ['later', `vanaf ${hhmm(next)} LT`] : ['past', 'voorbij']; };
 for (const a of today) { a.windows = a.entities.flatMap(e => e.windows ?? []); a.start = Math.min(...a.windows.map(w => w[0])); }
 // an area that is both FUA and a Dutch NOTAM today, with "Ontdubbel FUA/NOTAM" on (Frank 2026-10-27): the map shows the FUA while it is on
 // and active, else the NOTAM; the .cub download has the NOTAM instead of the FUA when that NOTAM stands in for it (fuaNotams below)
@@ -1006,7 +1022,7 @@ tools.append(off, offToday);
 viewer.infoBox.container.querySelector('.cesium-infoBox').append(tools);
 viewer.selectedEntityChanged.addEventListener(e => {
   if (e?.parent?.polygon) return viewer.selectedEntity = e.parent; // a click on an edge line selects its volume
-  off.hidden = !itemOf.has(e); offToday.hidden = !itemOf.get(e)?.today || itemOf.get(e).soort === 'FUA'; });
+  off.hidden = !itemOf.has(e); offToday.hidden = !itemOf.get(e)?.today || itemOf.get(e).soort === 'FUA' || !!dag; });
 off.onclick = () => { setOn([itemOf.get(viewer.selectedEntity)], false); viewer.selectedEntity = undefined; };
 offToday.onclick = () => { dayOff.keys.push(itemOf.get(viewer.selectedEntity).key); saveDayOff(); off.onclick(); };
 // link per NOTAM in the morning issue (?notam=A2538/26, .github/notam-vorm.mjs): open Vandaag and fly to that NOTAM with its infobox

@@ -178,14 +178,14 @@ async function notams(env, [latitude, longitude]) {
     throw new Error(`NMS-API: ${response.status} ${await response.text()}`);
   }
 
-  const now = Date.now(), day = now + 24 * 3600e3, features = [];
+  const now = Date.now(), day = now + 4 * 24 * 3600e3, features = [];
   for (const f of (await response.json()).data?.geojson ?? []) {
     const n = f.properties?.coreNOTAMData?.notam;
     const heading = CATEGORIES.find(([, codes]) => codes.some(c => n?.selectionCode?.startsWith(c)))?.[0];
     const text = (n?.text ?? '').toUpperCase();
     const category = heading && (KINDS.find(([, pattern]) => pattern.test(text))?.[0] ?? heading);
     const start = Date.parse(n?.effectiveStart), end = Date.parse(n?.effectiveEnd);
-    // only what is active now or starts within a day; no cancellations (type C), and no
+    // only what is active now or starts within 4 days (the app shows up to the day after tomorrow, Frank 2026-11-13); no cancellations (type C), and no
     // country-wide notices drawn as a circle over half the map (radius in NM), unless it is about airspace (QA/QR) and
     // names a TRA, TSA or EHD/R/P: the app draws those with their own shape (same pattern as designators() in notam-regels.js)
     const named = /^Q[AR]/.test(n?.selectionCode ?? '') && /\b(?:EH\s?)?(TRA|TSA)\s?\d+[A-Z]?\b|\bEH\s?[DRP]\s?\d+[A-Z]?\b/.test(text);

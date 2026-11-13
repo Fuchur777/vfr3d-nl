@@ -5,6 +5,7 @@
 // ?debug shows the text last read from the portal, to fix the parser when EUROCONTROL changes it.
 // With a KV namespace bound as FUA, every read is also kept per Dutch calendar day for a year;
 // ?datum=2026-10-15 gives that day's activations.
+// Plans the portal already lists for later days (the EAUP for tomorrow, published the day before) come along in 'volgende'.
 import puppeteer from '@cloudflare/puppeteer';
 
 const PORTAL = 'https://www.public.nm.eurocontrol.int/PUBPORTAL/gateway/spec/';
@@ -52,7 +53,10 @@ export default {
     }
     // a failed read keeps the last good plan; 'mislukt' says the latest read failed (time and reason, gone after a good
     // read); 'actueel' says whether the plan is current (the app's update date and the Status-check Action read it)
-    return only({ ...last, mislukt: state.fout, actueel: current(Date.parse(last.opgehaald), state.fout) });
+    // plans for later days than the current one (Frank 2026-11-13: the app shows tomorrow and the day after)
+    const later = (await env.FUA.get('volgende', 'json') ?? []).filter(p => p.opgehaald && (!last.datum || p.datum > last.datum));
+    return only({ ...last, mislukt: state.fout, actueel: current(Date.parse(last.opgehaald), state.fout),
+      volgende: later.map(p => ({ ...p, gebieden: p.gebieden.filter(g => countries.some(c => g.naam.startsWith(c))) })) });
   },
   // the cron fires every hour (wrangler.jsonc); read on the scheduled hours; also for the day archive
   async scheduled(event, env, ctx) {
@@ -110,10 +114,11 @@ async function refresh(env) {
   const now = Date.now(), state = { poging: now };
   await env.FUA.put('staat', JSON.stringify({ ...await env.FUA.get('staat', 'json'), poging: now }));
   try {
-    const read = await scrape(env), all = parse(read);
+    const read = await scrape(env, await env.FUA.get('volgende', 'json') ?? []), all = parse(read);
     await Promise.all([
       env.FUA.put('laatste', JSON.stringify(all)),
-      env.FUA.put('ruw', `${read.header}\n\n${read.table}`),
+      env.FUA.put('volgende', JSON.stringify(read.later)),
+      env.FUA.put('ruw', `${read.header}\n\n${read.table}\n\nRijen:\n${read.rows.join('\n')}`),
       keep(env, all),
     ]);
   } catch (error) {
@@ -122,23 +127,67 @@ async function refresh(env) {
   await env.FUA.put('staat', JSON.stringify(state));
 }
 
-async function scrape(env) {
+// the AUP date in a portal text: the first dd/mm/yyyy, as yyyy-mm-dd
+const aupDate = text => { const d = text.match(/(\d\d)\/(\d\d)\/(\d{4})/); return d ? `${d[3]}-${d[2]}-${d[1]}` : text.match(/\d{4}-\d\d-\d\d/)?.[0]; };
+
+// the active plan, plus one plan per later day the portal lists (the newest row of that day). A later plan is only opened
+// again when its row changed, to spare the 10 browser minutes; a failed later read keeps what was there (if anything)
+async function scrape(env, kept) {
   const browser = await puppeteer.launch(env.BROWSER);
   try {
     const page = await browser.newPage();
     await page.goto(PORTAL, { waitUntil: 'networkidle0', timeout: 60e3 });
     const row = 'tr.active_eaup_highlight';
-    const link = await page.waitForSelector(`${row} div.eurocontrol_gwt_ext_linkEnabled`, { timeout: 60e3 });
+    await page.waitForSelector(`${row} div.eurocontrol_gwt_ext_linkEnabled`, { timeout: 60e3 });
     const header = await page.$eval(row, element => element.innerText);
-    // the AUP opens in a new window
-    const [table] = await Promise.all([new Promise((resolve, reject) => {
-      page.once('popup', resolve);
-      setTimeout(() => reject(new Error('Geen AUP-venster binnen 60 s')), 60e3);
-    }), link.click()]);
-    await table.waitForFunction(() => /\d{3}\s+\d{3}\s+\d\d:\d\d\s+\d\d:\d\d/.test(document.body.innerText), { timeout: 60e3 });
-    return { header, table: await table.evaluate(() => document.body.innerText) };
+    const table = await open(page, `${row} div.eurocontrol_gwt_ext_linkEnabled`);
+    // every innermost table row with a plan link; the ones of a later day than the active plan get a mark to click on.
+    // Never at the cost of the active plan: if this fails, the later plans stay as they were
+    const rows = await page.evaluate(() => {
+      // aupDate() again: this runs in the portal page
+      const date = text => { const d = text.match(/(\d\d)\/(\d\d)\/(\d{4})/); return d ? `${d[3]}-${d[2]}-${d[1]}` : ''; };
+      const link = 'div.eurocontrol_gwt_ext_linkEnabled';
+      const all = [...document.querySelectorAll('tr')].filter(tr => tr.querySelector(link) && !tr.querySelector(`tr ${link}`));
+      const active = date(document.querySelector('tr.active_eaup_highlight').innerText), seen = new Set();
+      return all.map((tr, i) => {
+        const day = date(tr.innerText);
+        if (day > active && !seen.has(day)) { seen.add(day); tr.setAttribute('data-volgende', i); }
+        return { i, day: tr.hasAttribute('data-volgende') ? day : null, text: tr.innerText.replace(/\s+/g, ' ').trim() };
+      });
+    }).catch(error => [{ text: `Rijen niet gelezen: ${error}` }]);
+    if (!rows.some(r => r.i !== undefined)) return { header, table, later: kept, rows: rows.map(r => r.text) };
+    const later = [];
+    for (const r of rows.filter(r => r.day)) {
+      const old = kept.find(p => p.datum === r.day);
+      if (old?.rij === r.text) { later.push(old); continue; }
+      try {
+        later.push({ ...parse({ header: r.text, table: await open(page, `tr[data-volgende="${r.i}"] div.eurocontrol_gwt_ext_linkEnabled`) }), rij: r.text });
+      } catch (error) {
+        // not retried until the row changes, so a plan that can't be read costs no browser minutes on every read
+        later.push({ ...old ?? { datum: r.day, gebieden: [] }, rij: r.text, fout: String(error) });
+      }
+    }
+    return { header, table, later, rows: rows.map(r => r.text) };
   } finally {
     await browser.close();
+  }
+}
+
+// clicks a plan link; the AUP opens in a new window, whose text is read once the area rows are there
+async function open(page, selector) {
+  const link = await page.$(selector);
+  if (!link) {
+    throw new Error(`Geen link ${selector}`);
+  }
+  const [popup] = await Promise.all([new Promise((resolve, reject) => {
+    page.once('popup', resolve);
+    setTimeout(() => reject(new Error('Geen AUP-venster binnen 60 s')), 60e3);
+  }), link.click()]);
+  try {
+    await popup.waitForFunction(() => /\d{3}\s+\d{3}\s+\d\d:\d\d\s+\d\d:\d\d/.test(document.body.innerText), { timeout: 60e3 });
+    return await popup.evaluate(() => document.body.innerText);
+  } finally {
+    await popup.close().catch(() => {});
   }
 }
 
@@ -146,7 +195,7 @@ async function scrape(env) {
 // MAX FL, WEF, UNT, FUA/EU RS, FIR, UIR). Times are UTC within the AUP day, 06:00 to 06:00 next day.
 function parse({ header, table }) {
   const text = `${header}\n${table}`;
-  const d = text.match(/(\d\d)\/(\d\d)\/(\d{4})/), date = d ? `${d[3]}-${d[2]}-${d[1]}` : text.match(/\d{4}-\d\d-\d\d/)?.[0];
+  const date = aupDate(text);
   // without the AUP date the times can't be placed; keep the last good plan instead
   if (!date) {
     throw new Error('Geen AUP-datum gevonden');
@@ -173,6 +222,7 @@ function parse({ header, table }) {
     bron: 'EUROCONTROL NOP, European AUP/UUP',
     type: text.match(/\b(EAUP|EUUP)\b/)?.[1] ?? null,
     kop: header.trim(),
+    datum: date,
     opgehaald: new Date().toISOString(),
     gebieden: areas,
   };
