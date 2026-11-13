@@ -146,8 +146,9 @@ async function scrape(env, kept) {
     const rows = await page.evaluate(() => {
       // aupDate() again: this runs in the portal page
       const date = text => { const d = text.match(/(\d\d)\/(\d\d)\/(\d{4})/); return d ? `${d[3]}-${d[2]}-${d[1]}` : ''; };
+      // :scope, else 'tr div' also matches through the row's own ancestors and no row is left
       const link = 'div.eurocontrol_gwt_ext_linkEnabled';
-      const all = [...document.querySelectorAll('tr')].filter(tr => tr.querySelector(link) && !tr.querySelector(`tr ${link}`));
+      const all = [...document.querySelectorAll('tr')].filter(tr => tr.querySelector(link) && !tr.querySelector(`:scope tr ${link}`));
       const active = date(document.querySelector('tr.active_eaup_highlight').innerText), seen = new Set();
       return all.map((tr, i) => {
         const day = date(tr.innerText);
