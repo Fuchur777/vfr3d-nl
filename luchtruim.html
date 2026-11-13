@@ -161,19 +161,118 @@
 
 <h2>Hoe werkt VFR3D?</h2>
 <p><a href="/">VFR3D Nederland</a> toont het Nederlandse luchtruim als 3D-volumes op een kaart, zodat je ziet hoe CTR's, TMA's en andere gebieden boven en naast elkaar liggen. De app draait helemaal in je browser; er is niets te installeren en er is geen account nodig. Je keuzes (welk luchtruim aan staat en op welk tabblad je was) worden in je browser onthouden.</p>
-<p>Het linkerpaneel heeft deze tabbladen:</p>
+<p>Hieronder staat per tabblad wat elke knop doet. In de app opent de knop <strong>?</strong> rechtsboven deze uitleg (nu in beta).</p>
+
+<h3 id="bediening">Rechtsboven op de kaart</h3>
 <dl>
-<dt>Kaart</dt>
-<dd>Kies de ondergrond: de ICAO-kaart 1:500.000 van LVNL (standaard), satellietbeelden of OpenStreetMap. Met de schuif <strong>verticale schaal</strong> maak je de hoogtes overdreven groter, zodat dunne lagen beter zichtbaar zijn. Met de knop <strong>2D</strong> kijk je recht van boven; de gekozen ondergrond blijft staan. Onder <strong>Kleuren</strong> kies je het kleurschema van het luchtruim: ICAO (standaard), Regenboog of je eigen kleuren per soort, die in je browser bewaard blijven. In de infobox staat bij <strong>VFR</strong> of je er zonder klaring in mag. Onder Hoogte zet je <strong>Labels</strong> aan (naam, klasse en grenzen bij elk getekend gebied) en de <strong>FL-as</strong>, een hoogteliniaal linksonder in beeld; beide staan standaard uit.</dd>
-<dt>Luchtruim</dt>
-<dd>Alle luchtruim uit de LVNL-gegevens, in een boom per type: CTR, TMA, CTA, ATZ, TMZ/RTMZ, RMZ, TRA, TSA, Parachutespringen, Zweefvliegen (gebieden en lierlocaties), Paragliden (lierlocaties), TFZ (standaard uit) en D-, R- en P-gebieden. Je zet elk gebied, een heel type of een hele klasse (knoppen A tot en met G) aan en uit, en zoekt op naam. Standaard staan de klassen A tot en met D en de D-, R- en P-gebieden aan. Met ↺ zet je die standaard terug, met de diskette bewaar je je eigen selectie en met ★ zet je die later terug. Met het deel-icoon stuur je je selectie als link naar iemand anders. Op het tabblad Vandaag werken dezelfde knoppen voor NOTAMs en FUA. Het <strong>FL-filter</strong> verbergt luchtruim dat boven het gekozen flight level begint en snijdt hogere gebieden daar af. Klik op een volume voor de grenzen en details; met <strong>Uitzetten</strong> in dat venster zet je het meteen uit.<br>
-Met de <strong>tijdschuif</strong> kies je een tijdstip, een dag van de week en eventueel een feestdag. Zo zie je hoe TMA's die volgens AIP SUP 03/2022 van klasse wisselen (bijvoorbeeld rond Lelystad) op dat moment zijn ingedeeld. Nieuw Milligen TMA C2 en E staan als twee delen in de boom (FL055-FL065 en FL065-FL095), omdat die lagen elk hun eigen klasse krijgen.</dd>
-<dt>Vandaag</dt>
-<dd>Wat er vandaag tot 06:00 uur morgenochtend speelt: actieve <strong>FUA-gebieden</strong> (TRA, TSA, D en R volgens het Eurocontrol-AUP/UUP) en <strong>NOTAMs</strong>, gegroepeerd per soort, zoals TRA/TSA, parachutespringen, evenementen, obstakels en lasershows. Soorten die voor de meeste VFR-vliegers minder belangrijk zijn (drones, windturbines, kranen, militair, lasershows en obstakelverlichting) staan standaard uit. Met de schuif kies je het tijdstip; de kaart toont alleen wat dan actief is. België/Luxemburg en Duitsland staan er los bij en zijn standaard uit. Alle tijden staan in Nederlandse tijd (LT) met UTC (Z) erachter. NOTAMs die luchtruim vrijgeven, zoals een gesloten CTR, zijn groen; de andere NOTAMs zijn oranjerood, en bij twijfel ook. Met <strong>Vrijgegeven luchtruim tonen</strong> zet je alle groene NOTAMs in één keer aan of uit. Is een gebied vandaag zowel FUA als NOTAM, dan toont de kaart met <strong>Ontdubbel FUA/NOTAM</strong> (standaard aan) de FUA zolang die actief is en anders de NOTAM; in de .cub komt dan alleen de NOTAM.</dd>
-<dt>Vlucht</dt>
-<dd>Laad een <strong>IGC-, GPX-, KML- of KMZ-bestand</strong> van je vlucht. Je ziet het hele spoor, met een schaduw op de grond en een loodlijn vanaf het vliegtuig. Speel de vlucht af (1 tot 60 keer zo snel, ±1 minuut), volg het vliegtuig of kijk vanuit de cockpit. Onder <strong>Huidig luchtruim</strong> staat in welk luchtruim je op dat moment vloog.<br>
-De app haalt de <strong>QNH</strong> van de vliegdag op bij Open-Meteo en rekent daarmee de IGC-drukhoogte en de FL-grenzen om; je kunt de QNH zelf aanpassen. Wijzen de hoogtes in het IGC-bestand op een andere QNH, dan krijg je een waarschuwing. Bij GPX en KML wordt de GPS-hoogte gebruikt, zonder QNH-correctie.<br>
-Op dit tabblad zie je het luchtruim zoals je het bij Luchtruim hebt gekozen, samen met de NOTAMs en FUA-activeringen van de vliegdag, voor zover die bewaard zijn (vanaf 15 oktober 2026). Ze verschijnen op het moment van de vluchtklok, met dezelfde aan/uit-keuzes als bij Vandaag.</dd>
+<dt>2D / 3D</dt>
+<dd>Wisselt tussen het 3D-beeld en een kaart recht van boven. De gekozen ondergrond blijft staan.</dd>
+<dt>Stoplicht</dt>
+<dd>Hoe actueel de gegevens zijn (luchtruim, Sporting Areas, NOTAMs en FUA): groen is alles zeker actueel, oranje is iets nog niet gecontroleerd, rood is iets verouderd. Een klik opent de disclaimer met de datum per bron. Met ↻ achter een oranje of rode NOTAM- of FUA-datum haal je die gegevens opnieuw op.</dd>
+<dt>Huisje</dt>
+<dd>Terug naar het beginbeeld boven Nederland.</dd>
+<dt>Muis (Bediening)</dt>
+<dd>Hoe je de kaart verschuift, zoomt, draait en kantelt, met muis of vingers.</dd>
+<dt>? (Uitleg, nu in beta)</dt>
+<dd>Deze uitleg.</dd>
+<dt>☰ / ✕ (telefoon)</dt>
+<dd>Opent en sluit het paneel met de tabbladen. Tikken op de kaart sluit het ook.</dd>
+</dl>
+<p>Op de kaart: <strong>klik</strong> op een volume voor de infobox met grenzen en details (bij <strong>VFR</strong> staat of je er zonder klaring in mag), <strong>dubbelklik</strong> om erheen te zoomen. In de infobox zet <strong>Uitzetten</strong> het gebied meteen uit; bij een NOTAM zet <strong>Vandaag uit</strong> hem uit tot middernacht. Op een computer sleep je de rand van het paneel om het breder of smaller te maken.</p>
+
+<h3 id="tab-kaart">Tabblad Kaart</h3>
+<dl>
+<dt>Onderlaag</dt>
+<dd>De ICAO-kaart 1:500.000 van LVNL (standaard), satellietbeelden of OpenStreetMap.</dd>
+<dt>Verticale schaal</dt>
+<dd>Maakt de hoogtes 1 tot 20 keer groter (standaard 10×), zodat dunne lagen beter zichtbaar zijn.</dd>
+<dt>Verberg luchtruim boven</dt>
+<dd>Het FL-filter (standaard FL 95): verbergt luchtruim dat boven het gekozen flight level begint en snijdt hogere gebieden daar af.</dd>
+<dt>Labels</dt>
+<dd>Naam, klasse en grenzen bij elk getekend gebied (standaard uit).</dd>
+<dt>FL-as</dt>
+<dd>Een hoogteliniaal in flight levels in beeld, alleen in 3D (standaard uit).</dd>
+<dt>Kleuren: Schema</dt>
+<dd>ICAO (standaard), Regenboog of Eigen.</dd>
+<dt>Eigen kleuren en Bewaar eigen kleuren</dt>
+<dd>Kies een kleur per soort luchtruim en bewaar die in je browser; het schema wordt dan Eigen.</dd>
+<dt>Luchtruim in Nederland uitgelegd</dt>
+<dd>Deze pagina.</dd>
+<dt>Disclaimer en updates</dt>
+<dd>De disclaimer met de datum van de gegevens per bron, net als het stoplicht.</dd>
+</dl>
+
+<h3 id="tab-luchtruim">Tabblad Luchtruim</h3>
+<p>Alle luchtruim uit de LVNL-gegevens, in een boom per type: CTR, TMA, CTA, ATZ, TMZ/RTMZ, RMZ, TRA, TSA, Parachutespringen, Zweefvliegen (gebieden en lierlocaties), Paragliden (lierlocaties), TFZ (standaard uit) en D-, R- en P-gebieden.</p>
+<dl>
+<dt>Alle luchtruimen</dt>
+<dd>Zet al het luchtruim tegelijk aan of uit.</dd>
+<dt>A tot en met G</dt>
+<dd>Zet een hele klasse aan; staat er al iets van die klasse aan, dan gaat de hele klasse uit. Grijs betekent dat niets van die klasse aan staat.</dd>
+<dt>Alles uitklappen / Alles inklappen</dt>
+<dd>Opent of sluit alle groepen in de boom.</dd>
+<dt>↺</dt>
+<dd>Terug naar de standaard: klassen A tot en met D en de D-, R- en P-gebieden aan.</dd>
+<dt>★</dt>
+<dd>Zet Mijn selectie terug.</dd>
+<dt>Diskette</dt>
+<dd>Bewaart de huidige selectie als Mijn selectie in je browser.</dd>
+<dt>Delen (drie verbonden stippen)</dt>
+<dd>Deelt of kopieert een link naar je selectie; wie de link opent, ziet dezelfde selectie.</dd>
+<dt>Zoek luchtruim op naam</dt>
+<dd>Filtert de boom.</dd>
+<dt>Vinkjes in de boom</dt>
+<dd>Per type (met het aantal aan van het totaal) en per gebied; de letter achter een gebied is de klasse.</dd>
+<dt>Download als .cub</dt>
+<dd>Het aangevinkte luchtruim als CUB-bestand voor LXNAV en SeeYou, zie hieronder.</dd>
+<dt>Toon om, Dag en Feestdag</dt>
+<dd>Kies een tijdstip, een dag van de week en eventueel een feestdag. Zo zie je hoe TMA's die volgens AIP SUP 03/2022 van klasse wisselen (bijvoorbeeld rond Lelystad) op dat moment zijn ingedeeld. Nieuw Milligen TMA C2 en E staan als twee delen in de boom (FL055-FL065 en FL065-FL095), omdat die lagen elk hun eigen klasse krijgen.</dd>
+</dl>
+
+<h3 id="tab-vandaag">Tabblad Vandaag (in de beta: NOTAMs)</h3>
+<p>Wat er vandaag tot 06:00 uur morgenochtend speelt: actieve <strong>FUA-gebieden</strong> (TRA, TSA, D en R volgens het Eurocontrol-AUP/UUP) en <strong>NOTAMs</strong>, gegroepeerd per soort, zoals TRA/TSA, parachutespringen, evenementen, obstakels en lasershows. Soorten die voor de meeste VFR-vliegers minder belangrijk zijn (drones, windturbines, kranen, militair, lasershows en obstakelverlichting) staan standaard uit. België/Luxemburg en Duitsland staan er los bij en zijn standaard uit. Alle tijden staan in Nederlandse tijd (LT) met UTC (Z) erachter. NOTAMs die luchtruim vrijgeven, zoals een gesloten CTR, zijn groen; de andere NOTAMs zijn oranjerood, en bij twijfel ook.</p>
+<dl>
+<dt>Vandaag | Morgen (nu in beta)</dt>
+<dd>Kies de dag. Is het FUA-plan voor morgen nog niet gepubliceerd, dan staat dat erbij.</dd>
+<dt>Verberg NOTAMs onder</dt>
+<dd>Verbergt NOTAMs waarvan de bovengrens onder het gekozen flight level ligt (standaard uit).</dd>
+<dt>Ontdubbel FUA/NOTAM</dt>
+<dd>Is een gebied zowel FUA als NOTAM, dan toont de kaart de FUA zolang die actief is en anders de NOTAM; in de .cub komt dan alleen de NOTAM (standaard aan).</dd>
+<dt>Vrijgegeven luchtruim tonen</dt>
+<dd>Zet alle groene NOTAMs in één keer aan of uit. Alleen zichtbaar als die er zijn.</dd>
+<dt>Alles uitklappen, ↺, ★, diskette en delen</dt>
+<dd>Werken als op het tabblad Luchtruim, voor de selectie van NOTAMs en FUA.</dd>
+<dt>De lijst</dt>
+<dd>Vinkjes per soort en per item. Een klik op de naam zet het item aan en vliegt erheen. Erachter staat <em>nu actief</em>, <em>vanaf HH:MM LT</em> of <em>voorbij</em>, met de hoogte en de tijden.</dd>
+<dt>Download als .cub</dt>
+<dd>De aangevinkte FUA en NOTAMs van de hele dag, zie hieronder.</dd>
+<dt>Toon om</dt>
+<dd>Schuif door de dag; de kaart toont alleen wat dan actief is.</dd>
+</dl>
+
+<h3 id="tab-vlucht">Tabblad Vlucht</h3>
+<p>Je ziet het luchtruim zoals je het bij Luchtruim hebt gekozen, samen met de NOTAMs en FUA-activeringen van de vliegdag, voor zover die bewaard zijn (vanaf 15 oktober 2026). Ze verschijnen op het moment van de vluchtklok, met dezelfde aan/uit-keuzes als bij Vandaag.</p>
+<dl>
+<dt>Kies een vluchtbestand</dt>
+<dd>Laad een IGC-, GPX-, KML- of KMZ-bestand, of sleep het erheen. Je ziet het hele spoor, met een schaduw op de grond en een loodlijn vanaf het vliegtuig.</dd>
+<dt>Vlucht verwijderen</dt>
+<dd>Haalt de vlucht van de kaart.</dd>
+<dt>QNH</dt>
+<dd>Opgehaald voor de vliegdag bij Open-Meteo en zelf aan te passen. Daarmee worden de IGC-drukhoogte en de FL-grenzen omgerekend. Wijzen de hoogtes in het IGC-bestand op een andere QNH, dan krijg je een waarschuwing. Bij GPX en KML wordt de GPS-hoogte gebruikt, zonder QNH-correctie.</dd>
+<dt>−1 min, ▶ / ❚❚, +1 min en snelheid</dt>
+<dd>Een minuut terug, afspelen of pauzeren, een minuut vooruit, en 1 tot 60 keer zo snel.</dd>
+<dt>Cockpitzicht</dt>
+<dd>Kijk vanuit het vliegtuig in de vliegrichting.</dd>
+<dt>Huidig luchtruim</dt>
+<dd>In welk luchtruim je op dat moment vloog.</dd>
+</dl>
+
+<h3 id="onderaan">Onderaan het paneel</h3>
+<dl>
+<dt>Feedback (envelop)</dt>
+<dd>Stuur een e-mail met opmerkingen of fouten.</dd>
+<dt>Doneer een vliegminuut</dt>
+<dd>Steun VFR3D via Ko-fi.</dd>
 </dl>
 
 <h3>Download als .cub (LXNAV en SeeYou)</h3>
