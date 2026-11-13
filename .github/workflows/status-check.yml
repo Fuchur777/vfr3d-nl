@@ -15,6 +15,7 @@ jobs:
       - uses: actions/checkout@v5
       # only for the log: what the FUA Worker read last, incl. the portal rows and plans for later days (threads can't reach the Worker)
       - run: |
+          curl -s 'https://vfr3d-fua.frank-e97.workers.dev/?debug' | head -n 5
           curl -s 'https://vfr3d-fua.frank-e97.workers.dev/?debug' | tail -n 40
           curl -s 'https://vfr3d-fua.frank-e97.workers.dev/' | jq -c '{type, datum, opgehaald, n: (.gebieden | length), volgende: [.volgende[]? | {datum, type, opgehaald, n: (.gebieden | length)}]}'
         continue-on-error: true
