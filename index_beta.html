@@ -182,7 +182,7 @@
 import { fuaKey, designators, aboutAirspace, namedIn, frees, ownCircle, eHeight, textShapes } from './notam-regels.js?v=09-11-2026a'; // ?v: a cached older copy would lack new exports and stop the whole page; change it with notam-regels.js
 // disclaimer: shown at load until accepted for this code date; Weigeren (or Escape) leads to LVNL
 // code version: change it with every code change. Not document.lastModified, which also changes with each LVNL data commit
-const CODE_VERSION = '09-11-2026b';
+const CODE_VERSION = '13-11-2026a';
 // drag the side panel's right edge to change its width (Frank 2026-10-30), remembered in this browser
 const grip = document.getElementById('grip'), setMenu = w => document.documentElement.style.setProperty('--menu', `${Math.min(Math.max(w, 220), 600)}px`);
 try { setMenu(+localStorage.getItem('vfr3d-menu') || 290); } catch {}
@@ -889,6 +889,7 @@ const row = a => {
   const bands = [...new Set(a.entities.map(({ limits: p }) => `${limit(p.LowerLimit, p.LowerLimitUnit, p.LowerLimitReference)}–${limit(p.UpperLimit, p.UpperLimitUnit, p.UpperLimitReference)}`))];
   const times = [...new Set(a.windows.map(([s, u]) => `${when(s)} – ${u === Infinity ? 'PERM' : when(u, false)}`))];
   const head = document.createElement('label');
+  a.link = name;
   head.append(badge(' ', a.colour), name, a.status);
   const row = Object.assign(document.createElement('div'), { className: 'today' });
   row.append(a.box, head, Object.assign(document.createElement('small'), { textContent: `${bands.join(', ')}\n${times.join('\n')}` }));
@@ -1008,6 +1009,12 @@ viewer.selectedEntityChanged.addEventListener(e => {
   off.hidden = !itemOf.has(e); offToday.hidden = !itemOf.get(e)?.today || itemOf.get(e).soort === 'FUA'; });
 off.onclick = () => { setOn([itemOf.get(viewer.selectedEntity)], false); viewer.selectedEntity = undefined; };
 offToday.onclick = () => { dayOff.keys.push(itemOf.get(viewer.selectedEntity).key); saveDayOff(); off.onclick(); };
+// link per NOTAM in the morning issue (?notam=A2538/26, .github/notam-vorm.mjs): open Vandaag and fly to that NOTAM with its infobox
+const linked = new URLSearchParams(location.search).get('notam');
+if (linked) {
+  showTab('vandaag'); refresh();
+  today.find(a => a.soort !== 'FUA' && !a.land && a.entities[0].limits.Designator === linked)?.link.click();
+}
 whenDrawn().then(() => busy());
 // one button that opens all groups, then closes them again, on Luchtruim and Vandaag (Frank 2026-10-29)
 for (const [id, list] of [['expand', '#tree'], ['expandToday', '#today']]) document.getElementById(id).onclick = ({ currentTarget: b }) => {

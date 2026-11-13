@@ -21,7 +21,9 @@ const noShape = notams.filter(({ t }) => !ownCircle(t) && !lvnl(t) && !textShape
 const doubt = notams.filter(({ t }) => { const [q, e] = frees(t); return q !== e; });
 const vfr = notams.filter(({ t }) => /\b(CLOSED|CLSD) FOR VFR\b/.test(t));
 
-const list = l => l.map(({ p }) => `### ${p.Designator} (${p.Soort ?? 'onbekend'})\n\`\`\`\n${p.Tekst}\n\`\`\``).join('\n\n');
+// each NOTAM links to the beta app, which opens Vandaag and flies to it (beta until Frank puts it live)
+const map = p => `https://vfr3d.nl/index_beta.html?notam=${encodeURIComponent(p.Designator)}#vandaag`;
+const list = l => l.map(({ p }) => `### ${p.Designator} (${p.Soort ?? 'onbekend'}) · [op de kaart](${map(p)})\n\`\`\`\n${p.Tekst}\n\`\`\``).join('\n\n');
 const parts = [
   noShape.length && `## Zonder vorm\nDeze NOTAMs tekent vfr3d.nl als cirkel, omdat er geen LVNL-gebied in de tekst gevonden is.\n\n${list(noShape)}`,
   own.length && `## Eigen vorm uit de tekst\nDeze NOTAMs tekent vfr3d.nl niet als cirkel uit de Q-regel maar met de punten uit de E-regel: een strook langs een lijn, 0,1 NM rond losse punten, of het gebied tussen de punten. Klopt de vorm?\n\n${list(own)}`,
