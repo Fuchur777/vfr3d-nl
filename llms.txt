@@ -2,7 +2,7 @@
 
 > Gratis 3D-webkaart van het Nederlandse luchtruim voor VFR-vliegers: ICAO-luchtruimklassen A–G, CTR, TMA, CTA, ATZ, TMZ, RMZ, danger/restricted/prohibited areas (EHD/EHR/EHP), TRA/TSA, parachutespring-, zweefvlieg- en lierlocaties. Actieve FUA-gebieden en NOTAMs van vandaag. Vluchten afspelen uit IGC, GPX, KML en KMZ. Luchtruim downloaden als CUB-bestand voor LXNAV en SeeYou. Alleen voor educatieve doeleinden, niet geschikt voor vluchtvoorbereiding; de AIP Netherlands van LVNL is leidend.
 
-- [3D-kaart](https://vfr3d.nl/): tabbladen Kaart, Luchtruim, Vandaag en Vlucht; het luchtruim als 3D-volumes, filteren op klasse, type en flight level, tijdsafhankelijke TMA-klassen (AIP SUP 03/2022), FUA en NOTAMs van vandaag, vlucht afspelen met huidig luchtruim en de NOTAMs/FUA van de vliegdag, download als .cub
+- [3D-kaart](https://vfr3d.nl/): tabbladen Kaart, Luchtruim, NOTAMs en Vlucht; het luchtruim als 3D-volumes, filteren op klasse, type en flight level, tijdsafhankelijke TMA-klassen (AIP SUP 03/2022), FUA en NOTAMs van vandaag en morgen, vlucht afspelen met huidig luchtruim en de NOTAMs/FUA van de vliegdag, download als .cub
 - [Luchtruim in Nederland uitgelegd](https://vfr3d.nl/luchtruim.html): luchtruimstructuur, ICAO-klassen, CTR/TMA/ATZ/TMZ/RMZ, D/R/P-gebieden, schakelbaar luchtruim (FUA, TRA, TSA, CBA) een checklist voor vluchtvoorbereiding en hoe VFR3D werkt
 
 ## Bronnen
