@@ -62,7 +62,7 @@
         { "@type": "Question", "name": "Hoe speel ik mijn vlucht af in VFR3D?",
           "acceptedAnswer": { "@type": "Answer", "text": "Open het tabblad Vlucht en laad een IGC-, GPX-, KML- of KMZ-bestand. Je ziet het hele spoor in 3D en kunt de vlucht afspelen, volgen of vanuit de cockpit bekijken. VFR3D toont op elk moment in welk luchtruim je vloog en rekent de drukhoogte om met de QNH van die dag." } },
         { "@type": "Question", "name": "Wat zit er in de CUB-download van VFR3D?",
-          "acceptedAnswer": { "@type": "Answer", "text": "Op het tabblad Luchtruim download je al het aangevinkte luchtruim, afgesneden op het FL-filter, met type en ICAO-klasse. Op het tabblad Vandaag download je de aangevinkte FUA-gebieden en NOTAMs van de hele dag, met de actieve tijden in Nederlandse tijd in de naam. Het CUB-formaat is van Naviter SeeYou en wordt ook door LXNAV-instrumenten gelezen." } },
+          "acceptedAnswer": { "@type": "Answer", "text": "Op het tabblad Luchtruim download je al het aangevinkte luchtruim, afgesneden op het FL-filter, met type en ICAO-klasse. Op het tabblad NOTAMs download je de aangevinkte FUA-gebieden en NOTAMs van de gekozen dag, met de actieve tijden in Nederlandse tijd in de naam. Het CUB-formaat is van Naviter SeeYou en wordt ook door LXNAV-instrumenten gelezen." } },
         { "@type": "Question", "name": "Waar komen de NOTAMs en FUA-activeringen in VFR3D vandaan?",
           "acceptedAnswer": { "@type": "Answer", "text": "De NOTAMs komen uit het NOTAM-systeem van de FAA en worden vier keer per dag opgehaald. De activeringen van TRA, TSA en andere schakelbare gebieden komen uit het Airspace Use Plan (AUP/UUP) van Eurocontrol en worden elk uur van 06:00 tot 10:00 LT en verder elke drie uur opgehaald. Controleer ze altijd in de officiële bronnen." } },
         { "@type": "Question", "name": "Is VFR3D geschikt voor vluchtvoorbereiding?",
@@ -161,7 +161,7 @@
 
 <h2>Hoe werkt VFR3D?</h2>
 <p><a href="/">VFR3D Nederland</a> toont het Nederlandse luchtruim als 3D-volumes op een kaart, zodat je ziet hoe CTR's, TMA's en andere gebieden boven en naast elkaar liggen. De app draait helemaal in je browser; er is niets te installeren en er is geen account nodig. Je keuzes (welk luchtruim aan staat en op welk tabblad je was) worden in je browser onthouden.</p>
-<p>Hieronder staat per tabblad wat elke knop doet. In de app opent de knop <strong>?</strong> rechtsboven deze uitleg (nu in beta).</p>
+<p>Hieronder staat per tabblad wat elke knop doet. In de app opent de knop <strong>?</strong> rechtsboven deze uitleg.</p>
 
 <h3 id="bediening">Rechtsboven op de kaart</h3>
 <dl>
@@ -173,7 +173,7 @@
 <dd>Terug naar het beginbeeld boven Nederland.</dd>
 <dt>Muis (Bediening)</dt>
 <dd>Hoe je de kaart verschuift, zoomt, draait en kantelt, met muis of vingers.</dd>
-<dt>? (Uitleg, nu in beta)</dt>
+<dt>? (Uitleg)</dt>
 <dd>Deze uitleg.</dd>
 <dt>☰ / ✕ (telefoon)</dt>
 <dd>Opent en sluit het paneel met de tabbladen. Tikken op de kaart sluit het ook.</dd>
@@ -229,10 +229,10 @@
 <dd>Kies een tijdstip, een dag van de week en eventueel een feestdag. Zo zie je hoe TMA's die volgens AIP SUP 03/2022 van klasse wisselen (bijvoorbeeld rond Lelystad) op dat moment zijn ingedeeld. Nieuw Milligen TMA C2 en E staan als twee delen in de boom (FL055-FL065 en FL065-FL095), omdat die lagen elk hun eigen klasse krijgen.</dd>
 </dl>
 
-<h3 id="tab-vandaag">Tabblad Vandaag (in de beta: NOTAMs)</h3>
+<h3 id="tab-vandaag">Tabblad NOTAMs</h3>
 <p>Wat er vandaag tot 06:00 uur morgenochtend speelt: actieve <strong>FUA-gebieden</strong> (TRA, TSA, D en R volgens het Eurocontrol-AUP/UUP) en <strong>NOTAMs</strong>, gegroepeerd per soort, zoals TRA/TSA, parachutespringen, evenementen, obstakels en lasershows. Soorten die voor de meeste VFR-vliegers minder belangrijk zijn (drones, windturbines, kranen, militair, lasershows en obstakelverlichting) staan standaard uit. België/Luxemburg en Duitsland staan er los bij en zijn standaard uit. Alle tijden staan in Nederlandse tijd (LT) met UTC (Z) erachter. NOTAMs die luchtruim vrijgeven, zoals een gesloten CTR, zijn groen; de andere NOTAMs zijn oranjerood, en bij twijfel ook.</p>
 <dl>
-<dt>Vandaag | Morgen (nu in beta)</dt>
+<dt>Vandaag | Morgen</dt>
 <dd>Kies de dag. Is het FUA-plan voor morgen nog niet gepubliceerd, dan staat dat erbij.</dd>
 <dt>Verberg NOTAMs onder</dt>
 <dd>Verbergt NOTAMs waarvan de bovengrens onder het gekozen flight level ligt (standaard uit).</dd>
@@ -279,7 +279,7 @@
 <p>Je kunt de selectie downloaden als <strong>CUB-bestand</strong>, het luchtruimformaat van Naviter SeeYou dat ook LXNAV-instrumenten inlezen. Er zijn twee knoppen:</p>
 <ul>
 <li><strong>Luchtruim</strong>: al het luchtruim dat je hebt aangevinkt, afgesneden op het FL-filter zoals op de kaart. Elk gebied krijgt zijn type (CTR, TMA, ATZ, TMZ, RMZ, TRA, TSA, D/R/P, zweefvliegen, parachutespringen) en zijn ICAO-klasse mee. Bestandsnaam <code>vfr3d-luchtruim-JJJJ-MM-DD.cub</code>.</li>
-<li><strong>Vandaag</strong>: de aangevinkte FUA-gebieden en NOTAMs van de hele dag, ook als ze op dit moment nog niet of niet meer actief zijn. De actieve tijden in Nederlandse tijd staan in de naam (bijvoorbeeld <code>EHTRA10A 09:00-13:00 LT</code>); de NOTAM-tekst en alle tijden staan in de opmerkingen. Bestandsnaam <code>vfr3d-vandaag-JJJJ-MM-DD.cub</code>.</li>
+<li><strong>NOTAMs</strong>: de aangevinkte FUA-gebieden en NOTAMs van de gekozen dag (vandaag of morgen), ook als ze op dit moment nog niet of niet meer actief zijn. De actieve tijden in Nederlandse tijd staan in de naam (bijvoorbeeld <code>EHTRA10A 09:00-13:00 LT</code>); de NOTAM-tekst en alle tijden staan in de opmerkingen. Bestandsnaam <code>vfr3d-vandaag-JJJJ-MM-DD.cub</code>.</li>
 </ul>
 <p>Het CUB-bestand is nog niet op elk instrument getest. Controleer na het laden of de gebieden goed staan, en gebruik het nooit in plaats van de officiële bronnen.</p>
 
